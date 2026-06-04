@@ -1,0 +1,273 @@
+import { useMemo, useState } from 'react'
+import { ArrowLeft, Pencil, PiggyBank, Plus, Repeat, Target, Trash2 } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
+import { CenterSpinner, EmptyState } from '@/components/ui/States'
+import { CategoryIcon } from '@/features/categories/CategoryIcon'
+import { useAuth } from '@/features/auth/useAuth'
+import { useCategories } from '@/features/categories/api'
+import { useTransactions } from '@/features/transactions/api'
+import { useTransactionSplits } from '@/features/transactions/splits'
+import { useBudgets, useDeleteBudget } from '@/features/budgets/api'
+import { BudgetForm } from '@/features/budgets/BudgetForm'
+import {
+  budgetStatus,
+  PERIOD_LABEL,
+  periodBounds,
+  previousPeriodBounds,
+  spentInPeriod,
+  type BudgetStatus,
+} from '@/features/budgets/progress'
+import { indexById } from '@/lib/collections'
+import { formatMoney } from '@/lib/money'
+import { cn } from '@/lib/utils'
+import type { Budget, Category } from '@/types/db'
+
+export function BudgetsPage() {
+  const { profile } = useAuth()
+  const base = profile?.base_currency ?? 'IDR'
+
+  const { data: budgets = [], isLoading: lb } = useBudgets()
+  const { data: categories = [] } = useCategories()
+  const del = useDeleteBudget()
+
+  const [editing, setEditing] = useState<Budget | null>(null)
+  const [creating, setCreating] = useState(false)
+
+  const categoryMap = useMemo(() => indexById(categories), [categories])
+  const childIdsByParent = useMemo(() => {
+    const m = new Map<string, string[]>()
+    for (const c of categories) {
+      if (!c.parent_id) continue
+      const arr = m.get(c.parent_id) ?? []
+      arr.push(c.id)
+      m.set(c.parent_id, arr)
+    }
+    return m
+  }, [categories])
+
+  // Pull enough history to cover the current (and previous, for rollover) period.
+  const fromIso = useMemo(() => {
+    if (!budgets.length) return undefined
+    let earliest = Infinity
+    for (const b of budgets) {
+      const start = (b.rollover ? previousPeriodBounds(b.period) : periodBounds(b.period)).start.getTime()
+      if (start < earliest) earliest = start
+    }
+    return new Date(earliest).toISOString()
+  }, [budgets])
+
+  const { data: transactions = [], isLoading: lt } = useTransactions({ from: fromIso, limit: 5000 })
+  const { data: splitsByTx = {} } = useTransactionSplits()
+
+  const rows = useMemo(() => {
+    const now = new Date()
+    const list = budgets.map((budget) => {
+      const bounds = periodBounds(budget.period, now)
+      const matchIds = budget.category_id
+        ? new Set([budget.category_id, ...(childIdsByParent.get(budget.category_id) ?? [])])
+        : null
+      const spent = spentInPeriod(transactions, matchIds, bounds, budget.currency, splitsByTx)
+      let carry = 0
+      if (budget.rollover) {
+        const prevSpent = spentInPeriod(
+          transactions,
+          matchIds,
+          previousPeriodBounds(budget.period, now),
+          budget.currency,
+          splitsByTx,
+        )
+        carry = Math.max(0, budget.amount - prevSpent)
+      }
+      const status = budgetStatus(budget.amount, spent, bounds, carry, now)
+      return { budget, status, category: budget.category_id ? categoryMap[budget.category_id] : null }
+    })
+    // Surface the most-used budgets first.
+    return list.sort((a, b) => b.status.pct - a.status.pct)
+  }, [budgets, transactions, childIdsByParent, categoryMap, splitsByTx])
+
+  function remove(b: Budget) {
+    const name = b.category_id ? (categoryMap[b.category_id]?.name ?? 'this category') : 'overall spending'
+    if (confirm(`Delete the ${PERIOD_LABEL[b.period].toLowerCase()} budget for ${name}?`)) del.mutate(b.id)
+  }
+
+  const loading = lb || (budgets.length > 0 && lt)
+
+  return (
+    <div className="mx-auto max-w-3xl space-y-6">
+      <div className="flex items-center gap-3 py-1">
+        <Link
+          to="/settings"
+          className="rounded-xl border border-transparent p-2 text-muted-foreground transition-all hover:border-border hover:bg-surface-muted hover:text-foreground"
+          aria-label="Back to settings"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Link>
+        <h1 className="flex-1 text-2xl font-extrabold tracking-tight lg:text-3xl">Budgets</h1>
+        {budgets.length > 0 && (
+          <Button size="sm" onClick={() => setCreating(true)}>
+            <Plus className="h-4 w-4" /> New
+          </Button>
+        )}
+      </div>
+
+      {loading ? (
+        <CenterSpinner />
+      ) : budgets.length === 0 ? (
+        <EmptyState
+          icon={<Target className="h-8 w-8" />}
+          title="No budgets yet"
+          description="Set a monthly, weekly or yearly limit per category (or overall) and track your progress."
+          action={
+            <Button size="sm" onClick={() => setCreating(true)}>
+              <Plus className="h-4 w-4" /> Create a budget
+            </Button>
+          }
+        />
+      ) : (
+        <div className="space-y-3">
+          {rows.map((row) => (
+            <BudgetCard
+              key={row.budget.id}
+              budget={row.budget}
+              status={row.status}
+              category={row.category}
+              onEdit={() => setEditing(row.budget)}
+              onDelete={() => remove(row.budget)}
+            />
+          ))}
+        </div>
+      )}
+
+      <BudgetForm
+        open={creating || Boolean(editing)}
+        onClose={() => {
+          setCreating(false)
+          setEditing(null)
+        }}
+        budget={editing}
+      />
+
+      {budgets.length > 0 && (
+        <p className="px-1 text-center text-xs text-muted-foreground">
+          Budgets track expenses in your base currency ({base}). A selected category includes its
+          subcategories.
+        </p>
+      )}
+    </div>
+  )
+}
+
+function BudgetCard({
+  budget,
+  status,
+  category,
+  onEdit,
+  onDelete,
+}: {
+  budget: Budget
+  status: BudgetStatus
+  category: Category | null
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  const currency = budget.currency
+  const name = category?.name ?? 'Overall spending'
+  const accent = category?.color ?? 'var(--primary)'
+  const barColor =
+    status.level === 'over' ? 'var(--danger)' : status.level === 'near' ? '#f59e0b' : accent
+  const pctText = `${Math.round(status.pct)}%`
+  const willExceed = status.level !== 'over' && status.projected > status.limit
+
+  return (
+    <Card className="space-y-3 p-4">
+      <div className="flex items-center gap-3">
+        <span
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+          style={{ backgroundColor: `${accent}1f`, color: accent }}
+        >
+          {category ? (
+            <CategoryIcon name={category.icon} className="h-5 w-5" />
+          ) : (
+            <PiggyBank className="h-5 w-5" />
+          )}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-bold text-foreground">{name}</p>
+          <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+            <span className="rounded-md bg-surface-muted px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              {PERIOD_LABEL[budget.period]}
+            </span>
+            {budget.rollover && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-surface-muted px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                <Repeat className="h-2.5 w-2.5" /> Rollover
+                {status.carry > 0 ? ` +${formatMoney(status.carry, currency, { signDisplay: 'never' })}` : ''}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="flex gap-1">
+          <button
+            onClick={onEdit}
+            className="rounded-lg border border-transparent p-1.5 text-muted-foreground transition-colors hover:border-border hover:bg-surface-muted hover:text-foreground"
+            aria-label={`Edit ${name} budget`}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={onDelete}
+            className="rounded-lg border border-transparent p-1.5 text-muted-foreground transition-colors hover:border-danger/10 hover:bg-danger/10 hover:text-danger"
+            aria-label={`Delete ${name} budget`}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div className="h-2.5 w-full overflow-hidden rounded-full bg-surface-muted">
+        <div
+          className="h-full rounded-full transition-all"
+          style={{ width: `${Math.min(100, status.pct)}%`, backgroundColor: barColor }}
+        />
+      </div>
+
+      <div className="flex items-end justify-between">
+        <p className="font-numeric text-sm font-bold text-foreground">
+          {formatMoney(status.spent, currency, { signDisplay: 'never' })}
+          <span className="font-semibold text-muted-foreground">
+            {' / '}
+            {formatMoney(status.limit, currency, { signDisplay: 'never' })}
+          </span>
+        </p>
+        <div className="text-right">
+          <p
+            className={cn(
+              'font-numeric text-sm font-bold',
+              status.level === 'over'
+                ? 'text-danger'
+                : status.level === 'near'
+                  ? 'text-amber-500'
+                  : 'text-positive',
+            )}
+          >
+            {pctText}
+          </p>
+          <p className="text-[11px] font-medium text-muted-foreground">
+            {status.remaining >= 0
+              ? `${formatMoney(status.remaining, currency, { signDisplay: 'never' })} left`
+              : `Over by ${formatMoney(-status.remaining, currency, { signDisplay: 'never' })}`}
+          </p>
+        </div>
+      </div>
+
+      {willExceed && (
+        <p className="text-[11px] font-semibold text-amber-500">
+          On track to spend {formatMoney(status.projected, currency, { signDisplay: 'never' })} —
+          over budget.
+        </p>
+      )}
+    </Card>
+  )
+}
