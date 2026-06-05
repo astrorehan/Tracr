@@ -22,12 +22,12 @@ Status legend: ✅ have · 🟡 partial · ⬜ new · 🔧 schema change needed
 |---|---|---|---|
 | **Tags (many-to-many)** | Free-form labels on a transaction; filter/report by tag | ✅ | `tags` + `transaction_tags` tables (migration `0003_tags`); chips in the add form, chips on rows, tag filter on Activity, Manage tags page |
 | **Split transactions** | One expense split across multiple categories/amounts (e.g. a receipt = food + household) — this is your "multiple categories per transaction" | ✅ | `transaction_splits` table (migration `0005`). Split toggle in the add form (category+amount rows, auto-summed total); split tx stores `category_id=null` + the total in `amount` (balances/totals unaffected). Reports category breakdown & budget spend expand splits via `categoryContributions`; "Split · N categories" shown on the row |
-| **Payee / merchant field** | Who you paid; autocomplete from history; report by payee | ⬜🔧 | add `payee text` to transactions |
+| **Payee / merchant field** | Who you paid; autocomplete from history; report by payee | ✅ | `transactions.payee text` (migration `0010`) + `payee_stats` view (distinct payees by frequency). Datalist autocomplete in the add form (income→"Payer", expense→"Payee", hidden for transfers); payee leads the row title; payee filter + datalist on Activity (also folded into full-text search); "Top payees/sources" card on Reports (+ CSV section); payee column in CSV import/export |
 | **Recurring transactions** | Auto-create on a schedule (salary, rent, subscriptions) | ⬜🔧 | `recurring_transactions` + generator (cron/Edge Fn) |
 | **Attachments / receipts** | Photo or PDF per transaction | ✅ | Private Storage bucket `attachments` (per-user folder RLS) + `attachments` table (migration `0008`). Attach in the add form; paperclip + count on rows opens a viewer modal (signed-URL thumbnails, add/delete). Storage files orphan on tx delete (cleanup = follow-up) |
 | **Quick templates / favorites** | One-tap repeat of common entries | ⬜🔧 | reuse recurring table w/ `auto=false`, or `templates` |
 | **Bulk actions** | Multi-select → delete / recategorize / tag | ✅ | Activity "Select" mode → checkboxes + select-all; floating bar: set category (skips transfers), add tags (dedupes), delete. Bulk mutations `useBulkDeleteTransactions`/`useBulkSetCategory`/`useBulkAddTags` |
-| **Duplicate / clone** | Copy an existing transaction | ⬜ | UI only |
+| **Duplicate / clone** | Copy an existing transaction | ✅ | Copy button on each Activity row → `useDuplicateTransaction` clones core fields + tags + splits as a fresh entry dated now (FX snapshot recomputed, source `web`). No schema change |
 | **Refund / reimbursement link** | Tie a refund to its original expense | ⬜🔧 | `linked_transaction_id` |
 | **Cleared / reconciled flag** | Mark which entries match the bank | ⬜🔧 | add `status` (`pending`/`cleared`/`reconciled`) |
 | **Calculator in amount field** | `12000+3500` evaluates inline | ✅ | Safe expression evaluator (`lib/calc.ts`); `amountToMinor` used by every amount field (transaction, splits, budget, goal, contribution, bill, account, reconcile); live `= …` preview in the add form |
@@ -60,7 +60,7 @@ Status legend: ✅ have · 🟡 partial · ⬜ new · 🔧 schema change needed
 - (Optional later) YNAB-style "available to assign" envelope model; multi-period rollover chains
 
 ## 5. Filtering, search & saved views (Tier 1) — your explicit ask — ✅ DONE
-- ✅ Filter by **any combo**: account, category + subcategory, tag(s) (any/all), type, date range, amount range (min/max), note text, source. (payee, currency, cleared status pending their own schema features)
+- ✅ Filter by **any combo**: account, category + subcategory, tag(s) (any/all), type, date range, amount range (min/max), note text, payee, source. (currency, cleared status pending their own schema features)
 - ✅ Date presets: today, this/last week, this/last month, this/last quarter, YTD, last 12 months, custom range
 - ✅ Full-text search across note + category + account + tag names
 - ✅ **Saved filters / smart views** — name & store the current filter, one-tap apply, delete; matching view highlighted (localStorage `tracr.savedViews.v1`)
@@ -78,7 +78,8 @@ Dedicated **Reports** page (`/reports`, sidebar + Dashboard link) with a date-ra
 - ✅ Export the category report to **CSV**
 - ✅ Base-currency only with a note when other currencies exist (no FX yet)
 - Pure client-side aggregation in `features/reports/reports.ts` — no schema change
-- ⬜ Still TODO: net-worth trend & account balance history (need balance snapshots), period-over-period comparison, top payees/merchants (needs payee field), calendar heatmap, PDF export, drill-into-subcategory/tag
+- ✅ Top payees/merchants (per §1 payee field) — "Top payees/sources" card on Reports + CSV
+- ⬜ Still TODO: net-worth trend & account balance history (need balance snapshots), period-over-period comparison, calendar heatmap, PDF export, drill-into-subcategory/tag
 
 ## 7. Accounts — depth (Tier 2)
 | Feature | Status | Notes |
@@ -169,7 +170,8 @@ Dedicated **Reports** page (`/reports`, sidebar + Dashboard link) with a date-ra
 - `savings_goals` (+ `goal_transactions`)
 - `fx_rates`
 - `attachments` (+ Storage bucket)
-- Column adds: `transactions.payee`, `transactions.status`, `transactions.linked_transaction_id`, `categories.sort_order/is_archived`, `accounts.exclude_from_stats/is_liability/sort_order`
+- ✅ `transactions.payee` (migration `0010`, + `payee_stats` view)
+- Column adds: `transactions.status`, `transactions.linked_transaction_id`, `categories.sort_order/is_archived`, `accounts.exclude_from_stats/is_liability/sort_order`
 - Optional: `saved_views`, `spaces` + membership (sharing)
 
 All additions stay RLS-scoped per user, consistent with the existing schema.
