@@ -47,6 +47,13 @@ export interface Transaction {
   type: TransactionType
   amount: number
   currency: string
+  /** Frozen value in the user's base currency (minor units) at create time; null = rate unknown. */
+  base_amount: number | null
+  /** Native -> base rate captured at create time. */
+  fx_rate: number | null
+  /** Transfers: amount credited to the counter account in its currency; null = same-currency (use amount). */
+  counter_amount: number | null
+  counter_fx_rate: number | null
   occurred_at: string
   note: string | null
   source: TransactionSource
@@ -166,7 +173,7 @@ export type NewGoalContribution = Omit<GoalContribution, 'id' | 'user_id' | 'cre
 
 export type NewRecurringTransaction = Omit<
   RecurringTransaction,
-  'id' | 'user_id' | 'created_at' | 'last_paid_at'
+  'id' | 'user_id' | 'created_at' | 'last_paid_at' | 'is_active'
 > &
   Partial<Pick<RecurringTransaction, 'is_active'>>
 
@@ -179,6 +186,32 @@ export type NewAccount = Omit<Account, 'id' | 'user_id' | 'created_at' | 'is_arc
 
 export type NewTransaction = Omit<
   Transaction,
-  'id' | 'user_id' | 'created_at' | 'source' | 'external_ref'
+  | 'id'
+  | 'user_id'
+  | 'created_at'
+  | 'source'
+  | 'external_ref'
+  | 'base_amount'
+  | 'fx_rate'
+  | 'counter_amount'
+  | 'counter_fx_rate'
 > &
-  Partial<Pick<Transaction, 'source'>>
+  Partial<
+    Pick<Transaction, 'source' | 'base_amount' | 'fx_rate' | 'counter_amount' | 'counter_fx_rate'>
+  >
+
+export interface FxRate {
+  id: string
+  user_id: string
+  /** 1 unit of `base` = `rate` units of `quote`. */
+  base: string
+  quote: string
+  rate: number
+  /** yyyy-MM-dd */
+  as_of: string
+  source: string
+  created_at: string
+}
+
+export type NewFxRate = Omit<FxRate, 'id' | 'user_id' | 'created_at' | 'source'> &
+  Partial<Pick<FxRate, 'source'>>
