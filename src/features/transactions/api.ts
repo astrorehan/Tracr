@@ -52,11 +52,30 @@ export function useTransactions(filters: TransactionFilters = {}) {
   })
 }
 
+/** Distinct payees from history, most-used first — for add-form / filter autocomplete. */
+export function usePayees() {
+  return useQuery({
+    queryKey: qk.payees,
+    queryFn: async (): Promise<string[]> => {
+      const { data, error } = await supabase
+        .from('payee_stats')
+        .select('payee')
+        .order('txn_count', { ascending: false })
+        .order('last_used', { ascending: false })
+        .limit(500)
+      if (error) throw error
+      return (data ?? []).map((r) => (r as { payee: string }).payee)
+    },
+    staleTime: 60_000,
+  })
+}
+
 function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
   void qc.invalidateQueries({ queryKey: ['transactions'] })
   void qc.invalidateQueries({ queryKey: qk.balances })
   void qc.invalidateQueries({ queryKey: qk.transactionTags })
   void qc.invalidateQueries({ queryKey: qk.transactionSplits })
+  void qc.invalidateQueries({ queryKey: qk.payees })
 }
 
 export function useCreateTransaction() {
@@ -74,6 +93,75 @@ export function useCreateTransaction() {
         .single()
       if (error) throw error
       return data as Transaction
+    },
+    onSuccess: () => invalidateAll(qc),
+  })
+}
+
+/**
+ * Clone a transaction as a fresh entry dated now, carrying over its tags and
+ * splits. The FX snapshot is recomputed (it's a new transaction today), and
+ * source is 'web' so the copy reads as a manual entry.
+ */
+export function useDuplicateTransaction() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      tx,
+      tagIds = [],
+      splits = [],
+    }: {
+      tx: Transaction
+      tagIds?: string[]
+      splits?: { category_id: string | null; amount: number; note?: string | null }[]
+    }): Promise<Transaction> => {
+      const { data: userData } = await supabase.auth.getUser()
+      const userId = userData.user?.id
+      if (!userId) throw new Error('Not authenticated')
+
+      const snap = await computeFxSnapshot(tx.amount, tx.currency)
+      const { data, error } = await supabase
+        .from('transactions')
+        .insert({
+          user_id: userId,
+          account_id: tx.account_id,
+          counter_account_id: tx.counter_account_id,
+          category_id: tx.category_id,
+          type: tx.type,
+          amount: tx.amount,
+          currency: tx.currency,
+          counter_amount: tx.counter_amount,
+          counter_fx_rate: tx.counter_fx_rate,
+          occurred_at: new Date().toISOString(),
+          payee: tx.payee,
+          note: tx.note,
+          source: 'web' as const,
+          ...snap,
+        })
+        .select()
+        .single()
+      if (error) throw error
+      const copy = data as Transaction
+
+      if (splits.length > 0) {
+        const { error: splitErr } = await supabase.from('transaction_splits').insert(
+          splits.map((s) => ({
+            transaction_id: copy.id,
+            user_id: userId,
+            category_id: s.category_id,
+            amount: s.amount,
+            note: s.note ?? null,
+          })),
+        )
+        if (splitErr) throw splitErr
+      }
+      if (tagIds.length > 0) {
+        const { error: tagErr } = await supabase
+          .from('transaction_tags')
+          .insert(tagIds.map((tag_id) => ({ transaction_id: copy.id, tag_id, user_id: userId })))
+        if (tagErr) throw tagErr
+      }
+      return copy
     },
     onSuccess: () => invalidateAll(qc),
   })

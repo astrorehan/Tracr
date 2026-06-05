@@ -125,3 +125,35 @@ export function categoryBreakdown(
   }
   return slices.sort((a, b) => b.total - a.total)
 }
+
+export interface PayeeSlice {
+  name: string
+  total: number
+  count: number
+  pct: number
+}
+
+/** Spend (or income) grouped by payee, ranked high→low. Untagged payees are dropped. */
+export function payeeBreakdown(
+  txns: Transaction[],
+  kind: 'expense' | 'income',
+): PayeeSlice[] {
+  const byPayee = new Map<string, { total: number; count: number }>()
+  let total = 0
+  for (const tx of txns) {
+    if (tx.type !== kind) continue
+    const name = tx.payee?.trim()
+    if (!name) continue
+    total += tx.amount
+    const cur = byPayee.get(name) ?? { total: 0, count: 0 }
+    cur.total += tx.amount
+    cur.count += 1
+    byPayee.set(name, cur)
+  }
+  return Array.from(byPayee, ([name, v]) => ({
+    name,
+    total: v.total,
+    count: v.count,
+    pct: total ? (v.total / total) * 100 : 0,
+  })).sort((a, b) => b.total - a.total)
+}

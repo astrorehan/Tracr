@@ -4,7 +4,11 @@ import { ArrowLeftRight, ListChecks } from 'lucide-react'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
 import { useAccounts } from '@/features/accounts/api'
 import { useCategories } from '@/features/categories/api'
-import { useDeleteTransaction, useTransactions } from '@/features/transactions/api'
+import {
+  useDeleteTransaction,
+  useDuplicateTransaction,
+  useTransactions,
+} from '@/features/transactions/api'
 import { useTags, useTransactionTags } from '@/features/tags/api'
 import { useTransactionSplits } from '@/features/transactions/splits'
 import { useTransactionAttachments } from '@/features/attachments/api'
@@ -39,6 +43,7 @@ export function TransactionsPage() {
     limit: 500,
   })
   const del = useDeleteTransaction()
+  const duplicate = useDuplicateTransaction()
 
   const accountMap = useMemo(() => indexById(accounts), [accounts])
   const categoryMap = useMemo(() => indexById(categories), [categories])
@@ -54,12 +59,14 @@ export function TransactionsPage() {
 
   const visible = useMemo(() => {
     const q = filter.search.trim().toLowerCase()
+    const payeeQ = filter.payee.trim().toLowerCase()
     const min = filter.amountMin ? parseFloat(filter.amountMin) : null
     const max = filter.amountMax ? parseFloat(filter.amountMax) : null
 
     const rows = (transactions ?? []).filter((tx) => {
       if (categoryMatchIds && !(tx.category_id && categoryMatchIds.has(tx.category_id))) return false
       if (filter.source && tx.source !== filter.source) return false
+      if (payeeQ && !(tx.payee ?? '').toLowerCase().includes(payeeQ)) return false
 
       const txt = txTags[tx.id] ?? []
       if (filter.tagIds.length) {
@@ -79,6 +86,7 @@ export function TransactionsPage() {
       if (q) {
         const haystack = [
           tx.note,
+          tx.payee,
           tx.category_id ? categoryMap[tx.category_id]?.name : '',
           accountMap[tx.account_id]?.name,
           ...txt.map((id) => tagMap[id]?.name ?? ''),
@@ -110,6 +118,18 @@ export function TransactionsPage() {
     return (txTags[txId] ?? []).map((id) => tagMap[id]).filter(Boolean)
   }
 
+  function handleDuplicate(tx: Transaction) {
+    duplicate.mutate({
+      tx,
+      tagIds: txTags[tx.id] ?? [],
+      splits: (splitsByTx[tx.id] ?? []).map((s) => ({
+        category_id: s.category_id,
+        amount: s.amount,
+        note: s.note,
+      })),
+    })
+  }
+
   function toggleSelect(id: string) {
     setSelectedIds((cur) => {
       const next = new Set(cur)
@@ -138,6 +158,7 @@ export function TransactionsPage() {
         selectable={selectMode}
         selected={selectedIds.has(tx.id)}
         onSelect={toggleSelect}
+        onDuplicate={() => handleDuplicate(tx)}
         onDelete={(id) => {
           if (confirm('Delete this transaction?')) del.mutate(id)
         }}
