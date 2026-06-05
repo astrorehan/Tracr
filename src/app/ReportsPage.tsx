@@ -11,7 +11,7 @@ import {
   Tooltip,
   XAxis,
 } from 'recharts'
-import { BarChart3, Download, PieChart as PieIcon, TrendingDown, TrendingUp, Wallet } from 'lucide-react'
+import { BarChart3, Download, PieChart as PieIcon, Store, TrendingDown, TrendingUp, Wallet } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Select } from '@/components/ui/Input'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
@@ -30,6 +30,7 @@ import {
 import {
   bucketByTime,
   categoryBreakdown,
+  payeeBreakdown,
   periodTotals,
   pickGranularity,
 } from '@/features/reports/reports'
@@ -117,6 +118,11 @@ export function ReportsPage() {
     [baseTxns],
   )
 
+  const topPayees = useMemo(
+    () => payeeBreakdown(baseTxns, breakdownKind).slice(0, 8),
+    [baseTxns, breakdownKind],
+  )
+
   // Average over days elapsed so far (cap the end at today), not the whole period —
   // spending Rp3m on the 1st reads as Rp3m/day, then Rp1.5m/day on the 2nd, etc.
   const avgDailySpend = useMemo(() => {
@@ -133,6 +139,13 @@ export function ReportsPage() {
       [],
       ['Category', 'Amount', 'Share %'],
       ...breakdown.map((s) => [s.name, fromMinorUnits(s.total, base), s.pct.toFixed(1)]),
+      ...(topPayees.length > 0
+        ? ([
+            [],
+            [`Top ${breakdownKind === 'expense' ? 'payees' : 'sources'}`, 'Amount', 'Count'],
+            ...topPayees.map((p) => [p.name, fromMinorUnits(p.total, base), p.count]),
+          ] as (string | number)[][])
+        : []),
       [],
       ['Total income', fromMinorUnits(totals.income, base)],
       ['Total expense', fromMinorUnits(totals.expense, base)],
@@ -374,6 +387,41 @@ export function ReportsPage() {
               ))}
             </ul>
           </Card>
+
+          {/* Top payees */}
+          {topPayees.length > 0 && (
+            <Card className="p-5">
+              <p className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                <Store className="h-3.5 w-3.5" />
+                Top {breakdownKind === 'expense' ? 'payees' : 'sources'}
+              </p>
+              <ul className="space-y-2.5">
+                {topPayees.map((p) => (
+                  <li key={p.name} className="flex items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className="truncate text-sm font-semibold text-foreground">{p.name}</span>
+                        <span className="font-numeric text-sm font-bold text-foreground">
+                          {formatMoney(p.total, base, { signDisplay: 'never' })}
+                        </span>
+                      </div>
+                      <div className="mt-1 flex items-center gap-2">
+                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-muted">
+                          <div
+                            className="h-full rounded-full bg-primary"
+                            style={{ width: `${p.pct}%` }}
+                          />
+                        </div>
+                        <span className="w-16 text-right text-[11px] font-semibold text-muted-foreground">
+                          {p.count}×
+                        </span>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
         </div>
       )}
     </div>

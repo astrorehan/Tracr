@@ -56,6 +56,8 @@ export interface Transaction {
   counter_fx_rate: number | null
   occurred_at: string
   note: string | null
+  /** Merchant / payee (free text); null = not recorded. */
+  payee: string | null
   source: TransactionSource
   external_ref: string | null
   created_at: string
@@ -190,6 +192,7 @@ export type NewTransaction = Omit<
   | 'user_id'
   | 'created_at'
   | 'source'
+  | 'payee'
   | 'external_ref'
   | 'base_amount'
   | 'fx_rate'
@@ -197,7 +200,10 @@ export type NewTransaction = Omit<
   | 'counter_fx_rate'
 > &
   Partial<
-    Pick<Transaction, 'source' | 'base_amount' | 'fx_rate' | 'counter_amount' | 'counter_fx_rate'>
+    Pick<
+      Transaction,
+      'source' | 'payee' | 'base_amount' | 'fx_rate' | 'counter_amount' | 'counter_fx_rate'
+    >
   >
 
 export interface FxRate {

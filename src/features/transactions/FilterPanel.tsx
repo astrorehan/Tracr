@@ -15,6 +15,7 @@ import {
   type TxFilter,
 } from './filters'
 import { useSavedViews } from './savedViews'
+import { usePayees } from './api'
 
 interface Props {
   filter: TxFilter
@@ -25,6 +26,7 @@ interface Props {
 }
 
 export function FilterPanel({ filter, onChange, accounts, categories, tags }: Props) {
+  const { data: payeeSuggestions = [] } = usePayees()
   const [open, setOpen] = useState(false)
   const { views, save, remove } = useSavedViews()
   const count = activeFilterCount(filter)
@@ -95,6 +97,12 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
       label: `${filter.amountMin || '0'} – ${filter.amountMax || '∞'}`,
       onRemove: () => onChange({ ...filter, amountMin: '', amountMax: '' }),
     })
+  if (filter.payee.trim())
+    chips.push({
+      key: 'payee',
+      label: filter.payee.trim(),
+      onRemove: () => set('payee', ''),
+    })
   if (filter.source)
     chips.push({
       key: 'source',
@@ -110,7 +118,7 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
         <input
           value={filter.search}
           onChange={(e) => set('search', e.target.value)}
-          placeholder="Search notes, categories, accounts, tags…"
+          placeholder="Search notes, payees, categories, accounts, tags…"
           className="h-11 w-full rounded-xl border border-border bg-surface pl-10 pr-4 text-sm text-foreground shadow-sm transition-all placeholder:text-muted-foreground focus-visible:border-primary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
         />
       </div>
@@ -250,6 +258,23 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
               placeholder="Max amount"
               className="h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-foreground shadow-sm focus-visible:border-primary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
             />
+          </div>
+
+          {/* Payee */}
+          <div>
+            <input
+              list="payee-filter-suggestions"
+              value={filter.payee}
+              onChange={(e) => set('payee', e.target.value)}
+              placeholder="Payee / merchant"
+              autoComplete="off"
+              className="h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-foreground shadow-sm focus-visible:border-primary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
+            />
+            <datalist id="payee-filter-suggestions">
+              {payeeSuggestions.map((p) => (
+                <option key={p} value={p} />
+              ))}
+            </datalist>
           </div>
 
           {/* Tags */}

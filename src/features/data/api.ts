@@ -23,6 +23,7 @@ export function useImportTransactions() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['transactions'] })
       void qc.invalidateQueries({ queryKey: qk.balances })
+      void qc.invalidateQueries({ queryKey: qk.payees })
     },
   })
 }

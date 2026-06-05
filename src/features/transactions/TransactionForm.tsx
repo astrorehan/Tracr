@@ -18,7 +18,7 @@ import { TagPicker } from '@/features/tags/TagPicker'
 import { useSetTransactionTags } from '@/features/tags/api'
 import { useSetTransactionSplits } from './splits'
 import { useUploadAttachments } from '@/features/attachments/api'
-import { useCreateTransaction } from './api'
+import { useCreateTransaction, usePayees } from './api'
 import type { TransactionType } from '@/types/db'
 
 interface Props {
@@ -71,6 +71,7 @@ function TransactionFormBody({
   const { data: accounts = [] } = useAccounts()
   const { data: categories = [] } = useCategories()
   const { data: fxRates = [] } = useFxRates()
+  const { data: payeeSuggestions = [] } = usePayees()
   const create = useCreateTransaction()
   const setTags = useSetTransactionTags()
   const setSplits = useSetTransactionSplits()
@@ -83,6 +84,7 @@ function TransactionFormBody({
   const [categoryId, setCategoryId] = useState('')
   const [amount, setAmount] = useState('')
   const [date, setDate] = useState(todayLocal())
+  const [payee, setPayee] = useState('')
   const [note, setNote] = useState('')
   const [tagIds, setTagIds] = useState<string[]>([])
   const [files, setFiles] = useState<File[]>([])
@@ -226,6 +228,7 @@ function TransactionFormBody({
         counter_amount: counterAmountMinor,
         counter_fx_rate: counterFxRate,
         occurred_at: occurredAt,
+        payee: type === 'transfer' ? null : payee.trim() || null,
         note: note.trim() || null,
       })
       if (splitting) await setSplits.mutateAsync({ transactionId: tx.id, splits: splitRows })
@@ -429,6 +432,23 @@ function TransactionFormBody({
             </Select>
           )}
         </div>
+      )}
+
+      {type !== 'transfer' && (
+        <Field label={type === 'income' ? 'Payer / source' : 'Payee / merchant'}>
+          <Input
+            list="payee-suggestions"
+            value={payee}
+            onChange={(e) => setPayee(e.target.value)}
+            placeholder={type === 'income' ? 'Who paid you? (optional)' : 'Who did you pay? (optional)'}
+            autoComplete="off"
+          />
+          <datalist id="payee-suggestions">
+            {payeeSuggestions.map((p) => (
+              <option key={p} value={p} />
+            ))}
+          </datalist>
+        </Field>
       )}
 
       <div className="grid grid-cols-2 gap-3">

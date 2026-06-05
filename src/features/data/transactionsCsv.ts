@@ -3,7 +3,7 @@ import { toCsv, parseCsv } from '@/lib/csv'
 import { fromMinorUnits, toMinorUnits } from '@/lib/money'
 import type { Account, Category, Transaction, TransactionType } from '@/types/db'
 
-const HEADER = ['date', 'type', 'amount', 'currency', 'account', 'category', 'counter_account', 'note']
+const HEADER = ['date', 'type', 'amount', 'currency', 'account', 'category', 'counter_account', 'payee', 'note']
 
 /** Serialize transactions to a human-readable CSV (amounts in major units). */
 export function buildTransactionsCsv(
@@ -21,6 +21,7 @@ export function buildTransactionsCsv(
       accountsById[tx.account_id]?.name ?? '',
       tx.category_id ? (categoriesById[tx.category_id]?.name ?? '') : '',
       tx.counter_account_id ? (accountsById[tx.counter_account_id]?.name ?? '') : '',
+      tx.payee ?? '',
       tx.note ?? '',
     ])
   }
@@ -35,6 +36,7 @@ export interface ParsedTxRow {
   amount: number
   currency: string
   occurred_at: string
+  payee: string | null
   note: string | null
 }
 
@@ -69,6 +71,7 @@ export function parseTransactionsCsv(
     account: col('account'),
     category: col('category'),
     counter: col('counter_account'),
+    payee: col('payee'),
     note: col('note'),
   }
   for (const req of ['date', 'type', 'amount', 'account'] as const) {
@@ -134,6 +137,7 @@ export function parseTransactionsCsv(
       amount,
       currency,
       occurred_at: parsedDate.toISOString(),
+      payee: type === 'transfer' || idx.payee === -1 ? null : (r[idx.payee]?.trim() || null),
       note: idx.note !== -1 ? (r[idx.note]?.trim() || null) : null,
     })
   }
@@ -144,7 +148,7 @@ export function parseTransactionsCsv(
 export function sampleCsv(defaultAccount: string, currency: string): string {
   return toCsv([
     HEADER,
-    [format(new Date(), 'yyyy-MM-dd'), 'expense', '25000', currency, defaultAccount, 'Food & Drink', '', 'Coffee'],
-    [format(new Date(), 'yyyy-MM-dd'), 'income', '5000000', currency, defaultAccount, 'Salary', '', 'Payday'],
+    [format(new Date(), 'yyyy-MM-dd'), 'expense', '25000', currency, defaultAccount, 'Food & Drink', '', 'Starbucks', 'Coffee'],
+    [format(new Date(), 'yyyy-MM-dd'), 'income', '5000000', currency, defaultAccount, 'Salary', '', 'Acme Corp', 'Payday'],
   ])
 }

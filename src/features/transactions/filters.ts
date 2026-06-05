@@ -36,6 +36,7 @@ export interface TxFilter {
   accountId: string
   type: TransactionType | ''
   categoryId: string
+  payee: string
   tagIds: string[]
   tagMatch: TagMatch
   datePreset: DatePreset
@@ -52,6 +53,7 @@ export const defaultFilter: TxFilter = {
   accountId: '',
   type: '',
   categoryId: '',
+  payee: '',
   tagIds: [],
   tagMatch: 'any',
   datePreset: 'all',
@@ -146,6 +148,7 @@ export function activeFilterCount(f: TxFilter): number {
   if (f.accountId) n++
   if (f.type) n++
   if (f.categoryId) n++
+  if (f.payee.trim()) n++
   if (f.tagIds.length) n++
   if (f.datePreset !== 'all') n++
   if (f.amountMin || f.amountMax) n++
