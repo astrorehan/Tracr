@@ -21,6 +21,7 @@ const TABLES = [
   'transaction_tags',
   'transaction_splits',
   'goal_contributions',
+  'fx_rates',
   // Metadata only — the underlying Storage files aren't part of the JSON.
   'attachments',
 ] as const
@@ -105,6 +106,7 @@ export async function restoreBackup(backup: Backup): Promise<number> {
   total += await upsertRows('transaction_tags', d.transaction_tags, userId, 'transaction_id,tag_id')
   total += await upsertRows('transaction_splits', d.transaction_splits, userId, 'id')
   total += await upsertRows('goal_contributions', d.goal_contributions, userId, 'id')
+  total += await upsertRows('fx_rates', d.fx_rates, userId, 'id')
   total += await upsertRows('attachments', d.attachments, userId, 'id')
 
   return total
