@@ -8,6 +8,9 @@ import { cn } from '@/lib/utils'
 import { getCurrency } from '@/lib/currencies'
 import { amountToMinor, formatMoney, fromMinorUnits } from '@/lib/money'
 import { isExpression } from '@/lib/calc'
+import { useAuth } from '@/features/auth/useAuth'
+import { useFxRates } from '@/features/fx/api'
+import { buildRateTable, convertMinor } from '@/features/fx/fx'
 import { useAccounts } from '@/features/accounts/api'
 import { useCategories } from '@/features/categories/api'
 import { flattenWithDepth } from '@/features/categories/tree'
@@ -63,8 +66,11 @@ function TransactionFormBody({
   defaultAccountId?: string
 }) {
   const navigate = useNavigate()
+  const { profile } = useAuth()
+  const base = profile?.base_currency ?? 'IDR'
   const { data: accounts = [] } = useAccounts()
   const { data: categories = [] } = useCategories()
+  const { data: fxRates = [] } = useFxRates()
   const create = useCreateTransaction()
   const setTags = useSetTransactionTags()
   const setSplits = useSetTransactionSplits()
@@ -82,6 +88,8 @@ function TransactionFormBody({
   const [files, setFiles] = useState<File[]>([])
   const [splitMode, setSplitMode] = useState(false)
   const [splits, setSplits_] = useState<SplitRow[]>([newRow(), newRow()])
+  const [counterAmount, setCounterAmount] = useState('')
+  const [counterEdited, setCounterEdited] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Fall back to the first account if state is still empty (e.g. accounts
@@ -90,6 +98,26 @@ function TransactionFormBody({
   const account = accounts.find((a) => a.id === effectiveAccountId)
   const currency = account?.currency ?? 'IDR'
   const symbol = getCurrency(currency).symbol
+
+  // Cross-currency transfer: the destination account holds a different currency,
+  // so the user enters (or accepts a rate-based suggestion for) the amount the
+  // counter account actually receives.
+  const destAccount = accounts.find((a) => a.id === counterId)
+  const crossCurrency =
+    type === 'transfer' && !!destAccount && destAccount.currency !== currency
+  const destCurrency = destAccount?.currency ?? currency
+  const rateTable = useMemo(() => buildRateTable(fxRates, base), [fxRates, base])
+
+  // Suggest the received amount from the latest rate; the user's own input takes
+  // over once they edit. Derived (no effect) so it always tracks the source amount.
+  const suggestedCounter = useMemo(() => {
+    if (!crossCurrency) return ''
+    const srcMinor = amountToMinor(amount, currency)
+    if (srcMinor <= 0) return ''
+    const conv = convertMinor(srcMinor, currency, destCurrency, rateTable)
+    return conv != null ? String(fromMinorUnits(conv, destCurrency)) : ''
+  }, [crossCurrency, amount, currency, destCurrency, rateTable])
+  const counterValue = counterEdited ? counterAmount : suggestedCounter
 
   const categoryOptions = useMemo(
     () =>
@@ -155,9 +183,6 @@ function TransactionFormBody({
     if (type === 'transfer') {
       if (!counterId) return setError('Pick a destination account.')
       if (counterId === effectiveAccountId) return setError('Choose two different accounts.')
-      const dest = accounts.find((a) => a.id === counterId)
-      if (dest && dest.currency !== currency)
-        return setError('Transfers between different currencies aren’t supported yet.')
     }
 
     // Determine the total + whether we'll write splits.
@@ -175,6 +200,18 @@ function TransactionFormBody({
       if (amountMinor <= 0) return setError('Enter an amount greater than zero.')
     }
 
+    // Cross-currency transfer: credit the counter account a different amount in
+    // its own currency (rate-based suggestion, user-editable).
+    let counterAmountMinor: number | null = null
+    let counterFxRate: number | null = null
+    if (type === 'transfer' && crossCurrency) {
+      counterAmountMinor = amountToMinor(counterValue, destCurrency)
+      if (counterAmountMinor <= 0)
+        return setError(`Enter the amount received in ${destCurrency}.`)
+      const srcMajor = fromMinorUnits(amountMinor, currency)
+      counterFxRate = srcMajor > 0 ? fromMinorUnits(counterAmountMinor, destCurrency) / srcMajor : null
+    }
+
     const occurredAt = new Date(`${date}T${new Date().toTimeString().slice(0, 8)}`).toISOString()
 
     try {
@@ -186,6 +223,8 @@ function TransactionFormBody({
         type,
         amount: amountMinor,
         currency,
+        counter_amount: counterAmountMinor,
+        counter_fx_rate: counterFxRate,
         occurred_at: occurredAt,
         note: note.trim() || null,
       })
@@ -266,18 +305,53 @@ function TransactionFormBody({
       </Field>
 
       {type === 'transfer' ? (
-        <Field label="To account">
-          <Select value={counterId} onChange={(e) => setCounterId(e.target.value)}>
-            <option value="">Select…</option>
-            {accounts
-              .filter((a) => a.id !== effectiveAccountId)
-              .map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name} ({a.currency})
-                </option>
-              ))}
-          </Select>
-        </Field>
+        <>
+          <Field label="To account">
+            <Select value={counterId} onChange={(e) => setCounterId(e.target.value)}>
+              <option value="">Select…</option>
+              {accounts
+                .filter((a) => a.id !== effectiveAccountId)
+                .map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name} ({a.currency})
+                  </option>
+                ))}
+            </Select>
+          </Field>
+
+          {crossCurrency && (
+            <Field label={`Amount received (${destCurrency})`}>
+              <div className="flex items-center gap-2">
+                <span className="font-numeric text-sm font-semibold text-muted-foreground">
+                  {getCurrency(destCurrency).symbol}
+                </span>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  value={counterValue}
+                  onChange={(e) => {
+                    setCounterEdited(true)
+                    setCounterAmount(e.target.value)
+                  }}
+                  placeholder="0"
+                />
+              </div>
+              <p className="mt-1.5 text-[11px] font-medium text-muted-foreground">
+                {amountToMinor(counterValue, destCurrency) > 0 && amountToMinor(amount, currency) > 0
+                  ? `≈ 1 ${currency} = ${new Intl.NumberFormat(undefined, {
+                      maximumFractionDigits: 6,
+                    }).format(
+                      fromMinorUnits(amountToMinor(counterValue, destCurrency), destCurrency) /
+                        fromMinorUnits(amountToMinor(amount, currency), currency),
+                    )} ${destCurrency}`
+                  : counterEdited
+                    ? 'Enter what the destination account receives.'
+                    : `No saved ${currency}→${destCurrency} rate — enter the received amount, or add a rate in Settings.`}
+              </p>
+            </Field>
+          )}
+        </>
       ) : (
         <div>
           <div className="mb-1.5 flex items-center justify-between">
