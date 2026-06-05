@@ -35,6 +35,10 @@ const BudgetsPage = lazy(() =>
 )
 const BillsPage = lazy(() => import('./app/BillsPage').then((m) => ({ default: m.BillsPage })))
 const GoalsPage = lazy(() => import('./app/GoalsPage').then((m) => ({ default: m.GoalsPage })))
+const CurrenciesPage = lazy(() =>
+  import('./app/CurrenciesPage').then((m) => ({ default: m.CurrenciesPage })),
+)
+const DataPage = lazy(() => import('./app/DataPage').then((m) => ({ default: m.DataPage })))
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth()
@@ -142,6 +146,22 @@ export default function App() {
           element={
             <Suspense fallback={<CenterSpinner />}>
               <GoalsPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="currencies"
+          element={
+            <Suspense fallback={<CenterSpinner />}>
+              <CurrenciesPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="data"
+          element={
+            <Suspense fallback={<CenterSpinner />}>
+              <DataPage />
             </Suspense>
           }
         />

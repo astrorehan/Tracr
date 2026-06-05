@@ -18,6 +18,8 @@ import { useAuth } from '@/features/auth/useAuth'
 import { useAccounts, useBalances } from '@/features/accounts/api'
 import { useCategories } from '@/features/categories/api'
 import { useTransactions } from '@/features/transactions/api'
+import { useFxRates } from '@/features/fx/api'
+import { buildRateTable, convertMinor } from '@/features/fx/fx'
 import { TransactionRow } from '@/features/transactions/TransactionRow'
 import { accountTypeMeta } from '@/features/accounts/meta'
 import { indexById } from '@/lib/collections'
@@ -30,11 +32,12 @@ export function DashboardPage() {
   const { data: balances = {}, isLoading: lb } = useBalances()
   const { data: categories = [] } = useCategories()
   const { data: transactions = [], isLoading: lt } = useTransactions({ limit: 200 })
+  const { data: fxRates = [] } = useFxRates()
 
   const accountMap = useMemo(() => indexById(accounts), [accounts])
   const categoryMap = useMemo(() => indexById(categories), [categories])
 
-  // Totals grouped by currency (no FX conversion yet — shown per currency).
+  // Totals grouped by currency (kept as the source of truth, shown per currency).
   const totalsByCurrency = useMemo(() => {
     const totals: Record<string, number> = {}
     for (const a of accounts) {
@@ -42,6 +45,22 @@ export function DashboardPage() {
     }
     return totals
   }, [accounts, balances])
+
+  // Net worth converted to the base currency at the latest known rates (display
+  // only — native balances are never rewritten). Tracks currencies we can't yet
+  // convert so we can prompt the user to add a rate instead of showing a wrong total.
+  const netWorth = useMemo(() => {
+    const table = buildRateTable(fxRates, base)
+    let total = 0
+    const missing = new Set<string>()
+    for (const a of accounts) {
+      const bal = balances[a.id] ?? a.opening_balance
+      const converted = convertMinor(bal, a.currency, base, table)
+      if (converted == null) missing.add(a.currency)
+      else total += converted
+    }
+    return { total, missing: [...missing] }
+  }, [accounts, balances, fxRates, base])
 
   // Last 6 months of expenses in the base currency.
   const chartData = useMemo(() => {
@@ -75,23 +94,25 @@ export function DashboardPage() {
   }, [transactions, base])
 
   const recent = transactions.slice(0, 7)
-  const baseTotal = totalsByCurrency[base] ?? 0
   const otherCurrencies = Object.entries(totalsByCurrency).filter(([c]) => c !== base)
   const loading = la || lb || lt
 
-  // Allocation of base-currency net worth across accounts (same currency = safe to sum).
-  const allocation =
-    baseTotal > 0
-      ? accounts
-          .filter((a) => a.currency === base)
-          .map((a) => ({
-            id: a.id,
-            color: a.color ?? '#9a8c74',
-            pct: ((balances[a.id] ?? a.opening_balance) / baseTotal) * 100,
-          }))
-          .filter((x) => x.pct > 0.5)
-          .sort((a, b) => b.pct - a.pct)
-      : []
+  // Allocation of net worth across accounts, each converted to the base currency.
+  const allocation = useMemo(() => {
+    if (netWorth.total <= 0) return []
+    const table = buildRateTable(fxRates, base)
+    return accounts
+      .map((a) => {
+        const converted = convertMinor(balances[a.id] ?? a.opening_balance, a.currency, base, table)
+        return {
+          id: a.id,
+          color: a.color ?? '#9a8c74',
+          pct: converted == null ? 0 : (converted / netWorth.total) * 100,
+        }
+      })
+      .filter((x) => x.pct > 0.5)
+      .sort((a, b) => b.pct - a.pct)
+  }, [accounts, balances, fxRates, base, netWorth.total])
   const pctById: Record<string, number> = {}
   for (const x of allocation) pctById[x.id] = x.pct
 
@@ -139,8 +160,21 @@ export function DashboardPage() {
                     Total Net Worth · {base}
                   </p>
                   <p className="mt-2.5 font-numeric text-4xl font-extrabold leading-none tracking-tight lg:text-5xl">
-                    {formatMoney(baseTotal, base)}
+                    {formatMoney(netWorth.total, base)}
                   </p>
+                  {otherCurrencies.length > 0 && netWorth.missing.length === 0 && (
+                    <p className="mt-1 text-[10px] font-semibold text-amber-200/50">
+                      ≈ estimated at latest rates
+                    </p>
+                  )}
+                  {netWorth.missing.length > 0 && (
+                    <Link
+                      to="/settings"
+                      className="mt-1 inline-block text-[10px] font-semibold text-amber-300/80 underline-offset-2 hover:underline"
+                    >
+                      Add a rate for {netWorth.missing.join(', ')} to include it
+                    </Link>
+                  )}
                 </div>
                 {/* Card chip */}
                 <div className="flex h-9 w-12 shrink-0 flex-col justify-between rounded-lg border border-amber-300/20 bg-gradient-to-br from-yellow-200/50 via-amber-300/30 to-amber-500/10 p-1.5 shadow-inner">
@@ -158,14 +192,22 @@ export function DashboardPage() {
                     Other currencies
                   </p>
                   <div className="flex flex-wrap gap-1.5">
-                    {otherCurrencies.map(([c, total]) => (
-                      <span
-                        key={c}
-                        className="rounded-lg border border-stone-700/50 bg-stone-800/60 px-2.5 py-1 font-numeric text-xs font-semibold text-stone-300"
-                      >
-                        {getCurrency(c).symbol} {formatMoney(total, c, { signDisplay: 'never' })}
-                      </span>
-                    ))}
+                    {otherCurrencies.map(([c, total]) => {
+                      const approx = convertMinor(total, c, base, buildRateTable(fxRates, base))
+                      return (
+                        <span
+                          key={c}
+                          className="rounded-lg border border-stone-700/50 bg-stone-800/60 px-2.5 py-1 font-numeric text-xs font-semibold text-stone-300"
+                        >
+                          {getCurrency(c).symbol} {formatMoney(total, c, { signDisplay: 'never' })}
+                          {approx != null && (
+                            <span className="ml-1 text-stone-500">
+                              ≈ {formatMoney(approx, base, { signDisplay: 'never' })}
+                            </span>
+                          )}
+                        </span>
+                      )
+                    })}
                   </div>
                 </div>
               )}

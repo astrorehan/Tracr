@@ -31,7 +31,7 @@ Status legend: ✅ have · 🟡 partial · ⬜ new · 🔧 schema change needed
 | **Refund / reimbursement link** | Tie a refund to its original expense | ⬜🔧 | `linked_transaction_id` |
 | **Cleared / reconciled flag** | Mark which entries match the bank | ⬜🔧 | add `status` (`pending`/`cleared`/`reconciled`) |
 | **Calculator in amount field** | `12000+3500` evaluates inline | ✅ | Safe expression evaluator (`lib/calc.ts`); `amountToMinor` used by every amount field (transaction, splits, budget, goal, contribution, bill, account, reconcile); live `= …` preview in the add form |
-| **Cross-currency transfers** | Transfer between accounts of different currencies w/ rate | 🟡🔧 | add `counter_amount`/`fx_rate` to transfers |
+| **Cross-currency transfers** | Transfer between accounts of different currencies w/ rate | ✅ | `counter_amount`/`counter_fx_rate` on transfers (migration `0009`); when the From/To accounts differ in currency the add form reveals an "Amount received" field (auto-suggested from the latest rate, editable) + shows the implied rate; `account_balances` view & Account-detail ledger credit the counter account by `counter_amount` |
 
 ## 2. Categories (Tier 1)
 | Feature | Status | Notes |
@@ -88,7 +88,7 @@ Dedicated **Reports** page (`/reports`, sidebar + Dashboard link) with a date-ra
 | **Liabilities / debts / credit cards** | 🟡🔧 | allow negative; add `is_liability`; pay-down tracking |
 | **Include/exclude from net worth & stats** | ⬜🔧 | add `exclude_from_stats bool` |
 | **Account groups & ordering** | ⬜🔧 | `account_groups` or `sort_order` |
-| **Multi-currency net worth** | 🟡🔧 | FX conversion to base — `fx_rates` table (manual entry for free tier) + snapshot on txn |
+| **Multi-currency net worth** | ✅ | FX conversion to base shipped (migration `0009`, `features/fx/`): Dashboard + Accounts headline convert all accounts at latest rates; per-txn snapshot for history; "≈ base" estimates on Accounts cards & Account-detail header |
 
 ## 8. Savings goals / "piggy banks" (Tier 2) — ✅ DONE
 - ✅ Create goal: name, target amount, target date (optional), linked account (optional, informational), color
@@ -106,11 +106,13 @@ Dedicated **Reports** page (`/reports`, sidebar + Dashboard link) with a date-ra
 - ✅ `recurring_transactions` table (migration `0006`; RLS per-user). **No auto-post** — user confirms each (chosen design; an Edge Function/pg_cron auto-generator can layer on later)
 - ⬜ Calendar view, web-push reminders (see §12)
 
-## 10. Multi-currency (Tier 2)
-- Manual FX rate table (free-tier friendly; live API optional later, still non-AI)
-- Convert everything to base currency in net worth & reports
-- Store FX snapshot on each transaction for accurate history
-- 🔧 `fx_rates` (base, quote, rate, as_of)
+## 10. Multi-currency (Tier 2) — ✅ DONE (manual rates; live API optional later)
+- ✅ Manual FX rate table (free-tier friendly) — `fx_rates` (base, quote, rate, as_of, source) migration `0009`, RLS per user. `source` column lets a live-API job upsert later with no UI change. Managed on a dedicated **Currencies** page (`/currencies`, `app/CurrenciesPage.tsx`, linked from Settings → "Currency & data"): base-currency header + "Refresh now", add/override form ("1 [foreign] = X [base]"), and a Fiat/Crypto rate list with Live/Manual source badges + delete.
+- ✅ Convert to base currency in **net worth** (Dashboard hero + allocation now include foreign accounts; "≈ estimated at latest rates" note; "add a rate for X" prompt when a currency has none) and **Reports** (foreign txns now valued in base via snapshot/latest rate; splits scaled proportionally; excluded-currency hint)
+- ✅ **FX snapshot on each transaction** (`base_amount` + `fx_rate`, migration `0009`) — frozen at create time so history stays accurate after rates move. Computed in `features/fx/snapshot.ts`, written by `useCreateTransaction` + recurring mark-paid. Backfilled for base-currency txns.
+- ✅ Conversion core `features/fx/fx.ts` (`buildRateTable`/`rateBetween`/`convertMinor`) — display-only, triangulates through base, never rewrites native amounts.
+- ✅ **Chunk B shipped:** cross-currency transfer UI (Amount-received field, rate suggestion, view + ledger credit by `counter_amount`); "≈ base" estimate on Accounts cards + headline total (all currencies converted) + Account-detail header.
+- ✅ **Live rates shipped:** client-side daily sync (`features/fx/liveRates.ts` + `useLiveRatesSync` mounted in `AppLayout`). Two keyless free sources — fiat via exchangerate-api open endpoint (`open.er-api.com`, `source='erapi'`), crypto (BTC/ETH/USDT) via CoinGecko (`source='coingecko'`). Fills any currency missing a rate for today; **never overwrites a manual rate** (manual wins); fiat base only; failures silent (offline-safe). Manual entry in Settings still overrides.
 
 ## 11. Data, backup & sync (Tier 2)
 - CSV import **column-mapping wizard** (upgrade current fixed-format importer) — ⬜
@@ -154,7 +156,7 @@ Dedicated **Reports** page (`/reports`, sidebar + Dashboard link) with a date-ra
 
 **Phase 2C — polish & power:**
 10. ✅ JSON backup/restore · ✅ bulk actions · ✅ calculator field · ✅ attachments/receipts — all shipped
-11. Multi-currency base conversion (FX table)
+11. ✅ Multi-currency base conversion (FX table) — DONE: rates, per-txn snapshot, net worth & reports conversion, Settings rate card, cross-currency transfers, account estimates. (Optional later: live-rate API job.)
 12. Rules engine, shared wallets, notifications, app lock
 
 ---

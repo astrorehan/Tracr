@@ -7,7 +7,10 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Field, Input } from '@/components/ui/Input'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
+import { useAuth } from '@/features/auth/useAuth'
 import { useAccounts, useArchiveAccount, useBalances } from '@/features/accounts/api'
+import { useFxRates } from '@/features/fx/api'
+import { buildRateTable, convertMinor } from '@/features/fx/fx'
 import { useCategories } from '@/features/categories/api'
 import { useDeleteTransaction, useCreateTransaction, useTransactions } from '@/features/transactions/api'
 import { useTransactionSplits } from '@/features/transactions/splits'
@@ -23,16 +26,19 @@ import type { Transaction } from '@/types/db'
 function deltaFor(tx: Transaction, accountId: string): number {
   if (tx.type === 'income') return tx.account_id === accountId ? tx.amount : 0
   if (tx.type === 'expense') return tx.account_id === accountId ? -tx.amount : 0
-  // transfer: source loses, counter gains
+  // transfer: source loses its amount, counter gains its own-currency amount
   if (tx.account_id === accountId) return -tx.amount
-  if (tx.counter_account_id === accountId) return tx.amount
+  if (tx.counter_account_id === accountId) return tx.counter_amount ?? tx.amount
   return 0
 }
 
 export function AccountDetailPage() {
   const { id = '' } = useParams()
+  const { profile } = useAuth()
+  const base = profile?.base_currency ?? 'IDR'
   const { data: accounts = [], isLoading: la } = useAccounts(true)
   const { data: balances = {} } = useBalances()
+  const { data: fxRates = [] } = useFxRates()
   const { data: categories = [] } = useCategories()
   const { data: transactions = [], isLoading: lt } = useTransactions({ accountId: id, limit: 1000 })
   const { data: splitsByTx = {} } = useTransactionSplits()
@@ -73,6 +79,10 @@ export function AccountDetailPage() {
   const Icon = meta.icon
   const color = account.color ?? '#9a8c74'
   const balance = balances[account.id] ?? account.opening_balance
+  const baseEstimate =
+    account.currency === base
+      ? null
+      : convertMinor(balance, account.currency, base, buildRateTable(fxRates, base))
 
   function reconcile() {
     if (!account) return
@@ -156,6 +166,11 @@ export function AccountDetailPage() {
               <p className="font-numeric text-2xl font-extrabold leading-tight text-foreground">
                 {formatMoney(balance, account.currency)}
               </p>
+              {baseEstimate != null && (
+                <p className="font-numeric text-xs font-semibold text-muted-foreground">
+                  ≈ {formatMoney(baseEstimate, base)}
+                </p>
+              )}
             </div>
           </div>
           <Button size="sm" variant="secondary" onClick={() => setReconcileOpen((v) => !v)}>

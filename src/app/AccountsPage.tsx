@@ -7,6 +7,8 @@ import { CenterSpinner, EmptyState } from '@/components/ui/States'
 import { formatMoney } from '@/lib/money'
 import { useAuth } from '@/features/auth/useAuth'
 import { useAccounts, useArchiveAccount, useBalances } from '@/features/accounts/api'
+import { useFxRates } from '@/features/fx/api'
+import { buildRateTable, convertMinor } from '@/features/fx/fx'
 import { AccountForm } from '@/features/accounts/AccountForm'
 import { accountTypeMeta } from '@/features/accounts/meta'
 import type { Account } from '@/types/db'
@@ -16,17 +18,21 @@ export function AccountsPage() {
   const base = profile?.base_currency ?? 'IDR'
   const { data: accounts, isLoading } = useAccounts()
   const { data: balances = {} } = useBalances()
+  const { data: fxRates = [] } = useFxRates()
   const archive = useArchiveAccount()
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Account | null>(null)
 
-  // Headline total: base-currency accounts only (no FX yet).
+  const rateTable = useMemo(() => buildRateTable(fxRates, base), [fxRates, base])
+
+  // Headline total: every account converted to the base currency at latest rates.
   const baseTotal = useMemo(() => {
     if (!accounts) return 0
-    return accounts
-      .filter((a) => a.currency === base)
-      .reduce((sum, a) => sum + (balances[a.id] ?? a.opening_balance), 0)
-  }, [accounts, balances, base])
+    return accounts.reduce((sum, a) => {
+      const converted = convertMinor(balances[a.id] ?? a.opening_balance, a.currency, base, rateTable)
+      return sum + (converted ?? 0)
+    }, 0)
+  }, [accounts, balances, base, rateTable])
 
   function openNew() {
     setEditing(null)
@@ -71,6 +77,10 @@ export function AccountsPage() {
             const meta = accountTypeMeta(account.type)
             const Icon = meta.icon
             const balance = balances[account.id] ?? account.opening_balance
+            const baseEstimate =
+              account.currency === base
+                ? null
+                : convertMinor(balance, account.currency, base, rateTable)
             const color = account.color ?? '#9a8c74'
             return (
               <Card key={account.id} hoverable className="group p-0">
@@ -97,9 +107,16 @@ export function AccountsPage() {
                 </div>
 
                 <div className="mt-4 flex items-end justify-between">
-                  <p className="font-numeric text-xl font-extrabold leading-none tracking-tight text-foreground">
-                    {formatMoney(balance, account.currency)}
-                  </p>
+                  <div>
+                    <p className="font-numeric text-xl font-extrabold leading-none tracking-tight text-foreground">
+                      {formatMoney(balance, account.currency)}
+                    </p>
+                    {baseEstimate != null && (
+                      <p className="mt-1 font-numeric text-[11px] font-semibold text-muted-foreground">
+                        ≈ {formatMoney(baseEstimate, base)}
+                      </p>
+                    )}
+                  </div>
                   <div className="flex gap-1.5 opacity-0 transition-opacity duration-200 group-hover:opacity-100 max-sm:opacity-100">
                     <button
                       onClick={(e) => {

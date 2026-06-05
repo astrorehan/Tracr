@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { qk } from '@/lib/queryClient'
 import { advanceDue } from './schedule'
+import { computeFxSnapshot } from '@/features/fx/snapshot'
 import type { NewRecurringTransaction, RecurringTransaction } from '@/types/db'
 
 export function useRecurring() {
@@ -72,6 +73,7 @@ export function useMarkRecurringPaid() {
       if (!userId) throw new Error('Not authenticated')
 
       const occurredAt = new Date(`${on ?? rec.next_due}T12:00:00`).toISOString()
+      const snap = await computeFxSnapshot(rec.amount, rec.currency)
       const { error: txError } = await supabase.from('transactions').insert({
         user_id: userId,
         account_id: rec.account_id,
@@ -82,6 +84,7 @@ export function useMarkRecurringPaid() {
         currency: rec.currency,
         occurred_at: occurredAt,
         note: rec.note?.trim() || rec.name,
+        ...snap,
       })
       if (txError) throw txError
 

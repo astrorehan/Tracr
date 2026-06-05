@@ -17,10 +17,11 @@ import { Select } from '@/components/ui/Input'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
 import { CategoryIcon } from '@/features/categories/CategoryIcon'
 import { useAuth } from '@/features/auth/useAuth'
-import { useAccounts } from '@/features/accounts/api'
 import { useCategories } from '@/features/categories/api'
 import { useTransactions } from '@/features/transactions/api'
 import { useTransactionSplits } from '@/features/transactions/splits'
+import { useFxRates } from '@/features/fx/api'
+import { buildRateTable, convertMinor } from '@/features/fx/fx'
 import {
   DATE_PRESETS,
   resolveDateRange,
@@ -35,7 +36,7 @@ import {
 import { toCsv, downloadTextFile } from '@/lib/csv'
 import { formatMoney, fromMinorUnits } from '@/lib/money'
 import { cn } from '@/lib/utils'
-import type { Transaction } from '@/types/db'
+import type { Transaction, TransactionSplit } from '@/types/db'
 
 export function ReportsPage() {
   const { profile } = useAuth()
@@ -49,24 +50,43 @@ export function ReportsPage() {
   const range = { datePreset: preset, customFrom, customTo }
   const resolved = resolveDateRange(range)
 
-  const { data: accounts = [] } = useAccounts(true)
   const { data: categories = [] } = useCategories()
   const { data: transactions = [], isLoading } = useTransactions({
     ...resolved,
     limit: 2000,
   })
   const { data: splitsByTx = {} } = useTransactionSplits()
+  const { data: fxRates = [] } = useFxRates()
 
-  // Reports are computed in the base currency only (no FX conversion yet).
-  const baseTxns = useMemo(
-    () => transactions.filter((tx) => tx.currency === base && tx.type !== 'transfer'),
-    [transactions, base],
-  )
-
-  const hasOtherCurrency = useMemo(
-    () => accounts.some((a) => a.currency !== base),
-    [accounts, base],
-  )
+  // Value every (non-transfer) transaction in the base currency: use the frozen
+  // per-transaction snapshot when present (accurate history), otherwise convert
+  // at the latest known rate. Split amounts are scaled by the same ratio so the
+  // category breakdown stays consistent. Transactions we can't value (no rate)
+  // are reported back so we can prompt the user instead of silently dropping them.
+  const { baseTxns, scaledSplits, skipped } = useMemo(() => {
+    const table = buildRateTable(fxRates, base)
+    const out: Transaction[] = []
+    const splits: Record<string, TransactionSplit[]> = {}
+    const skip = new Set<string>()
+    for (const tx of transactions) {
+      if (tx.type === 'transfer') continue
+      const bv =
+        tx.base_amount != null ? tx.base_amount : convertMinor(tx.amount, tx.currency, base, table)
+      if (bv == null) {
+        skip.add(tx.currency)
+        continue
+      }
+      out.push({ ...tx, amount: bv, currency: base })
+      const s = splitsByTx[tx.id]
+      if (s) {
+        splits[tx.id] =
+          tx.amount > 0 && bv !== tx.amount
+            ? s.map((sp) => ({ ...sp, amount: Math.round((sp.amount * bv) / tx.amount) }))
+            : s
+      }
+    }
+    return { baseTxns: out, scaledSplits: splits, skipped: [...skip] }
+  }, [transactions, base, fxRates, splitsByTx])
 
   const totals = useMemo(() => periodTotals(baseTxns), [baseTxns])
 
@@ -88,8 +108,8 @@ export function ReportsPage() {
   )
 
   const breakdown = useMemo(
-    () => categoryBreakdown(baseTxns, categories, breakdownKind, splitsByTx),
-    [baseTxns, categories, breakdownKind, splitsByTx],
+    () => categoryBreakdown(baseTxns, categories, breakdownKind, scaledSplits),
+    [baseTxns, categories, breakdownKind, scaledSplits],
   )
 
   const biggest = useMemo(
@@ -173,10 +193,10 @@ export function ReportsPage() {
         )}
       </div>
 
-      {hasOtherCurrency && (
+      {skipped.length > 0 && (
         <p className="rounded-xl border border-border bg-surface-muted/50 px-4 py-2.5 text-xs font-medium text-muted-foreground">
-          Reports cover your base-currency ({base}) transactions. Multi-currency conversion is coming
-          later.
+          Some {skipped.join(', ')} transactions are excluded — add an exchange rate in Settings so
+          they can be valued in {base}.
         </p>
       )}
 

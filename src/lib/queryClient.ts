@@ -24,6 +24,7 @@ export const qk = {
   transactionTags: ['transaction_tags'] as const,
   transactionSplits: ['transaction_splits'] as const,
   attachments: ['attachments'] as const,
+  fxRates: ['fx_rates'] as const,
   transactions: (filters?: Record<string, unknown>) =>
     filters ? (['transactions', filters] as const) : (['transactions'] as const),
 }

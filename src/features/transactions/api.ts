@@ -2,6 +2,18 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { qk } from '@/lib/queryClient'
 import type { NewTransaction, Transaction } from '@/types/db'
+import { computeFxSnapshot } from '@/features/fx/snapshot'
+
+/**
+ * Freeze a base-currency snapshot on the transaction at create time so reports
+ * stay accurate even after rates move. Native amount/currency are untouched.
+ * Leaves base_amount null when no rate is available (filled later if needed).
+ */
+async function withFxSnapshot(input: NewTransaction): Promise<NewTransaction> {
+  if (input.base_amount != null) return input // caller already valued it
+  const snap = await computeFxSnapshot(input.amount, input.currency)
+  return { ...input, ...snap }
+}
 
 export interface TransactionFilters {
   accountId?: string
@@ -54,9 +66,10 @@ export function useCreateTransaction() {
       const { data: userData } = await supabase.auth.getUser()
       const userId = userData.user?.id
       if (!userId) throw new Error('Not authenticated')
+      const valued = await withFxSnapshot(input)
       const { data, error } = await supabase
         .from('transactions')
-        .insert({ ...input, user_id: userId })
+        .insert({ ...valued, user_id: userId })
         .select()
         .single()
       if (error) throw error

@@ -16,6 +16,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/features/auth/useAuth'
 import { useTheme } from '@/features/settings/theme-context'
+import { useLiveRatesSync } from '@/features/fx/useLiveRatesSync'
 import { TransactionForm } from '@/features/transactions/TransactionForm'
 
 type IconType = ComponentType<{ className?: string }>
@@ -42,6 +43,8 @@ const SECTION_TITLES: Record<string, string> = {
   '/settings': 'Settings',
   '/categories': 'Categories',
   '/tags': 'Tags',
+  '/currencies': 'Currencies',
+  '/data': 'Data & backup',
 }
 
 export function AppLayout() {
@@ -50,6 +53,9 @@ export function AppLayout() {
   const { theme, toggle } = useTheme()
   const { pathname } = useLocation()
   const section = SECTION_TITLES[pathname] ?? 'Workspace'
+
+  // Refresh FX rates from the free live sources once per session.
+  useLiveRatesSync()
 
   return (
     <div className="app-atmosphere relative flex min-h-screen w-full bg-background text-foreground">
