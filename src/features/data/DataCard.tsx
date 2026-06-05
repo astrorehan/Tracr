@@ -132,7 +132,6 @@ export function DataCard() {
 
   return (
     <div>
-      <p className="mb-2 px-1 text-sm font-semibold">Data</p>
       <Card className="space-y-3">
         <div className="flex gap-3">
           <Button variant="secondary" className="flex-1" loading={busy === 'export'} onClick={handleExport}>
