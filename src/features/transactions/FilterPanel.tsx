@@ -38,9 +38,10 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
   const categoryOptions = useMemo(
     () =>
       flattenWithDepth(
-        filter.type === 'income' || filter.type === 'expense'
+        (filter.type === 'income' || filter.type === 'expense'
           ? categories.filter((c) => c.kind === filter.type)
-          : categories,
+          : categories
+        ).filter((c) => !c.is_archived),
       ),
     [categories, filter.type],
   )

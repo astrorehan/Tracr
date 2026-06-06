@@ -30,7 +30,7 @@ export function BulkBar({ selected, onClear }: Props) {
   const ids = selected.map((t) => t.id)
   // Transfers have no category, so recategorize skips them.
   const categorizableIds = selected.filter((t) => t.type !== 'transfer').map((t) => t.id)
-  const categoryOptions = flattenWithDepth(categories)
+  const categoryOptions = flattenWithDepth(categories.filter((c) => !c.is_archived))
 
   function close() {
     setMode(null)

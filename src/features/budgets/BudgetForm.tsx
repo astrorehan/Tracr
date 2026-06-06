@@ -39,7 +39,7 @@ function BudgetFormBody({ onClose, budget }: { onClose: () => void; budget: Budg
   const update = useUpdateBudget()
 
   const expenseCategories = useMemo(
-    () => flattenWithDepth(categories.filter((c) => c.kind === 'expense')),
+    () => flattenWithDepth(categories.filter((c) => !c.is_archived && c.kind === 'expense')),
     [categories],
   )
 

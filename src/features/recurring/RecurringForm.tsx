@@ -72,7 +72,7 @@ function RecurringFormBody({
   )
 
   const categoryOptions = useMemo(
-    () => flattenWithDepth(categories.filter((c) => c.kind === type)),
+    () => flattenWithDepth(categories.filter((c) => !c.is_archived && c.kind === type)),
     [categories, type],
   )
 

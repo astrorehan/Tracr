@@ -10,6 +10,7 @@ import {
   Split,
   Tag,
   Tags,
+  Zap,
   Target,
   Receipt,
   PiggyBank,
@@ -41,6 +42,7 @@ interface NavItem {
 const ORGANIZE: NavItem[] = [
   { to: '/categories', label: 'Categories', desc: 'Income & expense groups', icon: Tag, tint: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-amber-500/10' },
   { to: '/tags', label: 'Tags', desc: 'Free-form labels', icon: Tags, tint: 'bg-rose-500/10 text-rose-500 ring-rose-500/10' },
+  { to: '/rules', label: 'Rules', desc: 'Auto-categorize & tag', icon: Zap, tint: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 ring-indigo-500/10' },
 ]
 
 const PLANNING: NavItem[] = [

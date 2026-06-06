@@ -38,9 +38,9 @@ Status legend: ✅ have · 🟡 partial · ⬜ new · 🔧 schema change needed
 |---|---|---|
 | **Subcategories (nested)** | ✅ | One-level nesting: parent picker in the form, indented under parents on the Categories page + grouped/indented in the transaction picker |
 | **Category icons** | ✅ | Curated lucide icon picker in the form; icons shown on the Categories page (color-tinted) |
-| **Reorder (drag) & sort** | ⬜🔧 | add `sort_order int` |
-| **Merge categories** | ⬜ | move txns from A→B, delete A |
-| **Archive category** | ⬜🔧 | add `is_archived` (mirror accounts) |
+| **Reorder (drag) & sort** | ✅ | `categories.sort_order` (migration `0011`); native drag-and-drop on the Categories page reorders within a sibling group (top-level per kind, or a parent's children); `useReorderCategories` persists `sort_order`; `useCategories` orders by kind→sort_order→name |
+| **Merge categories** | ✅ | "Merge" on each row → modal picks a same-kind target; `useMergeCategories` moves transactions/splits/recurring A→B, re-parents A's children into B's group, deletes A (its budgets cascade). Excludes self + A's children from targets |
+| **Archive category** | ✅ | `categories.is_archived` (migration `0011`); Archive/Restore on rows + an "Archived" section; hidden from every assignment picker (add form, recurring, budgets, bulk, filter, parent picker) but still resolves names on existing rows |
 
 ## 3. Tags (Tier 1) — your explicit ask — ✅ DONE
 - ✅ Create/edit/delete tags (name + color) — Manage tags page
@@ -127,7 +127,7 @@ Dedicated **Reports** page (`/reports`, sidebar + Dashboard link) with a date-ra
 - In-app notification center
 
 ## 13. Power-user & sharing (Tier 3)
-- **Rules engine** (Firefly-style): "if payee contains GoFood → category Food, tag delivery" applied on create/import
+- ✅ **Rules engine** (Firefly-style): "if payee contains GoFood → category Food, tag delivery". `rules` table (migration `0012`, RLS per user): JSONB conditions (`field` payee/note/amount/type · `op` contains/equals/starts_with/gt/lt) with all/any matching, JSONB actions (set category + add tags), `stop_after`, drag-ordered, active toggle. Pure engine in `features/rules/engine.ts`. Applies in 3 places — **live auto-fill** in the add form (fills category+tags until the user edits them; "Auto-filled by rule" hint), **CSV import** (fills empty category + adds tags, transfers excluded), and **"Run now"** on the Rules page (over uncategorized income/expense). Managed on `/rules` (`app/RulesPage.tsx`, linked from Settings → Organize). Backup/restore includes rules
 - **Shared wallets / spaces** (collaborative budgets for couples/families) — multi-user RLS on a `space`
 - **Multiple books/profiles** (personal vs business) under one login
 - Command palette (jump/search anywhere), keyboard shortcuts
@@ -158,7 +158,7 @@ Dedicated **Reports** page (`/reports`, sidebar + Dashboard link) with a date-ra
 **Phase 2C — polish & power:**
 10. ✅ JSON backup/restore · ✅ bulk actions · ✅ calculator field · ✅ attachments/receipts — all shipped
 11. ✅ Multi-currency base conversion (FX table) — DONE: rates, per-txn snapshot, net worth & reports conversion, Settings rate card, cross-currency transfers, account estimates. (Optional later: live-rate API job.)
-12. Rules engine, shared wallets, notifications, app lock
+12. ✅ Rules engine (auto-categorize/tag on create, import & existing) — shipped. Still open: shared wallets, notifications, app lock
 
 ---
 
@@ -171,7 +171,9 @@ Dedicated **Reports** page (`/reports`, sidebar + Dashboard link) with a date-ra
 - `fx_rates`
 - `attachments` (+ Storage bucket)
 - ✅ `transactions.payee` (migration `0010`, + `payee_stats` view)
-- Column adds: `transactions.status`, `transactions.linked_transaction_id`, `categories.sort_order/is_archived`, `accounts.exclude_from_stats/is_liability/sort_order`
+- ✅ `categories.sort_order/is_archived` (migration `0011`)
+- ✅ `rules` (migration `0012`, JSONB conditions/actions)
+- Column adds: `transactions.status`, `transactions.linked_transaction_id`, `accounts.exclude_from_stats/is_liability/sort_order`
 - Optional: `saved_views`, `spaces` + membership (sharing)
 
 All additions stay RLS-scoped per user, consistent with the existing schema.

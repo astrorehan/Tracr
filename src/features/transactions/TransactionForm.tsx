@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Paperclip, Plus, Split, X } from 'lucide-react'
+import { Paperclip, Plus, Split, X, Zap } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Label, Select } from '@/components/ui/Input'
@@ -18,6 +18,8 @@ import { TagPicker } from '@/features/tags/TagPicker'
 import { useSetTransactionTags } from '@/features/tags/api'
 import { useSetTransactionSplits } from './splits'
 import { useUploadAttachments } from '@/features/attachments/api'
+import { useRules } from '@/features/rules/api'
+import { evaluateRules } from '@/features/rules/engine'
 import { useCreateTransaction, usePayees } from './api'
 import type { TransactionType } from '@/types/db'
 
@@ -72,6 +74,7 @@ function TransactionFormBody({
   const { data: categories = [] } = useCategories()
   const { data: fxRates = [] } = useFxRates()
   const { data: payeeSuggestions = [] } = usePayees()
+  const { data: rules = [] } = useRules()
   const create = useCreateTransaction()
   const setTags = useSetTransactionTags()
   const setSplits = useSetTransactionSplits()
@@ -92,6 +95,9 @@ function TransactionFormBody({
   const [splits, setSplits_] = useState<SplitRow[]>([newRow(), newRow()])
   const [counterAmount, setCounterAmount] = useState('')
   const [counterEdited, setCounterEdited] = useState(false)
+  // Rule auto-fill stops touching a field once the user edits it themselves.
+  const [categoryTouched, setCategoryTouched] = useState(false)
+  const [tagsTouched, setTagsTouched] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Fall back to the first account if state is still empty (e.g. accounts
@@ -124,13 +130,34 @@ function TransactionFormBody({
   const categoryOptions = useMemo(
     () =>
       flattenWithDepth(
-        categories.filter((c) => c.kind === (type === 'income' ? 'income' : 'expense')),
+        categories.filter(
+          (c) => !c.is_archived && c.kind === (type === 'income' ? 'income' : 'expense'),
+        ),
       ),
     [categories, type],
   )
 
   const canSplit = type !== 'transfer'
   const splitting = canSplit && splitMode
+
+  // Rules auto-fill category & tags as the user types, until they edit those
+  // fields themselves (transfers and split mode opt out of category auto-fill).
+  const ruleOutcome = useMemo(() => {
+    if (type === 'transfer') return { categoryId: null as string | null, tagIds: [] as string[], matched: [] }
+    return evaluateRules(rules, {
+      payee: payee.trim() || null,
+      note: note.trim() || null,
+      amount: amountToMinor(amount, currency),
+      currency,
+      type,
+    })
+  }, [rules, payee, note, amount, currency, type])
+
+  // Derived (no effect): the user's pick once they've touched the field,
+  // otherwise the rule suggestion. Used for the inputs and on submit.
+  const effectiveCategoryId =
+    categoryTouched || splitting ? categoryId : (ruleOutcome.categoryId ?? '')
+  const effectiveTagIds = tagsTouched ? tagIds : ruleOutcome.tagIds
 
   const splitTotal = useMemo(
     () => splits.reduce((sum, r) => sum + Math.max(0, amountToMinor(r.amount, currency)), 0),
@@ -153,7 +180,7 @@ function TransactionFormBody({
     setSplitMode((on) => {
       const next = !on
       // Seed the first row from the single-category fields when entering split mode.
-      if (next) setSplits_([newRow(categoryId, amount), newRow()])
+      if (next) setSplits_([newRow(effectiveCategoryId, amount), newRow()])
       return next
     })
   }
@@ -221,7 +248,7 @@ function TransactionFormBody({
         account_id: effectiveAccountId,
         counter_account_id: type === 'transfer' ? counterId : null,
         // A split transaction has no single category; its breakdown lives in splits.
-        category_id: type === 'transfer' || splitting ? null : categoryId || null,
+        category_id: type === 'transfer' || splitting ? null : effectiveCategoryId || null,
         type,
         amount: amountMinor,
         currency,
@@ -232,7 +259,8 @@ function TransactionFormBody({
         note: note.trim() || null,
       })
       if (splitting) await setSplits.mutateAsync({ transactionId: tx.id, splits: splitRows })
-      if (tagIds.length > 0) await setTags.mutateAsync({ transactionId: tx.id, tagIds })
+      if (effectiveTagIds.length > 0)
+        await setTags.mutateAsync({ transactionId: tx.id, tagIds: effectiveTagIds })
       if (files.length > 0) await uploadFiles.mutateAsync({ transactionId: tx.id, files })
       onClose()
     } catch (err) {
@@ -421,15 +449,28 @@ function TransactionFormBody({
               </button>
             </div>
           ) : (
-            <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-              <option value="">Uncategorized</option>
-              {categoryOptions.map(({ category, depth }) => (
-                <option key={category.id} value={category.id}>
-                  {depth ? '  — ' : ''}
-                  {category.name}
-                </option>
-              ))}
-            </Select>
+            <>
+              <Select
+                value={effectiveCategoryId}
+                onChange={(e) => {
+                  setCategoryTouched(true)
+                  setCategoryId(e.target.value)
+                }}
+              >
+                <option value="">Uncategorized</option>
+                {categoryOptions.map(({ category, depth }) => (
+                  <option key={category.id} value={category.id}>
+                    {depth ? '  — ' : ''}
+                    {category.name}
+                  </option>
+                ))}
+              </Select>
+              {!categoryTouched && ruleOutcome.matched.length > 0 && (
+                <p className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-primary">
+                  <Zap className="h-3 w-3" /> Auto-filled by rule “{ruleOutcome.matched[0].name}”
+                </p>
+              )}
+            </>
           )}
         </div>
       )}
@@ -461,7 +502,13 @@ function TransactionFormBody({
       </div>
 
       <Field label="Tags">
-        <TagPicker selected={tagIds} onChange={setTagIds} />
+        <TagPicker
+          selected={effectiveTagIds}
+          onChange={(ids) => {
+            setTagsTouched(true)
+            setTagIds(ids)
+          }}
+        />
       </Field>
 
       <Field label="Receipts">
