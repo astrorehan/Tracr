@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/Button'
 import { Field, Input, Select } from '@/components/ui/Input'
 import { CURRENCIES, CURRENCY_CODES } from '@/lib/currencies'
 import { amountToMinor, fromMinorUnits } from '@/lib/money'
+import { cn } from '@/lib/utils'
 import { useCreateAccount, useUpdateAccount } from './api'
-import { ACCOUNT_COLORS, ACCOUNT_TYPES } from './meta'
+import { ACCOUNT_COLORS, ACCOUNT_TYPES, LIABILITY_TYPES } from './meta'
 import type { Account, AccountType } from '@/types/db'
 
 interface Props {
@@ -30,14 +31,22 @@ function AccountFormBody({ onClose, account }: { onClose: () => void; account: A
 
   const [name, setName] = useState(account?.name ?? '')
   const [type, setType] = useState<AccountType>(account?.type ?? 'cash')
+  const [isLiability, setIsLiability] = useState(account?.is_liability ?? false)
   const [currency, setCurrency] = useState(account?.currency ?? 'IDR')
+  // For liabilities the opening balance is stored negative; show it as a positive "owed".
   const [opening, setOpening] = useState(
-    account ? String(fromMinorUnits(account.opening_balance, account.currency)) : '',
+    account ? String(fromMinorUnits(Math.abs(account.opening_balance), account.currency)) : '',
   )
   const [color, setColor] = useState(account?.color ?? ACCOUNT_COLORS[0])
   const [error, setError] = useState<string | null>(null)
 
   const pending = create.isPending || update.isPending
+
+  // Picking a debt type defaults the liability flag; the user can still override it.
+  function changeType(next: AccountType) {
+    setType(next)
+    setIsLiability(LIABILITY_TYPES.has(next))
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -45,12 +54,14 @@ function AccountFormBody({ onClose, account }: { onClose: () => void; account: A
       setError('Please name this account.')
       return
     }
-    const opening_balance = opening ? amountToMinor(opening, currency) : 0
+    const magnitude = opening ? amountToMinor(opening, currency) : 0
+    // Liabilities carry a negative balance (debt subtracts from net worth).
+    const opening_balance = isLiability ? -Math.abs(magnitude) : magnitude
     try {
       if (account) {
         await update.mutateAsync({
           id: account.id,
-          patch: { name: name.trim(), type, currency, opening_balance, color },
+          patch: { name: name.trim(), type, currency, opening_balance, color, is_liability: isLiability },
         })
       } else {
         await create.mutateAsync({
@@ -60,6 +71,7 @@ function AccountFormBody({ onClose, account }: { onClose: () => void; account: A
           opening_balance,
           color,
           icon: null,
+          is_liability: isLiability,
         })
       }
       onClose()
@@ -80,7 +92,7 @@ function AccountFormBody({ onClose, account }: { onClose: () => void; account: A
       </Field>
 
       <Field label="Type">
-        <Select value={type} onChange={(e) => setType(e.target.value as AccountType)}>
+        <Select value={type} onChange={(e) => changeType(e.target.value as AccountType)}>
           {ACCOUNT_TYPES.map((t) => (
             <option key={t.value} value={t.value}>
               {t.label}
@@ -88,6 +100,36 @@ function AccountFormBody({ onClose, account }: { onClose: () => void; account: A
           ))}
         </Select>
       </Field>
+
+      <button
+        type="button"
+        role="switch"
+        aria-checked={isLiability}
+        onClick={() => setIsLiability((v) => !v)}
+        className="flex w-full items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 text-left transition-colors hover:border-primary/50"
+      >
+        <span
+          className={cn(
+            'relative h-6 w-11 shrink-0 rounded-full transition-colors',
+            isLiability ? 'bg-danger' : 'bg-surface-muted',
+          )}
+        >
+          <span
+            className={cn(
+              'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform',
+              isLiability ? 'translate-x-[1.375rem]' : 'translate-x-0.5',
+            )}
+          />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold text-foreground">This is a liability</span>
+          <span className="block text-[11px] font-medium text-muted-foreground">
+            {isLiability
+              ? 'Money you owe — its balance subtracts from net worth.'
+              : 'A debt like a credit card or loan? Turn this on.'}
+          </span>
+        </span>
+      </button>
 
       <div className="grid grid-cols-2 gap-3">
         <Field label="Currency">
@@ -99,7 +141,7 @@ function AccountFormBody({ onClose, account }: { onClose: () => void; account: A
             ))}
           </Select>
         </Field>
-        <Field label="Opening balance">
+        <Field label={isLiability ? 'Amount owed now' : 'Opening balance'}>
           <Input
             type="number"
             inputMode="decimal"

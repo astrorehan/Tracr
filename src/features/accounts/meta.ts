@@ -1,14 +1,28 @@
-import { Wallet, CreditCard, Smartphone, Bitcoin, LineChart, Landmark } from 'lucide-react'
+import {
+  Wallet,
+  CreditCard,
+  Smartphone,
+  Bitcoin,
+  LineChart,
+  Landmark,
+  HandCoins,
+  Coins,
+} from 'lucide-react'
 import type { AccountType } from '@/types/db'
 
 export const ACCOUNT_TYPES: { value: AccountType; label: string; icon: typeof Wallet }[] = [
   { value: 'cash', label: 'Cash', icon: Wallet },
-  { value: 'bank_card', label: 'Bank / Card', icon: CreditCard },
+  { value: 'bank_card', label: 'Bank / Card', icon: Landmark },
+  { value: 'credit_card', label: 'Credit Card', icon: CreditCard },
   { value: 'e_wallet', label: 'E-Wallet', icon: Smartphone },
   { value: 'crypto', label: 'Crypto', icon: Bitcoin },
   { value: 'stocks', label: 'Stocks', icon: LineChart },
-  { value: 'other', label: 'Other', icon: Landmark },
+  { value: 'loan', label: 'Loan', icon: HandCoins },
+  { value: 'other', label: 'Other', icon: Coins },
 ]
+
+/** Account types that are debts by nature — used to default the liability flag. */
+export const LIABILITY_TYPES = new Set<AccountType>(['credit_card', 'loan'])
 
 export function accountTypeMeta(type: AccountType) {
   return ACCOUNT_TYPES.find((t) => t.value === type) ?? ACCOUNT_TYPES[ACCOUNT_TYPES.length - 1]

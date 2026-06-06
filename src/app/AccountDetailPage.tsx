@@ -161,10 +161,21 @@ export function AccountDetailPage() {
             <div>
               <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                 {meta.label} · {account.currency}
+                {account.is_liability ? ' · Liability' : ''}
                 {account.is_archived ? ' · Archived' : ''}
               </p>
-              <p className="font-numeric text-2xl font-extrabold leading-tight text-foreground">
+              <p
+                className={cn(
+                  'font-numeric text-2xl font-extrabold leading-tight',
+                  account.is_liability ? 'text-danger' : 'text-foreground',
+                )}
+              >
                 {formatMoney(balance, account.currency)}
+                {account.is_liability && (
+                  <span className="ml-1.5 text-[11px] font-bold uppercase tracking-wide text-danger/70">
+                    owed
+                  </span>
+                )}
               </p>
               {baseEstimate != null && (
                 <p className="font-numeric text-xs font-semibold text-muted-foreground">

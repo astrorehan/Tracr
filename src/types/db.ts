@@ -1,6 +1,14 @@
 /** Hand-written types mirroring the Postgres schema in supabase/migrations. */
 
-export type AccountType = 'cash' | 'bank_card' | 'e_wallet' | 'crypto' | 'stocks' | 'other'
+export type AccountType =
+  | 'cash'
+  | 'bank_card'
+  | 'credit_card'
+  | 'e_wallet'
+  | 'crypto'
+  | 'stocks'
+  | 'loan'
+  | 'other'
 export type TransactionType = 'income' | 'expense' | 'transfer'
 export type CategoryKind = 'income' | 'expense'
 export type TransactionSource = 'web' | 'whatsapp' | 'import'
@@ -24,6 +32,8 @@ export interface Account {
   icon: string | null
   color: string | null
   is_archived: boolean
+  /** True for debts (credit cards, loans): the balance runs negative and is shown as owed. */
+  is_liability: boolean
   created_at: string
 }
 
@@ -192,8 +202,11 @@ export type NewCategory = Omit<
 > &
   Partial<Pick<Category, 'is_archived' | 'sort_order'>>
 
-export type NewAccount = Omit<Account, 'id' | 'user_id' | 'created_at' | 'is_archived'> &
-  Partial<Pick<Account, 'is_archived'>>
+export type NewAccount = Omit<
+  Account,
+  'id' | 'user_id' | 'created_at' | 'is_archived' | 'is_liability'
+> &
+  Partial<Pick<Account, 'is_archived' | 'is_liability'>>
 
 export type NewTransaction = Omit<
   Transaction,
