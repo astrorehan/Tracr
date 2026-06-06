@@ -60,7 +60,9 @@ function CategoryFormBody({
   // Valid parents: same-kind top-level categories, excluding self.
   const parentOptions = useMemo(
     () =>
-      categories.filter((c) => c.kind === kind && c.parent_id === null && c.id !== category?.id),
+      categories.filter(
+        (c) => !c.is_archived && c.kind === kind && c.parent_id === null && c.id !== category?.id,
+      ),
     [categories, kind, category?.id],
   )
 

@@ -35,6 +35,9 @@ export interface Category {
   parent_id: string | null
   icon: string | null
   color: string | null
+  is_archived: boolean
+  /** Manual ordering within a (kind, parent) sibling group; lower = first. */
+  sort_order: number
   created_at: string
 }
 
@@ -181,7 +184,11 @@ export type NewRecurringTransaction = Omit<
 
 export type NewTag = Omit<Tag, 'id' | 'user_id' | 'created_at'>
 
-export type NewCategory = Omit<Category, 'id' | 'user_id' | 'created_at'>
+export type NewCategory = Omit<
+  Category,
+  'id' | 'user_id' | 'created_at' | 'is_archived' | 'sort_order'
+> &
+  Partial<Pick<Category, 'is_archived' | 'sort_order'>>
 
 export type NewAccount = Omit<Account, 'id' | 'user_id' | 'created_at' | 'is_archived'> &
   Partial<Pick<Account, 'is_archived'>>

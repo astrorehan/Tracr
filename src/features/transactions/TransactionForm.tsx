@@ -124,7 +124,9 @@ function TransactionFormBody({
   const categoryOptions = useMemo(
     () =>
       flattenWithDepth(
-        categories.filter((c) => c.kind === (type === 'income' ? 'income' : 'expense')),
+        categories.filter(
+          (c) => !c.is_archived && c.kind === (type === 'income' ? 'income' : 'expense'),
+        ),
       ),
     [categories, type],
   )
