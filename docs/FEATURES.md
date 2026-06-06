@@ -23,7 +23,7 @@ Status legend: ✅ have · 🟡 partial · ⬜ new · 🔧 schema change needed
 | **Tags (many-to-many)** | Free-form labels on a transaction; filter/report by tag | ✅ | `tags` + `transaction_tags` tables (migration `0003_tags`); chips in the add form, chips on rows, tag filter on Activity, Manage tags page |
 | **Split transactions** | One expense split across multiple categories/amounts (e.g. a receipt = food + household) — this is your "multiple categories per transaction" | ✅ | `transaction_splits` table (migration `0005`). Split toggle in the add form (category+amount rows, auto-summed total); split tx stores `category_id=null` + the total in `amount` (balances/totals unaffected). Reports category breakdown & budget spend expand splits via `categoryContributions`; "Split · N categories" shown on the row |
 | **Payee / merchant field** | Who you paid; autocomplete from history; report by payee | ✅ | `transactions.payee text` (migration `0010`) + `payee_stats` view (distinct payees by frequency). Datalist autocomplete in the add form (income→"Payer", expense→"Payee", hidden for transfers); payee leads the row title; payee filter + datalist on Activity (also folded into full-text search); "Top payees/sources" card on Reports (+ CSV section); payee column in CSV import/export |
-| **Recurring transactions** | Auto-create on a schedule (salary, rent, subscriptions) | ⬜🔧 | `recurring_transactions` + generator (cron/Edge Fn) |
+| **Recurring transactions** | Auto-create on a schedule (salary, rent, subscriptions) | ✅ | Opt-in `auto_post` flag on `recurring_transactions` (migration `0013`). A daily **pg_cron** job (00:17 UTC) pings the `recurring-autopost` **Edge Function**, which posts every due `auto_post` schedule — catching up missed periods, one tx per occurrence, dated to the due date with a frozen FX snapshot — then advances `next_due`. Mirrors `useMarkRecurringPaid` exactly. Cron→function auth via a private shared secret (`public.app_secrets`, RLS-locked). Toggle in the bill form + "Auto" badge on the Bills list. Schedules stay confirm-each by default |
 | **Attachments / receipts** | Photo or PDF per transaction | ✅ | Private Storage bucket `attachments` (per-user folder RLS) + `attachments` table (migration `0008`). Attach in the add form; paperclip + count on rows opens a viewer modal (signed-URL thumbnails, add/delete). Storage files orphan on tx delete (cleanup = follow-up) |
 | **Quick templates / favorites** | One-tap repeat of common entries | ⬜🔧 | reuse recurring table w/ `auto=false`, or `templates` |
 | **Bulk actions** | Multi-select → delete / recategorize / tag | ✅ | Activity "Select" mode → checkboxes + select-all; floating bar: set category (skips transfers), add tags (dedupes), delete. Bulk mutations `useBulkDeleteTransactions`/`useBulkSetCategory`/`useBulkAddTags` |
@@ -104,7 +104,7 @@ Dedicated **Reports** page (`/reports`, sidebar + Dashboard link) with a date-ra
 - ✅ **Mark paid → creates the transaction** (on the due date) and advances `next_due`; **Skip** advances without posting
 - ✅ Manager: name, amount, account, category, frequency (weekly/monthly/yearly) + interval ("every N"), next due, note; pause/resume; edit/delete
 - ✅ In-app due reminders (relative "Overdue 3d" / "Due today" / "in 5d", color-coded)
-- ✅ `recurring_transactions` table (migration `0006`; RLS per-user). **No auto-post** — user confirms each (chosen design; an Edge Function/pg_cron auto-generator can layer on later)
+- ✅ `recurring_transactions` table (migration `0006`; RLS per-user). Confirm-each by default; **optional auto-post** per schedule (`auto_post`, migration `0013`) via a daily Edge Function + pg_cron generator (see §1 "Recurring transactions")
 - ⬜ Calendar view, web-push reminders (see §12)
 
 ## 10. Multi-currency (Tier 2) — ✅ DONE (manual rates; live API optional later)
@@ -149,7 +149,7 @@ Dedicated **Reports** page (`/reports`, sidebar + Dashboard link) with a date-ra
 **Phase 2A complete.** ✅ All six core "complete tracker" items shipped.
 
 **Phase 2B — recurring & goals:**
-7. ✅ Recurring transactions + bills/subscriptions + due reminders — shipped (bills-only, mark-paid → posts; no auto-insert)
+7. ✅ Recurring transactions + bills/subscriptions + due reminders — shipped (mark-paid → posts; plus opt-in auto-post via a daily Edge Function + pg_cron generator)
 8. ✅ Savings goals — shipped
 9. ✅ Account detail page + reconciliation — shipped
 
@@ -173,6 +173,7 @@ Dedicated **Reports** page (`/reports`, sidebar + Dashboard link) with a date-ra
 - ✅ `transactions.payee` (migration `0010`, + `payee_stats` view)
 - ✅ `categories.sort_order/is_archived` (migration `0011`)
 - ✅ `rules` (migration `0012`, JSONB conditions/actions)
+- ✅ `recurring_transactions.auto_post` + `app_secrets` + pg_cron/pg_net cron→Edge Function (migrations `0013`/`0014`, recurring auto-generator)
 - Column adds: `transactions.status`, `transactions.linked_transaction_id`, `accounts.exclude_from_stats/is_liability/sort_order`
 - Optional: `saved_views`, `spaces` + membership (sharing)
 

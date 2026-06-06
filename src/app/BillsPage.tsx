@@ -11,6 +11,7 @@ import {
   Receipt,
   SkipForward,
   Trash2,
+  Zap,
 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -89,7 +90,7 @@ export function BillsPage() {
         <EmptyState
           icon={<Receipt className="h-8 w-8" />}
           title="No bills yet"
-          description="Add recurring bills, subscriptions or income. We’ll remind you when they’re due — tap Mark paid to log the transaction."
+          description="Add recurring bills, subscriptions or income. We’ll remind you when they’re due — tap Mark paid to log it, or turn on Auto-post to have it logged for you."
           action={
             <Button size="sm" onClick={() => setCreating(true)}>
               <Plus className="h-4 w-4" /> Add a bill
@@ -197,7 +198,17 @@ function BillCard({
           {category ? <CategoryIcon name={category.icon} className="h-5 w-5" /> : <Receipt className="h-5 w-5" />}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-bold text-foreground">{rec.name}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="truncate text-sm font-bold text-foreground">{rec.name}</p>
+            {rec.auto_post && (
+              <span
+                className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary"
+                title="Auto-posts automatically on its due date"
+              >
+                <Zap className="h-2.5 w-2.5" /> Auto
+              </span>
+            )}
+          </div>
           <p className="truncate text-[11px] font-semibold text-muted-foreground">
             {frequencyText(rec.frequency, rec.interval)}
             {category ? ` · ${category.name}` : ''}

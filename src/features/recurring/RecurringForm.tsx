@@ -59,6 +59,7 @@ function RecurringFormBody({
   const [frequency, setFrequency] = useState<RecurrenceFreq>(recurring?.frequency ?? 'monthly')
   const [interval, setIntervalValue] = useState(String(recurring?.interval ?? 1))
   const [nextDue, setNextDue] = useState(recurring?.next_due ?? todayLocal())
+  const [autoPost, setAutoPost] = useState(recurring?.auto_post ?? false)
   const [note, setNote] = useState(recurring?.note ?? '')
   const [error, setError] = useState<string | null>(null)
 
@@ -108,6 +109,7 @@ function RecurringFormBody({
             frequency,
             interval: intervalNum,
             next_due: nextDue,
+            auto_post: autoPost,
             note: note.trim() || null,
           },
         })
@@ -122,6 +124,7 @@ function RecurringFormBody({
           frequency,
           interval: intervalNum,
           next_due: nextDue,
+          auto_post: autoPost,
           note: note.trim() || null,
         })
       }
@@ -225,6 +228,36 @@ function RecurringFormBody({
       <Field label="Next due">
         <Input type="date" value={nextDue} onChange={(e) => setNextDue(e.target.value)} />
       </Field>
+
+      <button
+        type="button"
+        role="switch"
+        aria-checked={autoPost}
+        onClick={() => setAutoPost((v) => !v)}
+        className="flex w-full items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 text-left transition-colors hover:border-primary/50"
+      >
+        <span
+          className={cn(
+            'relative h-6 w-11 shrink-0 rounded-full transition-colors',
+            autoPost ? 'bg-primary' : 'bg-surface-muted',
+          )}
+        >
+          <span
+            className={cn(
+              'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform',
+              autoPost ? 'translate-x-[1.375rem]' : 'translate-x-0.5',
+            )}
+          />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold text-foreground">Auto-post on due date</span>
+          <span className="block text-[11px] font-medium text-muted-foreground">
+            {autoPost
+              ? 'Posts automatically each time it’s due — no tap needed.'
+              : 'Off — you’ll confirm each one with “Mark paid”.'}
+          </span>
+        </span>
+      </button>
 
       <Field label="Note">
         <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />

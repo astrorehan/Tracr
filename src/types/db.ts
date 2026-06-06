@@ -132,6 +132,8 @@ export interface RecurringTransaction {
   /** Next due date, stored as a yyyy-MM-dd date. */
   next_due: string
   is_active: boolean
+  /** Opt-in: a daily server job auto-posts this when due (default false = confirm-each). */
+  auto_post: boolean
   note: string | null
   last_paid_at: string | null
   created_at: string
@@ -178,9 +180,9 @@ export type NewGoalContribution = Omit<GoalContribution, 'id' | 'user_id' | 'cre
 
 export type NewRecurringTransaction = Omit<
   RecurringTransaction,
-  'id' | 'user_id' | 'created_at' | 'last_paid_at' | 'is_active'
+  'id' | 'user_id' | 'created_at' | 'last_paid_at' | 'is_active' | 'auto_post'
 > &
-  Partial<Pick<RecurringTransaction, 'is_active'>>
+  Partial<Pick<RecurringTransaction, 'is_active' | 'auto_post'>>
 
 export type NewTag = Omit<Tag, 'id' | 'user_id' | 'created_at'>
 
