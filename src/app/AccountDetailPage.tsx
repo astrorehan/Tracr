@@ -162,6 +162,7 @@ export function AccountDetailPage() {
               <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                 {meta.label} · {account.currency}
                 {account.is_liability ? ' · Liability' : ''}
+                {account.exclude_from_stats ? ' · Excluded from net worth' : ''}
                 {account.is_archived ? ' · Archived' : ''}
               </p>
               <p
@@ -182,6 +183,33 @@ export function AccountDetailPage() {
                   ≈ {formatMoney(baseEstimate, base)}
                 </p>
               )}
+              {account.is_liability &&
+                account.credit_limit != null &&
+                account.credit_limit > 0 &&
+                (() => {
+                  const limit = account.credit_limit
+                  const owed = Math.abs(balance)
+                  const pct = Math.min(100, (owed / limit) * 100)
+                  const available = limit - owed
+                  const c = pct >= 90 ? 'var(--danger)' : pct >= 70 ? '#d97706' : color
+                  return (
+                    <div className="mt-2 max-w-[220px]">
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-muted">
+                        <div
+                          className="h-full rounded-full"
+                          style={{ width: `${pct}%`, backgroundColor: c }}
+                        />
+                      </div>
+                      <p className="mt-1 text-[10px] font-semibold text-muted-foreground">
+                        {pct.toFixed(0)}% of{' '}
+                        {formatMoney(limit, account.currency, { signDisplay: 'never' })} ·{' '}
+                        {available >= 0
+                          ? `${formatMoney(available, account.currency, { signDisplay: 'never' })} available`
+                          : `over by ${formatMoney(-available, account.currency, { signDisplay: 'never' })}`}
+                      </p>
+                    </div>
+                  )
+                })()}
             </div>
           </div>
           <Button size="sm" variant="secondary" onClick={() => setReconcileOpen((v) => !v)}>

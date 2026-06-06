@@ -86,8 +86,8 @@ Dedicated **Reports** page (`/reports`, sidebar + Dashboard link) with a date-ra
 |---|---|---|
 | **Account detail page** | ✅ | `/accounts/:id` — running end-of-day balance area chart + full per-account ledger (incl. transfers both directions); edit/archive; cards on Accounts page link here |
 | **Reconciliation** | ✅ | "Reconcile" → enter real balance → creates a signed **Balance adjustment** income/expense so Tracr matches; live diff preview |
-| **Liabilities / debts / credit cards** | ✅ | `accounts.is_liability` flag + `credit_card`/`loan` account types (migrations `0015`/`0016`). Liabilities carry a **negative balance** (debt subtracts from net worth — the existing `account_balances` view already nets it). Add form has a liability toggle (auto-on for credit-card/loan types) + an "Amount owed" field stored as a negative opening balance. Accounts page **splits Assets vs Liabilities** with a net / assets / debts header; Dashboard hero shows the assets·debts breakdown (allocation bar now divides by assets so debts don't skew it). Debt balances + the detail header render in red with an "owed" tag. **Pay-down** = a normal transfer bank→card (already moves the balance toward 0) |
-| **Include/exclude from net worth & stats** | ⬜🔧 | add `exclude_from_stats bool` |
+| **Liabilities / debts / credit cards** | ✅ | `accounts.is_liability` flag + `credit_card`/`loan` account types (migrations `0015`/`0016`). Liabilities carry a **negative balance** (debt subtracts from net worth — the existing `account_balances` view already nets it). Add form has a liability toggle (auto-on for credit-card/loan types) + an "Amount owed" field stored as a negative opening balance. Accounts page **splits Assets vs Liabilities** with a net / assets / debts header; Dashboard hero shows the assets·debts breakdown (allocation bar now divides by assets so debts don't skew it). Debt balances + the detail header render in red with an "owed" tag. **Pay-down** = a normal transfer bank→card (already moves the balance toward 0). The form leads with the account *type* (Credit Card / Loan auto-explain as debt; an explicit "money I owe" toggle only appears for ambiguous types) so users never meet the word "liability". Optional **credit limit** (`credit_limit`, migration `0017`) drives a utilization bar (% used · available, amber ≥70% / red ≥90%) on the card + detail page |
+| **Include/exclude from net worth & stats** | ✅ | `accounts.exclude_from_stats` (migration `0018`) + form toggle. Excluded accounts stay in the list (with an "excluded" tag) and keep their own ledger, but drop out of net worth, assets, debts, allocation & the per-currency chips. (Transaction-level reports still include them — a later refinement) |
 | **Account groups & ordering** | ⬜🔧 | `account_groups` or `sort_order` |
 | **Multi-currency net worth** | ✅ | FX conversion to base shipped (migration `0009`, `features/fx/`): Dashboard + Accounts headline convert all accounts at latest rates; per-txn snapshot for history; "≈ base" estimates on Accounts cards & Account-detail header |
 
@@ -175,7 +175,8 @@ Dedicated **Reports** page (`/reports`, sidebar + Dashboard link) with a date-ra
 - ✅ `rules` (migration `0012`, JSONB conditions/actions)
 - ✅ `recurring_transactions.auto_post` + `app_secrets` + pg_cron/pg_net cron→Edge Function (migrations `0013`/`0014`, recurring auto-generator)
 - ✅ `accounts.is_liability` + `credit_card`/`loan` account types (migrations `0015`/`0016`)
-- Column adds: `transactions.status`, `transactions.linked_transaction_id`, `accounts.exclude_from_stats/sort_order`
+- ✅ `accounts.credit_limit` (migration `0017`) + `accounts.exclude_from_stats` (migration `0018`)
+- Column adds: `transactions.status`, `transactions.linked_transaction_id`, `accounts.sort_order`
 - Optional: `saved_views`, `spaces` + membership (sharing)
 
 All additions stay RLS-scoped per user, consistent with the existing schema.

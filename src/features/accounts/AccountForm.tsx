@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Info } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select } from '@/components/ui/Input'
@@ -37,12 +38,21 @@ function AccountFormBody({ onClose, account }: { onClose: () => void; account: A
   const [opening, setOpening] = useState(
     account ? String(fromMinorUnits(Math.abs(account.opening_balance), account.currency)) : '',
   )
+  const [creditLimit, setCreditLimit] = useState(
+    account?.credit_limit != null
+      ? String(fromMinorUnits(account.credit_limit, account.currency))
+      : '',
+  )
+  const [excludeFromStats, setExcludeFromStats] = useState(account?.exclude_from_stats ?? false)
   const [color, setColor] = useState(account?.color ?? ACCOUNT_COLORS[0])
   const [error, setError] = useState<string | null>(null)
 
   const pending = create.isPending || update.isPending
+  // Credit cards & loans are debts by nature, so we don't ask — we explain. The
+  // explicit "money I owe" toggle only shows for ambiguous types (cash/other/etc).
+  const isDebtType = LIABILITY_TYPES.has(type)
 
-  // Picking a debt type defaults the liability flag; the user can still override it.
+  // Picking a debt type forces the liability flag; the user can still override others.
   function changeType(next: AccountType) {
     setType(next)
     setIsLiability(LIABILITY_TYPES.has(next))
@@ -57,11 +67,23 @@ function AccountFormBody({ onClose, account }: { onClose: () => void; account: A
     const magnitude = opening ? amountToMinor(opening, currency) : 0
     // Liabilities carry a negative balance (debt subtracts from net worth).
     const opening_balance = isLiability ? -Math.abs(magnitude) : magnitude
+    // Credit limit only applies to liabilities; null when unset or not a debt.
+    const credit_limit =
+      isLiability && creditLimit.trim() ? Math.abs(amountToMinor(creditLimit, currency)) : null
     try {
       if (account) {
         await update.mutateAsync({
           id: account.id,
-          patch: { name: name.trim(), type, currency, opening_balance, color, is_liability: isLiability },
+          patch: {
+            name: name.trim(),
+            type,
+            currency,
+            opening_balance,
+            color,
+            is_liability: isLiability,
+            credit_limit,
+            exclude_from_stats: excludeFromStats,
+          },
         })
       } else {
         await create.mutateAsync({
@@ -72,6 +94,8 @@ function AccountFormBody({ onClose, account }: { onClose: () => void; account: A
           color,
           icon: null,
           is_liability: isLiability,
+          credit_limit,
+          exclude_from_stats: excludeFromStats,
         })
       }
       onClose()
@@ -101,35 +125,50 @@ function AccountFormBody({ onClose, account }: { onClose: () => void; account: A
         </Select>
       </Field>
 
-      <button
-        type="button"
-        role="switch"
-        aria-checked={isLiability}
-        onClick={() => setIsLiability((v) => !v)}
-        className="flex w-full items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 text-left transition-colors hover:border-primary/50"
-      >
-        <span
-          className={cn(
-            'relative h-6 w-11 shrink-0 rounded-full transition-colors',
-            isLiability ? 'bg-danger' : 'bg-surface-muted',
-          )}
+      {isDebtType ? (
+        // Debt type → no question, just explain what it means in plain terms.
+        <div className="flex items-start gap-2.5 rounded-xl border border-danger/25 bg-danger/5 px-4 py-3">
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-danger" />
+          <p className="text-[12px] font-medium leading-snug text-muted-foreground">
+            Tracked as <span className="font-semibold text-danger">debt</span> — the balance is what
+            you still owe, and it lowers your net worth. Pay it down with a transfer from another
+            account.
+          </p>
+        </div>
+      ) : (
+        // Ambiguous type → let the user mark it a debt, in plain language.
+        <button
+          type="button"
+          role="switch"
+          aria-checked={isLiability}
+          onClick={() => setIsLiability((v) => !v)}
+          className="flex w-full items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 text-left transition-colors hover:border-primary/50"
         >
           <span
             className={cn(
-              'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform',
-              isLiability ? 'translate-x-[1.375rem]' : 'translate-x-0.5',
+              'relative h-6 w-11 shrink-0 rounded-full transition-colors',
+              isLiability ? 'bg-danger' : 'bg-surface-muted',
             )}
-          />
-        </span>
-        <span className="min-w-0">
-          <span className="block text-sm font-semibold text-foreground">This is a liability</span>
-          <span className="block text-[11px] font-medium text-muted-foreground">
-            {isLiability
-              ? 'Money you owe — its balance subtracts from net worth.'
-              : 'A debt like a credit card or loan? Turn this on.'}
+          >
+            <span
+              className={cn(
+                'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform',
+                isLiability ? 'translate-x-[1.375rem]' : 'translate-x-0.5',
+              )}
+            />
           </span>
-        </span>
-      </button>
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold text-foreground">
+              This account is money I owe
+            </span>
+            <span className="block text-[11px] font-medium text-muted-foreground">
+              {isLiability
+                ? 'Counted as debt — it lowers your net worth instead of adding to it.'
+                : 'Turn on if this is a debt you have to pay back (e.g. money you borrowed).'}
+            </span>
+          </span>
+        </button>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <Field label="Currency">
@@ -152,6 +191,24 @@ function AccountFormBody({ onClose, account }: { onClose: () => void; account: A
           />
         </Field>
       </div>
+      {isLiability && (
+        <p className="-mt-2 px-1 text-[11px] font-medium text-muted-foreground">
+          How much you currently owe on this account (we store it as a negative balance).
+        </p>
+      )}
+
+      {isLiability && (
+        <Field label="Credit limit (optional)">
+          <Input
+            type="number"
+            inputMode="decimal"
+            step="any"
+            value={creditLimit}
+            onChange={(e) => setCreditLimit(e.target.value)}
+            placeholder="e.g. your card’s spending limit"
+          />
+        </Field>
+      )}
 
       <Field label="Color">
         <div className="flex flex-wrap gap-2">
@@ -170,6 +227,36 @@ function AccountFormBody({ onClose, account }: { onClose: () => void; account: A
           ))}
         </div>
       </Field>
+
+      <button
+        type="button"
+        role="switch"
+        aria-checked={excludeFromStats}
+        onClick={() => setExcludeFromStats((v) => !v)}
+        className="flex w-full items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 text-left transition-colors hover:border-primary/50"
+      >
+        <span
+          className={cn(
+            'relative h-6 w-11 shrink-0 rounded-full transition-colors',
+            excludeFromStats ? 'bg-primary' : 'bg-surface-muted',
+          )}
+        >
+          <span
+            className={cn(
+              'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform',
+              excludeFromStats ? 'translate-x-[1.375rem]' : 'translate-x-0.5',
+            )}
+          />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold text-foreground">Exclude from net worth</span>
+          <span className="block text-[11px] font-medium text-muted-foreground">
+            {excludeFromStats
+              ? 'Hidden from net worth, assets, debts &amp; allocation — still has its own history.'
+              : 'Keep a tracking-only or shared account out of your totals.'}
+          </span>
+        </span>
+      </button>
 
       {error && <p className="text-sm text-danger">{error}</p>}
 

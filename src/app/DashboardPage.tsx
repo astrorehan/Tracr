@@ -42,6 +42,7 @@ export function DashboardPage() {
   const totalsByCurrency = useMemo(() => {
     const totals: Record<string, number> = {}
     for (const a of accounts) {
+      if (a.exclude_from_stats) continue
       totals[a.currency] = (totals[a.currency] ?? 0) + (balances[a.id] ?? a.opening_balance)
     }
     return totals
@@ -57,6 +58,7 @@ export function DashboardPage() {
     let debts = 0
     const missing = new Set<string>()
     for (const a of accounts) {
+      if (a.exclude_from_stats) continue
       const bal = balances[a.id] ?? a.opening_balance
       const converted = convertMinor(bal, a.currency, base, table)
       if (converted == null) {
@@ -112,7 +114,7 @@ export function DashboardPage() {
     if (netWorth.assets <= 0) return []
     const table = buildRateTable(fxRates, base)
     return accounts
-      .filter((a) => !a.is_liability)
+      .filter((a) => !a.is_liability && !a.exclude_from_stats)
       .map((a) => {
         const converted = convertMinor(balances[a.id] ?? a.opening_balance, a.currency, base, table)
         return {
