@@ -37,10 +37,12 @@ export function AccountsPage() {
   }, [accounts])
 
   // Net worth = assets − debts. Liability balances are already negative, so the
-  // plain sum nets out; we also break out the two sides for the header.
+  // plain sum nets out; we also break out the two sides for the header. Accounts
+  // flagged exclude_from_stats are left out of every total.
   const { net, assetsTotal, debtsTotal } = useMemo(() => {
-    const assetsTotal = assets.reduce((s, a) => s + toBase(a), 0)
-    const debtsTotal = liabilities.reduce((s, a) => s + Math.abs(toBase(a)), 0)
+    const counted = (a: Account) => !a.exclude_from_stats
+    const assetsTotal = assets.filter(counted).reduce((s, a) => s + toBase(a), 0)
+    const debtsTotal = liabilities.filter(counted).reduce((s, a) => s + Math.abs(toBase(a)), 0)
     return { net: assetsTotal - debtsTotal, assetsTotal, debtsTotal }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assets, liabilities, balances, rateTable, base])
@@ -177,6 +179,14 @@ function AccountCard({
     account.currency === base ? null : convertMinor(balance, account.currency, base, rateTable)
   const color = account.color ?? '#9a8c74'
 
+  // Credit-card utilization: how much of the limit is used, and what's left.
+  const limit = account.credit_limit ?? 0
+  const owed = Math.abs(balance)
+  const showUtil = isLiability && limit > 0
+  const utilPct = showUtil ? Math.min(100, (owed / limit) * 100) : 0
+  const available = limit - owed
+  const utilColor = utilPct >= 90 ? 'var(--danger)' : utilPct >= 70 ? '#d97706' : color
+
   return (
     <Card hoverable className="group p-0">
       <Link to={`/accounts/${account.id}`} className="block p-5">
@@ -204,6 +214,7 @@ function AccountCard({
           <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             {account.currency}
             {isLiability ? ' · owed' : ''}
+            {account.exclude_from_stats ? ' · excluded' : ''}
           </p>
         </div>
 
@@ -248,6 +259,24 @@ function AccountCard({
             </button>
           </div>
         </div>
+
+        {showUtil && (
+          <div className="mt-3.5">
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-muted">
+              <div
+                className="h-full rounded-full transition-all"
+                style={{ width: `${utilPct}%`, backgroundColor: utilColor }}
+              />
+            </div>
+            <p className="mt-1.5 text-[10px] font-semibold text-muted-foreground">
+              {utilPct.toFixed(0)}% of {formatMoney(limit, account.currency, { signDisplay: 'never' })}{' '}
+              ·{' '}
+              {available >= 0
+                ? `${formatMoney(available, account.currency, { signDisplay: 'never' })} available`
+                : `over by ${formatMoney(-available, account.currency, { signDisplay: 'never' })}`}
+            </p>
+          </div>
+        )}
       </Link>
     </Card>
   )

@@ -34,6 +34,10 @@ export interface Account {
   is_archived: boolean
   /** True for debts (credit cards, loans): the balance runs negative and is shown as owed. */
   is_liability: boolean
+  /** Credit limit in minor units (liabilities only); null = no limit. Drives utilization. */
+  credit_limit: number | null
+  /** When true, the account is left out of net worth / assets / debts / allocation. */
+  exclude_from_stats: boolean
   created_at: string
 }
 
@@ -204,9 +208,17 @@ export type NewCategory = Omit<
 
 export type NewAccount = Omit<
   Account,
-  'id' | 'user_id' | 'created_at' | 'is_archived' | 'is_liability'
+  | 'id'
+  | 'user_id'
+  | 'created_at'
+  | 'is_archived'
+  | 'is_liability'
+  | 'credit_limit'
+  | 'exclude_from_stats'
 > &
-  Partial<Pick<Account, 'is_archived' | 'is_liability'>>
+  Partial<
+    Pick<Account, 'is_archived' | 'is_liability' | 'credit_limit' | 'exclude_from_stats'>
+  >
 
 export type NewTransaction = Omit<
   Transaction,
