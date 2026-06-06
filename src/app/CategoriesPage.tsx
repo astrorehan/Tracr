@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Archive,
@@ -123,6 +123,7 @@ export function CategoriesPage() {
       />
 
       <MergeModal
+        key={merging?.id ?? 'none'}
         source={merging}
         categories={categories ?? []}
         onClose={() => setMerging(null)}
@@ -190,17 +191,15 @@ function SortableRows({
   items: Category[]
   onReorder: (orderedIds: string[]) => void
 } & RowActions) {
-  // Local order mirrors the data but lets us reorder live during a drag.
-  const [order, setOrder] = useState<string[]>(() => items.map((c) => c.id))
+  // dragOrder holds a live ordering only while dragging; otherwise the data order
+  // is rendered directly (no prop→state effect needed).
   const [drag, setDrag] = useState<DragState | null>(null)
-  const signature = items.map((c) => c.id).join(',')
-
-  useEffect(() => {
-    setOrder(items.map((c) => c.id))
-  }, [signature]) // eslint-disable-line react-hooks/exhaustive-deps
+  const [dragOrder, setDragOrder] = useState<string[] | null>(null)
 
   const byId = useMemo(() => new Map(items.map((c) => [c.id, c])), [items])
   const scopeOf = (c: Category) => c.parent_id ?? `top:${c.kind}`
+  const baseIds = items.map((c) => c.id)
+  const order = dragOrder ?? baseIds
 
   const nodes = useMemo(() => {
     const ordered = order.map((id) => byId.get(id)).filter(Boolean) as Category[]
@@ -215,11 +214,12 @@ function SortableRows({
     if (!drag || drag.id === over.id) return
     if (scopeOf(over) !== drag.scope) return // only reorder within siblings
     e.preventDefault()
-    setOrder((cur) => {
-      const from = cur.indexOf(drag.id)
-      const to = cur.indexOf(over.id)
-      if (from === -1 || to === -1 || from === to) return cur
-      const next = [...cur]
+    setDragOrder((cur) => {
+      const base = cur ?? baseIds
+      const from = base.indexOf(drag.id)
+      const to = base.indexOf(over.id)
+      if (from === -1 || to === -1 || from === to) return base
+      const next = [...base]
       next.splice(to, 0, next.splice(from, 1)[0])
       return next
     })
@@ -234,6 +234,7 @@ function SortableRows({
       .map((c) => c.id)
     onReorder(siblings)
     setDrag(null)
+    setDragOrder(null)
   }
 
   return (
@@ -410,14 +411,9 @@ function MergeModal({
   onClose: () => void
 }) {
   const merge = useMergeCategories()
+  // Parent remounts this via key={source.id}, so fresh state per source.
   const [targetId, setTargetId] = useState('')
   const [error, setError] = useState<string | null>(null)
-
-  // Reset when a new source is chosen.
-  useEffect(() => {
-    setTargetId('')
-    setError(null)
-  }, [source?.id])
 
   // Valid targets: same kind, active, not the source and not one of its children.
   const targets = useMemo(() => {
