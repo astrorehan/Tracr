@@ -79,7 +79,8 @@ Dedicated **Reports** page (`/reports`, sidebar + Dashboard link) with a date-ra
 - ✅ Base-currency only with a note when other currencies exist (no FX yet)
 - Pure client-side aggregation in `features/reports/reports.ts` — no schema change
 - ✅ Top payees/merchants (per §1 payee field) — "Top payees/sources" card on Reports + CSV
-- ⬜ Still TODO: net-worth trend & account balance history (need balance snapshots), period-over-period comparison, calendar heatmap, PDF export, drill-into-subcategory/tag
+- ✅ **Net-worth trend** over time (area chart, headline card) — no snapshots needed: valued at latest rates and computed *backwards* from current net worth by removing each transaction's base-valued effect after every bucket boundary (`netWorthSeries`), so the final point equals the Dashboard net worth. Honors exclude_from_stats + archived; liabilities subtract automatically. Shows current net worth + Δ over the period
+- ⬜ Still TODO: period-over-period comparison, calendar heatmap, PDF export, drill-into-subcategory/tag
 
 ## 7. Accounts — depth (Tier 2)
 | Feature | Status | Notes |

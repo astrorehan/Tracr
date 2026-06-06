@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
@@ -18,10 +20,12 @@ import { CenterSpinner, EmptyState } from '@/components/ui/States'
 import { CategoryIcon } from '@/features/categories/CategoryIcon'
 import { useAuth } from '@/features/auth/useAuth'
 import { useCategories } from '@/features/categories/api'
+import { useAccounts, useBalances } from '@/features/accounts/api'
 import { useTransactions } from '@/features/transactions/api'
 import { useTransactionSplits } from '@/features/transactions/splits'
 import { useFxRates } from '@/features/fx/api'
-import { buildRateTable, convertMinor } from '@/features/fx/fx'
+import { buildRateTable, convertMinor, rateBetween } from '@/features/fx/fx'
+import { indexById } from '@/lib/collections'
 import {
   DATE_PRESETS,
   resolveDateRange,
@@ -30,14 +34,16 @@ import {
 import {
   bucketByTime,
   categoryBreakdown,
+  netWorthSeries,
   payeeBreakdown,
   periodTotals,
   pickGranularity,
+  type NetWorthDelta,
 } from '@/features/reports/reports'
 import { toCsv, downloadTextFile } from '@/lib/csv'
 import { formatMoney, fromMinorUnits } from '@/lib/money'
 import { cn } from '@/lib/utils'
-import type { Transaction, TransactionSplit } from '@/types/db'
+import type { Account, Transaction, TransactionSplit } from '@/types/db'
 
 export function ReportsPage() {
   const { profile } = useAuth()
@@ -58,6 +64,11 @@ export function ReportsPage() {
   })
   const { data: splitsByTx = {} } = useTransactionSplits()
   const { data: fxRates = [] } = useFxRates()
+  const { data: accounts = [] } = useAccounts()
+  const { data: balances = {} } = useBalances()
+  // History from the range start (no upper bound) so we can value net worth at each
+  // boundary by removing movements that came after it — incl. those past `to`.
+  const { data: historyTxns = [] } = useTransactions({ from: resolved.from, limit: 5000 })
 
   // Value every (non-transfer) transaction in the base currency: use the frozen
   // per-transaction snapshot when present (accurate history), otherwise convert
@@ -107,6 +118,42 @@ export function ReportsPage() {
     () => bucketByTime(baseTxns, from, to, pickGranularity(from, to)),
     [baseTxns, from, to],
   )
+
+  // Net worth over time, valued at latest rates (endpoint == dashboard net worth).
+  // Mirrors how the dashboard nets accounts: skips archived (via useAccounts) and
+  // exclude_from_stats; liabilities run negative so they subtract automatically.
+  const netWorth = useMemo(() => {
+    const table = buildRateTable(fxRates, base)
+    const acctById = indexById(accounts)
+    const counts = (a: Account | undefined): a is Account =>
+      !!a && !a.exclude_from_stats && rateBetween(a.currency, base, table) != null
+    const valueOf = (minor: number, currency: string) => convertMinor(minor, currency, base, table) ?? 0
+
+    const nwNow = accounts.reduce(
+      (s, a) => (counts(a) ? s + valueOf(balances[a.id] ?? a.opening_balance, a.currency) : s),
+      0,
+    )
+
+    const deltas: NetWorthDelta[] = []
+    for (const tx of historyTxns) {
+      const a = acctById[tx.account_id]
+      let d = 0
+      if (tx.type === 'income') {
+        if (counts(a)) d += valueOf(tx.amount, a.currency)
+      } else if (tx.type === 'expense') {
+        if (counts(a)) d -= valueOf(tx.amount, a.currency)
+      } else {
+        if (counts(a)) d -= valueOf(tx.amount, a.currency)
+        const b = tx.counter_account_id ? acctById[tx.counter_account_id] : undefined
+        if (counts(b)) d += valueOf(tx.counter_amount ?? tx.amount, b.currency)
+      }
+      if (d !== 0) deltas.push({ t: +new Date(tx.occurred_at), d })
+    }
+
+    const series = netWorthSeries(nwNow, deltas, from, to, pickGranularity(from, to))
+    const change = series.length ? series[series.length - 1].value - series[0].value : 0
+    return { series, nwNow, change }
+  }, [accounts, balances, historyTxns, fxRates, base, from, to])
 
   const breakdown = useMemo(
     () => categoryBreakdown(baseTxns, categories, breakdownKind, scaledSplits),
@@ -240,6 +287,58 @@ export function ReportsPage() {
               icon={BarChart3}
             />
           </div>
+
+          {/* Net worth over time */}
+          <Card className="p-5">
+            <div className="mb-1 flex items-center justify-between gap-3">
+              <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                <Wallet className="h-3.5 w-3.5" /> Net worth over time
+              </p>
+              <span className="font-numeric text-sm font-extrabold text-foreground">
+                {formatMoney(netWorth.nwNow, base)}
+              </span>
+            </div>
+            <p
+              className={cn(
+                'mb-3 text-[11px] font-bold',
+                netWorth.change >= 0 ? 'text-positive' : 'text-negative',
+              )}
+            >
+              {netWorth.change >= 0 ? '▲' : '▼'}{' '}
+              {formatMoney(netWorth.change, base, { signDisplay: 'always' })} over this period
+            </p>
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={netWorth.series} margin={{ top: 8, right: 0, bottom: 0, left: 0 }}>
+                <defs>
+                  <linearGradient id="nwGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.32} />
+                    <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis
+                  dataKey="label"
+                  tickLine={false}
+                  axisLine={false}
+                  fontSize={11}
+                  stroke="var(--muted-foreground)"
+                  interval="preserveStartEnd"
+                  minTickGap={28}
+                />
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  formatter={(value) => [formatMoney(Number(value), base), 'Net worth']}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="value"
+                  stroke="var(--primary)"
+                  strokeWidth={2}
+                  fill="url(#nwGradient)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </Card>
 
           {/* Income vs expense over time */}
           <Card className="p-5">

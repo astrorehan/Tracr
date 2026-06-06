@@ -1,4 +1,4 @@
-import { eachDayOfInterval, eachMonthOfInterval, format } from 'date-fns'
+import { eachDayOfInterval, eachMonthOfInterval, endOfDay, endOfMonth, format } from 'date-fns'
 import type { Category, Transaction, TransactionSplit } from '@/types/db'
 import { categoryContributions } from '@/features/transactions/splits'
 
@@ -65,6 +65,55 @@ export function bucketByTime(
   const arr = Array.from(buckets.values())
   for (const b of arr) b.net = b.income - b.expense
   return arr
+}
+
+export interface NetWorthPoint {
+  key: string
+  label: string
+  /** Net worth in base-currency minor units at the end of this bucket. */
+  value: number
+}
+
+/** A transaction's base-valued effect on net worth, at a point in time. */
+export interface NetWorthDelta {
+  t: number
+  d: number
+}
+
+/**
+ * Net-worth-over-time, valued at LATEST rates so the final point equals the
+ * dashboard's current net worth. We can't sum balances historically per bucket
+ * cheaply, so we work *backwards*: net worth at a boundary = current net worth
+ * minus every base-valued movement that happened after it.
+ */
+export function netWorthSeries(
+  nwNow: number,
+  deltas: NetWorthDelta[],
+  from: Date,
+  to: Date,
+  gran: Granularity,
+): NetWorthPoint[] {
+  const span =
+    gran === 'month'
+      ? eachMonthOfInterval({ start: from, end: to })
+      : eachDayOfInterval({ start: from, end: to })
+  const sorted = [...deltas].sort((a, b) => a.t - b.t)
+  const totalD = sorted.reduce((s, x) => s + x.d, 0)
+
+  const points: NetWorthPoint[] = []
+  let idx = 0
+  let consumed = 0 // sum of deltas at or before the current boundary
+  for (const d of span) {
+    const cutoff = Math.min(+(gran === 'month' ? endOfMonth(d) : endOfDay(d)), +to)
+    while (idx < sorted.length && sorted[idx].t <= cutoff) {
+      consumed += sorted[idx].d
+      idx++
+    }
+    const after = totalD - consumed
+    const { key, label } = bucketKey(d, gran)
+    points.push({ key, label, value: nwNow - after })
+  }
+  return points
 }
 
 export interface CategorySlice {
