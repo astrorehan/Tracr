@@ -127,7 +127,7 @@ Dedicated **Reports** page (`/reports`, sidebar + Dashboard link) with a date-ra
 - In-app notification center
 
 ## 13. Power-user & sharing (Tier 3)
-- **Rules engine** (Firefly-style): "if payee contains GoFood → category Food, tag delivery" applied on create/import
+- ✅ **Rules engine** (Firefly-style): "if payee contains GoFood → category Food, tag delivery". `rules` table (migration `0012`, RLS per user): JSONB conditions (`field` payee/note/amount/type · `op` contains/equals/starts_with/gt/lt) with all/any matching, JSONB actions (set category + add tags), `stop_after`, drag-ordered, active toggle. Pure engine in `features/rules/engine.ts`. Applies in 3 places — **live auto-fill** in the add form (fills category+tags until the user edits them; "Auto-filled by rule" hint), **CSV import** (fills empty category + adds tags, transfers excluded), and **"Run now"** on the Rules page (over uncategorized income/expense). Managed on `/rules` (`app/RulesPage.tsx`, linked from Settings → Organize). Backup/restore includes rules
 - **Shared wallets / spaces** (collaborative budgets for couples/families) — multi-user RLS on a `space`
 - **Multiple books/profiles** (personal vs business) under one login
 - Command palette (jump/search anywhere), keyboard shortcuts
@@ -158,7 +158,7 @@ Dedicated **Reports** page (`/reports`, sidebar + Dashboard link) with a date-ra
 **Phase 2C — polish & power:**
 10. ✅ JSON backup/restore · ✅ bulk actions · ✅ calculator field · ✅ attachments/receipts — all shipped
 11. ✅ Multi-currency base conversion (FX table) — DONE: rates, per-txn snapshot, net worth & reports conversion, Settings rate card, cross-currency transfers, account estimates. (Optional later: live-rate API job.)
-12. Rules engine, shared wallets, notifications, app lock
+12. ✅ Rules engine (auto-categorize/tag on create, import & existing) — shipped. Still open: shared wallets, notifications, app lock
 
 ---
 
@@ -172,6 +172,7 @@ Dedicated **Reports** page (`/reports`, sidebar + Dashboard link) with a date-ra
 - `attachments` (+ Storage bucket)
 - ✅ `transactions.payee` (migration `0010`, + `payee_stats` view)
 - ✅ `categories.sort_order/is_archived` (migration `0011`)
+- ✅ `rules` (migration `0012`, JSONB conditions/actions)
 - Column adds: `transactions.status`, `transactions.linked_transaction_id`, `accounts.exclude_from_stats/is_liability/sort_order`
 - Optional: `saved_views`, `spaces` + membership (sharing)
 
