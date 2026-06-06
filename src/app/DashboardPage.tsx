@@ -23,6 +23,7 @@ import { buildRateTable, convertMinor } from '@/features/fx/fx'
 import { TransactionRow } from '@/features/transactions/TransactionRow'
 import { accountTypeMeta } from '@/features/accounts/meta'
 import { indexById } from '@/lib/collections'
+import { cn } from '@/lib/utils'
 
 export function DashboardPage() {
   const { profile } = useAuth()
@@ -52,14 +53,21 @@ export function DashboardPage() {
   const netWorth = useMemo(() => {
     const table = buildRateTable(fxRates, base)
     let total = 0
+    let assets = 0
+    let debts = 0
     const missing = new Set<string>()
     for (const a of accounts) {
       const bal = balances[a.id] ?? a.opening_balance
       const converted = convertMinor(bal, a.currency, base, table)
-      if (converted == null) missing.add(a.currency)
-      else total += converted
+      if (converted == null) {
+        missing.add(a.currency)
+        continue
+      }
+      total += converted
+      if (a.is_liability) debts += Math.abs(converted)
+      else assets += converted
     }
-    return { total, missing: [...missing] }
+    return { total, assets, debts, missing: [...missing] }
   }, [accounts, balances, fxRates, base])
 
   // Last 6 months of expenses in the base currency.
@@ -98,21 +106,24 @@ export function DashboardPage() {
   const loading = la || lb || lt
 
   // Allocation of net worth across accounts, each converted to the base currency.
+  // Asset allocation: share of total assets (liabilities excluded so the bar
+  // sums to ~100% and isn't skewed by debts).
   const allocation = useMemo(() => {
-    if (netWorth.total <= 0) return []
+    if (netWorth.assets <= 0) return []
     const table = buildRateTable(fxRates, base)
     return accounts
+      .filter((a) => !a.is_liability)
       .map((a) => {
         const converted = convertMinor(balances[a.id] ?? a.opening_balance, a.currency, base, table)
         return {
           id: a.id,
           color: a.color ?? '#9a8c74',
-          pct: converted == null ? 0 : (converted / netWorth.total) * 100,
+          pct: converted == null ? 0 : (converted / netWorth.assets) * 100,
         }
       })
       .filter((x) => x.pct > 0.5)
       .sort((a, b) => b.pct - a.pct)
-  }, [accounts, balances, fxRates, base, netWorth.total])
+  }, [accounts, balances, fxRates, base, netWorth.assets])
   const pctById: Record<string, number> = {}
   for (const x of allocation) pctById[x.id] = x.pct
 
@@ -174,6 +185,22 @@ export function DashboardPage() {
                     >
                       Add a rate for {netWorth.missing.join(', ')} to include it
                     </Link>
+                  )}
+                  {netWorth.debts > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-semibold">
+                      <span className="text-amber-100/80">
+                        Assets{' '}
+                        <span className="font-numeric">
+                          {formatMoney(netWorth.assets, base, { signDisplay: 'never' })}
+                        </span>
+                      </span>
+                      <span className="text-red-300/90">
+                        Debts{' '}
+                        <span className="font-numeric">
+                          {formatMoney(netWorth.debts, base, { signDisplay: 'never' })}
+                        </span>
+                      </span>
+                    </div>
                   )}
                 </div>
                 {/* Card chip */}
@@ -369,7 +396,12 @@ export function DashboardPage() {
                             {pct !== undefined ? ` · ${pct.toFixed(0)}%` : ''}
                           </p>
                         </div>
-                        <span className="font-numeric text-sm font-bold text-foreground">
+                        <span
+                          className={cn(
+                            'font-numeric text-sm font-bold',
+                            a.is_liability ? 'text-danger' : 'text-foreground',
+                          )}
+                        >
                           {formatMoney(balances[a.id] ?? a.opening_balance, a.currency)}
                         </span>
                       </div>
