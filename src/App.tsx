@@ -27,6 +27,7 @@ const CategoriesPage = lazy(() =>
   import('./app/CategoriesPage').then((m) => ({ default: m.CategoriesPage })),
 )
 const TagsPage = lazy(() => import('./app/TagsPage').then((m) => ({ default: m.TagsPage })))
+const RulesPage = lazy(() => import('./app/RulesPage').then((m) => ({ default: m.RulesPage })))
 const ReportsPage = lazy(() =>
   import('./app/ReportsPage').then((m) => ({ default: m.ReportsPage })),
 )
@@ -114,6 +115,14 @@ export default function App() {
           element={
             <Suspense fallback={<CenterSpinner />}>
               <TagsPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="rules"
+          element={
+            <Suspense fallback={<CenterSpinner />}>
+              <RulesPage />
             </Suspense>
           }
         />

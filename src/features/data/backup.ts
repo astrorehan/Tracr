@@ -14,6 +14,7 @@ const TABLES = [
   'accounts',
   'categories',
   'tags',
+  'rules',
   'savings_goals',
   'budgets',
   'recurring_transactions',
@@ -98,6 +99,7 @@ export async function restoreBackup(backup: Backup): Promise<number> {
   total += await upsertRows('categories', cats.filter((c) => c.parent_id), userId, 'id')
 
   total += await upsertRows('tags', d.tags, userId, 'id')
+  total += await upsertRows('rules', d.rules, userId, 'id')
   total += await upsertRows('savings_goals', d.savings_goals, userId, 'id')
   total += await upsertRows('budgets', d.budgets, userId, 'id')
   total += await upsertRows('recurring_transactions', d.recurring_transactions, userId, 'id')

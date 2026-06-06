@@ -213,6 +213,40 @@ export type NewTransaction = Omit<
     >
   >
 
+export type RuleField = 'payee' | 'note' | 'amount' | 'type'
+export type RuleOp = 'contains' | 'equals' | 'starts_with' | 'gt' | 'lt'
+export type RuleMatch = 'all' | 'any'
+
+export interface RuleCondition {
+  field: RuleField
+  op: RuleOp
+  value: string
+}
+
+export interface RuleActions {
+  /** Category to assign (null/absent = don't touch category). */
+  category_id?: string | null
+  /** Tags to add (union with whatever's already there). */
+  tag_ids?: string[]
+}
+
+export interface Rule {
+  id: string
+  user_id: string
+  name: string
+  is_active: boolean
+  sort_order: number
+  match_type: RuleMatch
+  conditions: RuleCondition[]
+  actions: RuleActions
+  /** Stop evaluating later rules once this one matches. */
+  stop_after: boolean
+  created_at: string
+}
+
+export type NewRule = Omit<Rule, 'id' | 'user_id' | 'created_at' | 'sort_order'> &
+  Partial<Pick<Rule, 'sort_order'>>
+
 export interface FxRate {
   id: string
   user_id: string
