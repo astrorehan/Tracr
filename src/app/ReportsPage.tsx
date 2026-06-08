@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { format } from 'date-fns'
+import { eachDayOfInterval, endOfWeek, format, startOfWeek } from 'date-fns'
 import {
   Area,
   AreaChart,
@@ -13,7 +13,19 @@ import {
   Tooltip,
   XAxis,
 } from 'recharts'
-import { BarChart3, Download, PieChart as PieIcon, Store, TrendingDown, TrendingUp, Wallet } from 'lucide-react'
+import {
+  BarChart3,
+  CalendarDays,
+  ChevronRight,
+  Download,
+  PieChart as PieIcon,
+  Printer,
+  Store,
+  Tag as TagIcon,
+  TrendingDown,
+  TrendingUp,
+  Wallet,
+} from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Select } from '@/components/ui/Input'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
@@ -23,21 +35,28 @@ import { useCategories } from '@/features/categories/api'
 import { useAccounts, useBalances } from '@/features/accounts/api'
 import { useTransactions } from '@/features/transactions/api'
 import { useTransactionSplits } from '@/features/transactions/splits'
+import { useTags, useTransactionTags } from '@/features/tags/api'
 import { useFxRates } from '@/features/fx/api'
 import { buildRateTable, convertMinor, rateBetween } from '@/features/fx/fx'
 import { indexById } from '@/lib/collections'
 import {
   DATE_PRESETS,
+  previousDateRange,
   resolveDateRange,
   type DatePreset,
 } from '@/features/transactions/filters'
 import {
   bucketByTime,
-  categoryBreakdown,
+  categoryTree,
+  dailyTotals,
   netWorthSeries,
   payeeBreakdown,
+  pctChange,
   periodTotals,
   pickGranularity,
+  tagBreakdownForCategory,
+  topCategoryId,
+  totalsInBase,
   type NetWorthDelta,
 } from '@/features/reports/reports'
 import { toCsv, downloadTextFile } from '@/lib/csv'
@@ -53,16 +72,33 @@ export function ReportsPage() {
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
   const [breakdownKind, setBreakdownKind] = useState<'expense' | 'income'>('expense')
+  const [expandedCat, setExpandedCat] = useState<string | null>(null)
 
   const range = { datePreset: preset, customFrom, customTo }
   const resolved = resolveDateRange(range)
+  // Compare against the same *elapsed* span (clamp the end at now) so a partial
+  // current period (e.g. mid-month) isn't measured against a full previous one.
+  const compareEnd =
+    resolved.from && resolved.to
+      ? new Date(Math.min(+new Date(resolved.to), Date.now())).toISOString()
+      : undefined
+  const prevResolved = previousDateRange({ from: resolved.from, to: compareEnd })
 
   const { data: categories = [] } = useCategories()
   const { data: transactions = [], isLoading } = useTransactions({
     ...resolved,
     limit: 2000,
   })
+  // Previous equal-length period (for the vs-prev deltas). Open-ended ranges have
+  // no baseline — query a far-future empty window so the hook still has stable input.
+  const { data: prevTxns = [] } = useTransactions(
+    prevResolved.from
+      ? { from: prevResolved.from, to: prevResolved.to, limit: 2000 }
+      : { from: '2999-01-01', to: '2999-01-02' },
+  )
   const { data: splitsByTx = {} } = useTransactionSplits()
+  const { data: tags = [] } = useTags()
+  const { data: tagsByTx = {} } = useTransactionTags()
   const { data: fxRates = [] } = useFxRates()
   const { data: accounts = [] } = useAccounts()
   const { data: balances = {} } = useBalances()
@@ -101,6 +137,8 @@ export function ReportsPage() {
   }, [transactions, base, fxRates, splitsByTx])
 
   const totals = useMemo(() => periodTotals(baseTxns), [baseTxns])
+  const prevTotals = useMemo(() => totalsInBase(prevTxns, base, fxRates), [prevTxns, base, fxRates])
+  const hasComparison = !!prevResolved.from
 
   // Resolve concrete date bounds (fall back to data span when range is open-ended).
   const [from, to, now] = useMemo<[Date, Date, Date]>(() => {
@@ -156,9 +194,33 @@ export function ReportsPage() {
   }, [accounts, balances, historyTxns, fxRates, base, from, to])
 
   const breakdown = useMemo(
-    () => categoryBreakdown(baseTxns, categories, breakdownKind, scaledSplits),
+    () => categoryTree(baseTxns, categories, breakdownKind, scaledSplits),
     [baseTxns, categories, breakdownKind, scaledSplits],
   )
+
+  // Tags used within the expanded category — the tag half of the drill-down.
+  const drillTags = useMemo(
+    () =>
+      expandedCat
+        ? tagBreakdownForCategory(baseTxns, expandedCat, breakdownKind, categories, tags, tagsByTx)
+        : [],
+    [expandedCat, baseTxns, breakdownKind, categories, tags, tagsByTx],
+  )
+
+  // Top categories that have at least one tagged transaction of the current kind —
+  // so a row without subcategories can still be drilled into by tag.
+  const catsWithTags = useMemo(() => {
+    const catMap = new Map(categories.map((c) => [c.id, c]))
+    const set = new Set<string>()
+    for (const tx of baseTxns) {
+      if (tx.type !== breakdownKind || !tagsByTx[tx.id]?.length) continue
+      set.add(topCategoryId(tx.category_id, catMap) ?? '__uncat')
+    }
+    return set
+  }, [baseTxns, breakdownKind, categories, tagsByTx])
+
+  // Daily spend grid (always spending — the most useful calendar view).
+  const heatmap = useMemo(() => dailyTotals(baseTxns, 'expense'), [baseTxns])
 
   const biggest = useMemo(
     () => [...baseTxns].sort((a, b) => b.amount - a.amount).slice(0, 8),
@@ -177,6 +239,13 @@ export function ReportsPage() {
     const dayCount = Math.max(1, Math.floor((elapsedEnd - +from) / 86_400_000) + 1)
     return totals.expense / dayCount
   }, [from, to, now, totals.expense])
+
+  // Avg/day for the previous period spreads over its full length (it's fully elapsed).
+  const prevAvgDaily = useMemo(() => {
+    if (!prevResolved.from || !prevResolved.to) return 0
+    const days = Math.max(1, Math.round((+new Date(prevResolved.to) - +new Date(prevResolved.from)) / 86_400_000))
+    return prevTotals.expense / days
+  }, [prevResolved.from, prevResolved.to, prevTotals.expense])
 
   function exportCsv() {
     const rows: (string | number)[][] = [
@@ -210,19 +279,30 @@ export function ReportsPage() {
             {format(from, 'd MMM yyyy')} – {format(to, 'd MMM yyyy')} · {base}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={exportCsv}
-          disabled={baseTxns.length === 0}
-          className="inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-surface px-4 text-sm font-semibold text-foreground shadow-sm transition hover:bg-surface-muted disabled:opacity-50"
-        >
-          <Download className="h-4 w-4" />
-          Export CSV
-        </button>
+        <div className="flex items-center gap-2 print:hidden">
+          <button
+            type="button"
+            onClick={() => window.print()}
+            disabled={baseTxns.length === 0}
+            className="inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-surface px-4 text-sm font-semibold text-foreground shadow-sm transition hover:bg-surface-muted disabled:opacity-50"
+          >
+            <Printer className="h-4 w-4" />
+            <span className="hidden sm:inline">Print / PDF</span>
+          </button>
+          <button
+            type="button"
+            onClick={exportCsv}
+            disabled={baseTxns.length === 0}
+            className="inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-surface px-4 text-sm font-semibold text-foreground shadow-sm transition hover:bg-surface-muted disabled:opacity-50"
+          >
+            <Download className="h-4 w-4" />
+            <span className="hidden sm:inline">Export CSV</span>
+          </button>
+        </div>
       </header>
 
       {/* Range selector */}
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-surface/95 p-4 shadow-sm">
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-surface/95 p-4 shadow-sm print:hidden">
         <Select
           value={preset}
           onChange={(e) => setPreset(e.target.value as DatePreset)}
@@ -272,19 +352,33 @@ export function ReportsPage() {
         <div className="space-y-5">
           {/* Summary cards */}
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <Stat label="Income" value={formatMoney(totals.income, base, { signDisplay: 'never' })} tone="positive" icon={TrendingUp} />
-            <Stat label="Expenses" value={formatMoney(totals.expense, base, { signDisplay: 'never' })} tone="negative" icon={TrendingDown} />
+            <Stat
+              label="Income"
+              value={formatMoney(totals.income, base, { signDisplay: 'never' })}
+              tone="positive"
+              icon={TrendingUp}
+              delta={hasComparison ? deltaFor(totals.income, prevTotals.income, true) : undefined}
+            />
+            <Stat
+              label="Expenses"
+              value={formatMoney(totals.expense, base, { signDisplay: 'never' })}
+              tone="negative"
+              icon={TrendingDown}
+              delta={hasComparison ? deltaFor(totals.expense, prevTotals.expense, false) : undefined}
+            />
             <Stat
               label="Net"
               value={formatMoney(totals.net, base, { signDisplay: 'always' })}
               tone={totals.net >= 0 ? 'positive' : 'negative'}
               icon={Wallet}
+              delta={hasComparison ? deltaFor(totals.net, prevTotals.net, true) : undefined}
             />
             <Stat
               label="Avg / day spend"
               value={formatMoney(Math.round(avgDailySpend), base, { signDisplay: 'never' })}
               tone="neutral"
               icon={BarChart3}
+              delta={hasComparison ? deltaFor(avgDailySpend, prevAvgDaily, false) : undefined}
             />
           </div>
 
@@ -372,6 +466,14 @@ export function ReportsPage() {
             </div>
           </Card>
 
+          {/* Spending calendar (daily heatmap) */}
+          <Card className="p-5">
+            <p className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              <CalendarDays className="h-3.5 w-3.5" /> Spending calendar
+            </p>
+            <CalendarHeatmap data={heatmap} from={from} to={to} base={base} />
+          </Card>
+
           {/* Category breakdown */}
           <Card className="p-5">
             <div className="mb-4 flex items-center justify-between">
@@ -384,7 +486,10 @@ export function ReportsPage() {
                   <button
                     key={k}
                     type="button"
-                    onClick={() => setBreakdownKind(k)}
+                    onClick={() => {
+                      setBreakdownKind(k)
+                      setExpandedCat(null)
+                    }}
                     className={cn(
                       'px-3 py-1.5 transition',
                       breakdownKind === k
@@ -440,36 +545,86 @@ export function ReportsPage() {
                   </div>
                 </div>
 
-                <ul className="space-y-2.5">
-                  {breakdown.slice(0, 8).map((s) => (
-                    <li key={s.id} className="flex items-center gap-3">
-                      <span
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-                        style={{ backgroundColor: `${s.color}20`, color: s.color }}
-                      >
-                        <CategoryIcon name={s.icon} className="h-4 w-4" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-baseline justify-between gap-2">
-                          <span className="truncate text-sm font-semibold text-foreground">{s.name}</span>
-                          <span className="font-numeric text-sm font-bold text-foreground">
-                            {formatMoney(s.total, base, { signDisplay: 'never' })}
+                <ul className="space-y-1">
+                  {breakdown.slice(0, 8).map((s) => {
+                    const drillable = s.children.length > 0 || catsWithTags.has(s.id)
+                    const open = expandedCat === s.id
+                    return (
+                      <li key={s.id}>
+                        <button
+                          type="button"
+                          disabled={!drillable}
+                          onClick={() => setExpandedCat(open ? null : s.id)}
+                          className={cn(
+                            'flex w-full items-center gap-3 rounded-xl px-1.5 py-1.5 text-left transition',
+                            drillable ? 'hover:bg-surface-muted' : 'cursor-default',
+                          )}
+                          aria-expanded={drillable ? open : undefined}
+                        >
+                          <span
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                            style={{ backgroundColor: `${s.color}20`, color: s.color }}
+                          >
+                            <CategoryIcon name={s.icon} className="h-4 w-4" />
                           </span>
-                        </div>
-                        <div className="mt-1 flex items-center gap-2">
-                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-muted">
-                            <div
-                              className="h-full rounded-full"
-                              style={{ width: `${s.pct}%`, backgroundColor: s.color }}
-                            />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-baseline justify-between gap-2">
+                              <span className="truncate text-sm font-semibold text-foreground">{s.name}</span>
+                              <span className="font-numeric text-sm font-bold text-foreground">
+                                {formatMoney(s.total, base, { signDisplay: 'never' })}
+                              </span>
+                            </div>
+                            <div className="mt-1 flex items-center gap-2">
+                              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-muted">
+                                <div
+                                  className="h-full rounded-full"
+                                  style={{ width: `${s.pct}%`, backgroundColor: s.color }}
+                                />
+                              </div>
+                              <span className="w-9 text-right text-[11px] font-semibold text-muted-foreground">
+                                {s.pct.toFixed(0)}%
+                              </span>
+                            </div>
                           </div>
-                          <span className="w-9 text-right text-[11px] font-semibold text-muted-foreground">
-                            {s.pct.toFixed(0)}%
-                          </span>
-                        </div>
-                      </div>
-                    </li>
-                  ))}
+                          <ChevronRight
+                            className={cn(
+                              'h-4 w-4 shrink-0 text-muted-foreground transition-transform',
+                              !drillable && 'invisible',
+                              open && 'rotate-90',
+                            )}
+                          />
+                        </button>
+
+                        {open && (
+                          <div className="ml-11 mt-1 mb-2 space-y-3 border-l border-border pl-3">
+                            {s.children.length > 0 && (
+                              <div className="space-y-2">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                                  Subcategories
+                                </p>
+                                {s.children.map((c) => (
+                                  <DrillBar key={c.id} label={c.name} value={c.total} pct={c.pct} color={c.color} base={base} />
+                                ))}
+                              </div>
+                            )}
+                            {drillTags.length > 0 && (
+                              <div className="space-y-2">
+                                <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                                  <TagIcon className="h-3 w-3" /> Tags
+                                </p>
+                                {drillTags.map((t) => (
+                                  <DrillBar key={t.id} label={t.name} value={t.total} pct={t.pct} color={t.color} base={base} />
+                                ))}
+                              </div>
+                            )}
+                            {s.children.length === 0 && drillTags.length === 0 && (
+                              <p className="text-xs text-muted-foreground">No subcategories or tags here.</p>
+                            )}
+                          </div>
+                        )}
+                      </li>
+                    )
+                  })}
                 </ul>
               </div>
             )}
@@ -548,16 +703,31 @@ function LegendDot({ color, label }: { color: string; label: string }) {
   )
 }
 
+interface Delta {
+  pct: number
+  /** Whether this direction of change is good (drives the color). */
+  good: boolean
+}
+
+/** Build a vs-previous delta, or undefined when there's no comparable baseline. */
+function deltaFor(cur: number, prev: number, higherIsBetter: boolean): Delta | undefined {
+  const pct = pctChange(cur, prev)
+  if (pct == null) return undefined
+  return { pct, good: higherIsBetter ? pct >= 0 : pct <= 0 }
+}
+
 function Stat({
   label,
   value,
   tone,
   icon: Icon,
+  delta,
 }: {
   label: string
   value: string
   tone: 'positive' | 'negative' | 'neutral'
   icon: React.ComponentType<{ className?: string }>
+  delta?: Delta
 }) {
   const toneCls =
     tone === 'positive'
@@ -577,8 +747,143 @@ function Stat({
         <p className="mt-0.5 truncate font-numeric text-base font-extrabold leading-tight text-foreground">
           {value}
         </p>
+        {delta && (
+          <p
+            className={cn(
+              'mt-0.5 flex items-center gap-1 text-[11px] font-bold',
+              delta.good ? 'text-positive' : 'text-negative',
+            )}
+          >
+            <span>
+              {delta.pct >= 0 ? '▲' : '▼'} {Math.abs(delta.pct).toFixed(0)}%
+            </span>
+            <span className="font-medium text-muted-foreground">vs prev</span>
+          </p>
+        )}
       </div>
     </Card>
+  )
+}
+
+/** A labelled progress bar used in the category drill-down (subcategories / tags). */
+function DrillBar({
+  label,
+  value,
+  pct,
+  color,
+  base,
+}: {
+  label: string
+  value: number
+  pct: number
+  color: string
+  base: string
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="truncate text-xs font-semibold text-foreground">{label}</span>
+          <span className="font-numeric text-xs font-bold text-foreground">
+            {formatMoney(value, base, { signDisplay: 'never' })}
+          </span>
+        </div>
+        <div className="mt-1 h-1 overflow-hidden rounded-full bg-surface-muted">
+          <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const HEAT_LEVELS = [0.16, 0.4, 0.62, 0.85, 1] // opacity steps, low→high spend
+
+/**
+ * GitHub-style daily-spend grid: weeks as columns, Mon→Sun as rows, each cell
+ * shaded by that day's spend relative to the period's busiest day.
+ */
+function CalendarHeatmap({
+  data,
+  from,
+  to,
+  base,
+}: {
+  data: Map<string, number>
+  from: Date
+  to: Date
+  base: string
+}) {
+  const { weeks, max, fromKey, toKey } = useMemo(() => {
+    const start = startOfWeek(from, { weekStartsOn: 1 })
+    const end = endOfWeek(to, { weekStartsOn: 1 })
+    const days = eachDayOfInterval({ start, end })
+    const cols: Date[][] = []
+    for (let i = 0; i < days.length; i += 7) cols.push(days.slice(i, i + 7))
+    return {
+      weeks: cols,
+      max: Math.max(1, ...data.values()),
+      fromKey: format(from, 'yyyy-MM-dd'),
+      toKey: format(to, 'yyyy-MM-dd'),
+    }
+  }, [data, from, to])
+
+  return (
+    <div className="flex gap-2 overflow-x-auto pb-1">
+      {/* Weekday labels */}
+      <div className="mt-[18px] flex shrink-0 flex-col gap-[3px] pr-1 text-[9px] font-semibold text-muted-foreground">
+        {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
+          <span key={i} className="flex h-[13px] items-center leading-none">
+            {i % 2 === 0 ? d : ''}
+          </span>
+        ))}
+      </div>
+
+      <div className="min-w-0">
+        {/* Month labels above each week column */}
+        <div className="mb-1 flex gap-[3px]">
+          {weeks.map((week, i) => (
+            <span key={i} className="w-[13px] text-[9px] font-semibold text-muted-foreground">
+              {week[0].getDate() <= 7 ? format(week[0], 'MMM') : ''}
+            </span>
+          ))}
+        </div>
+
+        <div className="flex gap-[3px]">
+          {weeks.map((week, i) => (
+            <div key={i} className="flex flex-col gap-[3px]">
+              {week.map((day) => {
+                const key = format(day, 'yyyy-MM-dd')
+                const inRange = key >= fromKey && key <= toKey
+                const value = data.get(key) ?? 0
+                const level = value > 0 ? HEAT_LEVELS[Math.min(4, Math.ceil((value / max) * 5) - 1)] : 0
+                return (
+                  <div
+                    key={key}
+                    title={inRange ? `${format(day, 'd MMM yyyy')}: ${formatMoney(value, base, { signDisplay: 'never' })}` : undefined}
+                    className={cn('h-[13px] w-[13px] rounded-[3px]', !inRange && 'opacity-0')}
+                    style={{
+                      backgroundColor: value > 0 ? 'var(--primary)' : 'var(--surface-muted)',
+                      opacity: !inRange ? 0 : value > 0 ? level : 1,
+                    }}
+                  />
+                )
+              })}
+            </div>
+          ))}
+        </div>
+
+        {/* Legend */}
+        <div className="mt-3 flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground">
+          <span>Less</span>
+          <span className="h-[11px] w-[11px] rounded-[3px]" style={{ backgroundColor: 'var(--surface-muted)' }} />
+          {HEAT_LEVELS.map((o) => (
+            <span key={o} className="h-[11px] w-[11px] rounded-[3px]" style={{ backgroundColor: 'var(--primary)', opacity: o }} />
+          ))}
+          <span>More</span>
+        </div>
+      </div>
+    </div>
   )
 }
 

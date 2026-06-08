@@ -1,6 +1,7 @@
 import { eachDayOfInterval, eachMonthOfInterval, endOfDay, endOfMonth, format } from 'date-fns'
-import type { Category, Transaction, TransactionSplit } from '@/types/db'
+import type { Category, FxRate, Tag, Transaction, TransactionSplit } from '@/types/db'
 import { categoryContributions } from '@/features/transactions/splits'
+import { buildRateTable, convertMinor } from '@/features/fx/fx'
 
 /** Income / expense / net totals (minor units) over a set of transactions. */
 export interface PeriodTotals {
@@ -18,6 +19,34 @@ export function periodTotals(txns: Transaction[]): PeriodTotals {
     else if (tx.type === 'expense') expense += tx.amount
   }
   return { income, expense, net: income - expense, count: txns.length }
+}
+
+/**
+ * Income/expense/net totals valued in the base currency — for the comparison
+ * (previous) period, where we only need headline numbers, not splits. Uses each
+ * transaction's frozen snapshot when present, else the latest rate; transfers
+ * and unvaluable rows are skipped (mirrors how the page values the current set).
+ */
+export function totalsInBase(txns: Transaction[], base: string, fxRates: FxRate[]): PeriodTotals {
+  const table = buildRateTable(fxRates, base)
+  let income = 0
+  let expense = 0
+  let count = 0
+  for (const tx of txns) {
+    if (tx.type === 'transfer') continue
+    const bv = tx.base_amount != null ? tx.base_amount : convertMinor(tx.amount, tx.currency, base, table)
+    if (bv == null) continue
+    if (tx.type === 'income') income += bv
+    else expense += bv
+    count++
+  }
+  return { income, expense, net: income - expense, count }
+}
+
+/** Signed percentage change from `prev` to `cur`; null when there's no baseline. */
+export function pctChange(cur: number, prev: number): number | null {
+  if (prev === 0) return cur === 0 ? 0 : null
+  return ((cur - prev) / Math.abs(prev)) * 100
 }
 
 export type Granularity = 'day' | 'month'
@@ -205,4 +234,143 @@ export function payeeBreakdown(
     count: v.count,
     pct: total ? (v.total / total) * 100 : 0,
   })).sort((a, b) => b.total - a.total)
+}
+
+/** Per-day spend (or income) keyed by yyyy-MM-dd — drives the calendar heatmap. */
+export function dailyTotals(
+  txns: Transaction[],
+  kind: 'expense' | 'income',
+): Map<string, number> {
+  const byDay = new Map<string, number>()
+  for (const tx of txns) {
+    if (tx.type !== kind) continue
+    const key = format(new Date(tx.occurred_at), 'yyyy-MM-dd')
+    byDay.set(key, (byDay.get(key) ?? 0) + tx.amount)
+  }
+  return byDay
+}
+
+/** Resolve a category to its top-level ancestor id (one level of nesting in this app). */
+export function topCategoryId(catId: string | null, catMap: Map<string, Category>): string | null {
+  if (!catId) return null
+  const c = catMap.get(catId)
+  if (c?.parent_id && catMap.has(c.parent_id)) return c.parent_id
+  return catId
+}
+
+export interface CategoryNode extends CategorySlice {
+  /** Sub-breakdown by child category (pct relative to this node). Empty = not drillable. */
+  children: CategorySlice[]
+}
+
+const DIRECT = '__direct'
+
+/**
+ * Category breakdown rolled up to top-level parents, each carrying a per-child
+ * sub-breakdown so the UI can drill in. Amounts booked on a parent directly
+ * (not a subcategory) surface as a "Direct" child only when the parent also has
+ * subcategory activity. Splits are expanded; ranked high→low like {@link categoryBreakdown}.
+ */
+export function categoryTree(
+  txns: Transaction[],
+  categories: Category[],
+  kind: 'expense' | 'income',
+  splitsByTx: Record<string, TransactionSplit[]> = {},
+): CategoryNode[] {
+  const catMap = new Map(categories.map((c) => [c.id, c]))
+  const topTotals = new Map<string, number>()
+  const childTotals = new Map<string, Map<string, number>>() // topId → (leafId → amount)
+  let total = 0
+
+  const add = (topId: string, leafId: string, amount: number) => {
+    total += amount
+    topTotals.set(topId, (topTotals.get(topId) ?? 0) + amount)
+    const kids = childTotals.get(topId) ?? new Map<string, number>()
+    kids.set(leafId, (kids.get(leafId) ?? 0) + amount)
+    childTotals.set(topId, kids)
+  }
+
+  for (const tx of txns) {
+    if (tx.type !== kind) continue
+    for (const { categoryId, amount } of categoryContributions(tx, splitsByTx)) {
+      if (!categoryId) {
+        add('__uncat', '__uncat', amount)
+        continue
+      }
+      const top = topCategoryId(categoryId, catMap) ?? categoryId
+      const leaf = top === categoryId ? DIRECT : categoryId
+      add(top, leaf, amount)
+    }
+  }
+
+  const sliceFor = (id: string, amount: number, totalForPct: number): CategorySlice => {
+    if (id === '__uncat')
+      return { id, name: 'Uncategorized', color: UNCATEGORIZED, icon: null, total: amount, pct: totalForPct ? (amount / totalForPct) * 100 : 0 }
+    if (id === DIRECT)
+      return { id, name: 'Direct', color: UNCATEGORIZED, icon: null, total: amount, pct: totalForPct ? (amount / totalForPct) * 100 : 0 }
+    const c = catMap.get(id)
+    return {
+      id,
+      name: c?.name ?? 'Unknown',
+      color: c?.color ?? UNCATEGORIZED,
+      icon: c?.icon ?? null,
+      total: amount,
+      pct: totalForPct ? (amount / totalForPct) * 100 : 0,
+    }
+  }
+
+  const nodes: CategoryNode[] = []
+  for (const [topId, amt] of topTotals) {
+    const kids = childTotals.get(topId) ?? new Map()
+    // Only a real breakdown when there's more than one part (a lone "Direct" child is just the parent itself).
+    const drillable = kids.size > 1 || (kids.size === 1 && !kids.has(DIRECT))
+    const children = drillable
+      ? Array.from(kids, ([leafId, leafAmt]) => sliceFor(leafId, leafAmt, amt)).sort((a, b) => b.total - a.total)
+      : []
+    nodes.push({ ...sliceFor(topId, amt, total), children })
+  }
+  return nodes.sort((a, b) => b.total - a.total)
+}
+
+export interface TagSlice {
+  id: string
+  name: string
+  color: string
+  total: number
+  pct: number
+}
+
+/**
+ * Spend (or income) by tag within a single top-level category — the tag half of
+ * the category drill-down. Attributed at whole-transaction level via
+ * `tx.category_id` (split transactions, which carry no single category, are
+ * skipped here); untagged transactions are dropped.
+ */
+export function tagBreakdownForCategory(
+  txns: Transaction[],
+  topId: string,
+  kind: 'expense' | 'income',
+  categories: Category[],
+  tags: Tag[],
+  tagsByTx: Record<string, string[]>,
+): TagSlice[] {
+  const catMap = new Map(categories.map((c) => [c.id, c]))
+  const tagMap = new Map(tags.map((t) => [t.id, t]))
+  const byTag = new Map<string, number>()
+  let total = 0
+  for (const tx of txns) {
+    if (tx.type !== kind) continue
+    const top = topId === '__uncat' ? topCategoryId(tx.category_id, catMap) ?? '__uncat' : topCategoryId(tx.category_id, catMap)
+    if (top !== topId) continue
+    const tagIds = tagsByTx[tx.id]
+    if (!tagIds?.length) continue
+    for (const id of tagIds) {
+      total += tx.amount
+      byTag.set(id, (byTag.get(id) ?? 0) + tx.amount)
+    }
+  }
+  return Array.from(byTag, ([id, amt]) => {
+    const t = tagMap.get(id)
+    return { id, name: t?.name ?? 'Tag', color: t?.color ?? UNCATEGORIZED, total: amt, pct: total ? (amt / total) * 100 : 0 }
+  }).sort((a, b) => b.total - a.total)
 }

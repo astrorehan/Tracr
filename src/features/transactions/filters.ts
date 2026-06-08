@@ -142,6 +142,19 @@ export function resolveDateRange(f: DateRangeInput): { from?: string; to?: strin
   }
 }
 
+/**
+ * The equal-length window immediately preceding a resolved range — for
+ * period-over-period comparison. Returns {} when the range is open-ended
+ * (no baseline to compare against, e.g. "All time").
+ */
+export function previousDateRange(r: { from?: string; to?: string }): { from?: string; to?: string } {
+  if (!r.from || !r.to) return {}
+  const fromMs = +new Date(r.from)
+  const dur = +new Date(r.to) - fromMs
+  const prevTo = fromMs - 1
+  return { from: new Date(prevTo - dur).toISOString(), to: new Date(prevTo).toISOString() }
+}
+
 /** Count of "structured" filters in effect (search + sort are surfaced separately). */
 export function activeFilterCount(f: TxFilter): number {
   let n = 0
