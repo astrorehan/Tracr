@@ -60,7 +60,7 @@ export function AppLayout() {
   return (
     <div className="app-atmosphere relative flex min-h-screen w-full bg-background text-foreground">
       {/* ───────────────────────── Desktop / tablet sidebar ───────────────────────── */}
-      <aside className="sticky top-0 z-30 hidden h-screen w-[84px] shrink-0 flex-col border-r border-border bg-surface/70 px-4 py-5 backdrop-blur-xl sm:flex lg:w-[260px]">
+      <aside className="sticky top-0 z-30 hidden h-screen w-[84px] shrink-0 flex-col border-r border-border bg-surface/70 px-4 py-5 backdrop-blur-xl sm:flex lg:w-[260px] print:hidden">
         {/* Brand */}
         <Link to="/" className="group mb-2 flex items-center gap-3 px-1.5 py-2">
           <img
@@ -94,7 +94,7 @@ export function AppLayout() {
       {/* ───────────────────────── Main column ───────────────────────── */}
       <div className="relative z-10 flex min-w-0 flex-1 flex-col">
         {/* Top utility header */}
-        <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between border-b border-border bg-surface/70 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
+        <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between border-b border-border bg-surface/70 px-4 backdrop-blur-xl sm:px-6 lg:px-8 print:hidden">
           {/* Left: mobile brand · desktop breadcrumb */}
           <div className="flex items-center gap-2.5">
             <img
@@ -157,7 +157,7 @@ export function AppLayout() {
       </div>
 
       {/* ───────────────────────── Mobile floating tab bar ───────────────────────── */}
-      <nav className="glass-nav fixed bottom-5 left-1/2 z-40 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-2xl border border-border/80 p-1.5 shadow-lg sm:hidden">
+      <nav className="glass-nav fixed bottom-5 left-1/2 z-40 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-2xl border border-border/80 p-1.5 shadow-lg sm:hidden print:hidden">
         <div className="grid grid-cols-5 items-center justify-items-center">
           <MobileNavLink to="/" label="Home" icon={LayoutDashboard} />
           <MobileNavLink to="/accounts" label="Accounts" icon={Wallet} />

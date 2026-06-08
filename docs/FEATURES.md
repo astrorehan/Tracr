@@ -80,7 +80,11 @@ Dedicated **Reports** page (`/reports`, sidebar + Dashboard link) with a date-ra
 - Pure client-side aggregation in `features/reports/reports.ts` — no schema change
 - ✅ Top payees/merchants (per §1 payee field) — "Top payees/sources" card on Reports + CSV
 - ✅ **Net-worth trend** over time (area chart, headline card) — no snapshots needed: valued at latest rates and computed *backwards* from current net worth by removing each transaction's base-valued effect after every bucket boundary (`netWorthSeries`), so the final point equals the Dashboard net worth. Honors exclude_from_stats + archived; liabilities subtract automatically. Shows current net worth + Δ over the period
-- ⬜ Still TODO: period-over-period comparison, calendar heatmap, PDF export, drill-into-subcategory/tag
+- ✅ **Period-over-period comparison** — each summary card (income/expense/net/avg-per-day) shows a Δ% vs the previous equal-length period, color-coded by whether the move is good (income↑/expense↓). Compares the same *elapsed* span (clamps a partial current period at "now") so mid-month isn't measured against a full last month. `previousDateRange` (filters) + `totalsInBase`/`pctChange` (reports); hidden for open-ended "All time"
+- ✅ **Calendar heatmap** — GitHub-style daily-spend grid (`dailyTotals`): weeks as columns, Mon→Sun rows, each cell shaded by that day's spend vs the period's busiest day; hover for the date + amount. Spending only
+- ✅ **Drill into subcategory/tag** — the category breakdown now rolls up to top-level parents (`categoryTree`) and each row expands to reveal its subcategory split + the tags used within it (`tagBreakdownForCategory`). Rows are drillable when they have children or tagged transactions
+- ✅ **PDF export** — "Print / PDF" button uses the browser print dialog (Save as PDF); a `@media print` block hides app chrome/controls, keeps chart colors (`print-color-adjust`), and avoids splitting cards across pages. No new dependency
+- ⬜ Still TODO: calendar *transactions* view (vs the spend heatmap above), multi-currency report conversion drill
 
 ## 7. Accounts — depth (Tier 2)
 | Feature | Status | Notes |
