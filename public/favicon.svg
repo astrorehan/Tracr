@@ -1,9 +1,11 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="512" height="512" rx="112" fill="#0f172a"/>
-  <rect x="96" y="160" width="320" height="224" rx="36" fill="#1e293b" stroke="#334155" stroke-width="8"/>
-  <rect x="96" y="208" width="320" height="40" fill="#334155"/>
-  <circle cx="344" cy="304" r="28" fill="#10b981"/>
-  <path d="M168 336 L216 288 L256 320 L328 240" stroke="#10b981" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-  <circle cx="168" cy="336" r="12" fill="#10b981"/>
-  <circle cx="328" cy="240" r="12" fill="#10b981"/>
+  <defs>
+    <linearGradient id="amber" x1="120" y1="360" x2="384" y2="168" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f59e0b"/>
+      <stop offset="1" stop-color="#fbbf24"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#1a140c"/>
+  <path d="M120 352 L208 292 L288 326 L384 168" stroke="url(#amber)" stroke-width="40" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <circle cx="384" cy="168" r="30" fill="#fde68a"/>
 </svg>
