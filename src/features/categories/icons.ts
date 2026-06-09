@@ -37,6 +37,7 @@ import {
   Wifi,
   Baby,
   Dog,
+  Scale,
   Ellipsis,
   type LucideIcon,
 } from 'lucide-react'
@@ -83,6 +84,7 @@ export const CATEGORY_ICONS: { name: string; Icon: LucideIcon }[] = [
   { name: 'wifi', Icon: Wifi },
   { name: 'baby', Icon: Baby },
   { name: 'dog', Icon: Dog },
+  { name: 'scale', Icon: Scale },
   { name: 'plus', Icon: Plus },
   { name: 'ellipsis', Icon: Ellipsis },
 ]
