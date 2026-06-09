@@ -1,7 +1,57 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { qk } from '@/lib/queryClient'
-import type { Category, NewCategory } from '@/types/db'
+import type { Category, CategoryKind, NewCategory } from '@/types/db'
+
+/**
+ * Name of the auto-managed category that holds balance adjustments created by
+ * account reconciliation. Kept as a constant so the reconcile flow can find-or-
+ * create it (one per kind) and so reports can recognise these corrections.
+ */
+export const ADJUSTMENT_CATEGORY_NAME = 'Balance Adjustment'
+
+/**
+ * Find the "Balance Adjustment" category for a given direction, creating it on
+ * first use. Adjustments are income (balance was higher than recorded) or
+ * expense (lower), so there is one category per kind. Lets reconciliation file
+ * corrections under a clear category instead of leaving them uncategorized.
+ */
+export function useEnsureAdjustmentCategory() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (kind: CategoryKind): Promise<string> => {
+      const { data: userData } = await supabase.auth.getUser()
+      const userId = userData.user?.id
+      if (!userId) throw new Error('Not authenticated')
+
+      const { data: existing, error: findErr } = await supabase
+        .from('categories')
+        .select('id')
+        .eq('name', ADJUSTMENT_CATEGORY_NAME)
+        .eq('kind', kind)
+        .limit(1)
+        .maybeSingle()
+      if (findErr) throw findErr
+      if (existing) return (existing as { id: string }).id
+
+      const { data, error } = await supabase
+        .from('categories')
+        .insert({
+          user_id: userId,
+          name: ADJUSTMENT_CATEGORY_NAME,
+          kind,
+          parent_id: null,
+          icon: 'scale',
+          color: '#8a7c66',
+        })
+        .select('id')
+        .single()
+      if (error) throw error
+      return (data as { id: string }).id
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.categories }),
+  })
+}
 
 export function useCategories() {
   return useQuery({

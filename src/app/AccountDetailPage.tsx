@@ -11,7 +11,7 @@ import { useAuth } from '@/features/auth/useAuth'
 import { useAccounts, useArchiveAccount, useBalances } from '@/features/accounts/api'
 import { useFxRates } from '@/features/fx/api'
 import { buildRateTable, convertMinor } from '@/features/fx/fx'
-import { useCategories } from '@/features/categories/api'
+import { useCategories, useEnsureAdjustmentCategory } from '@/features/categories/api'
 import { useDeleteTransaction, useCreateTransaction, useTransactions } from '@/features/transactions/api'
 import { useTransactionSplits } from '@/features/transactions/splits'
 import { TransactionRow } from '@/features/transactions/TransactionRow'
@@ -44,12 +44,14 @@ export function AccountDetailPage() {
   const { data: splitsByTx = {} } = useTransactionSplits()
 
   const create = useCreateTransaction()
+  const ensureAdjustmentCategory = useEnsureAdjustmentCategory()
   const del = useDeleteTransaction()
   const archive = useArchiveAccount()
 
   const [editOpen, setEditOpen] = useState(false)
   const [reconcileOpen, setReconcileOpen] = useState(false)
   const [actual, setActual] = useState('')
+  const [reason, setReason] = useState('')
 
   const account = accounts.find((a) => a.id === id)
   const accountMap = useMemo(() => indexById(accounts), [accounts])
@@ -84,33 +86,41 @@ export function AccountDetailPage() {
       ? null
       : convertMinor(balance, account.currency, base, buildRateTable(fxRates, base))
 
-  function reconcile() {
+  function closeReconcile() {
+    setReconcileOpen(false)
+    setActual('')
+    setReason('')
+  }
+
+  async function reconcile() {
     if (!account) return
     const actualMinor = amountToMinor(actual, account.currency)
     const diff = actualMinor - balance
     if (diff === 0) {
-      setReconcileOpen(false)
-      setActual('')
+      closeReconcile()
       return
     }
-    create.mutate(
-      {
+    const kind = diff > 0 ? 'income' : 'expense'
+    const trimmed = reason.trim()
+    try {
+      // File the correction under a dedicated category so it stays out of
+      // "Uncategorized" in reports; the optional reason becomes the note.
+      const categoryId = await ensureAdjustmentCategory.mutateAsync(kind)
+      await create.mutateAsync({
         account_id: account.id,
         counter_account_id: null,
-        category_id: null,
-        type: diff > 0 ? 'income' : 'expense',
+        category_id: categoryId,
+        type: kind,
         amount: Math.abs(diff),
         currency: account.currency,
         occurred_at: new Date().toISOString(),
-        note: 'Balance adjustment',
-      },
-      {
-        onSuccess: () => {
-          setReconcileOpen(false)
-          setActual('')
-        },
-      },
-    )
+        note: trimmed || 'Balance adjustment',
+      })
+      closeReconcile()
+    } catch {
+      // Mutation errors surface via the hooks' state; leave the panel open so
+      // the entered values aren't lost and the user can retry.
+    }
   }
 
   const diffPreview = actual.trim() ? amountToMinor(actual, account.currency) - balance : 0
@@ -212,7 +222,11 @@ export function AccountDetailPage() {
                 })()}
             </div>
           </div>
-          <Button size="sm" variant="secondary" onClick={() => setReconcileOpen((v) => !v)}>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => (reconcileOpen ? closeReconcile() : setReconcileOpen(true))}
+          >
             <Scale className="h-3.5 w-3.5" /> Reconcile
           </Button>
         </div>
@@ -259,8 +273,8 @@ export function AccountDetailPage() {
         {reconcileOpen && (
           <div className="space-y-3 border-t border-border bg-surface-muted/40 p-5">
             <p className="text-xs font-medium text-muted-foreground">
-              Enter the real balance from your bank/app. We’ll add an adjustment transaction so Tracr
-              matches it.
+              Enter the real balance from your bank/app. We’ll add an adjustment for the difference
+              — filed under a “Balance Adjustment” category — so Tracr matches it.
             </p>
             <div className="flex flex-wrap items-end gap-3">
               <Field label="Actual balance">
@@ -275,9 +289,16 @@ export function AccountDetailPage() {
                   autoFocus
                 />
               </Field>
-              <Button onClick={reconcile} loading={create.isPending} disabled={!actual.trim()}>
-                Apply
-              </Button>
+              <div className="min-w-[200px] flex-1">
+                <Field label="What changed? (optional)">
+                  <Input
+                    type="text"
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    placeholder="e.g. cash tips, ATM fee, forgot to log groceries"
+                  />
+                </Field>
+              </div>
             </div>
             {actual.trim() !== '' && (
               <p className="text-xs font-semibold">
@@ -292,6 +313,13 @@ export function AccountDetailPage() {
                 )}
               </p>
             )}
+            <Button
+              onClick={() => void reconcile()}
+              loading={create.isPending || ensureAdjustmentCategory.isPending}
+              disabled={!actual.trim()}
+            >
+              Apply
+            </Button>
           </div>
         )}
       </Card>
