@@ -1,4 +1,4 @@
-import { ArrowDownLeft, ArrowUpRight, ArrowLeftRight, Check, Copy, Paperclip, Split, Trash2 } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, ArrowLeftRight, Check, Copy, Paperclip, Pencil, Split, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { formatMoney } from '@/lib/money'
@@ -21,6 +21,7 @@ interface Props {
   onSelect?: (id: string) => void
   onDelete?: (id: string) => void
   onDuplicate?: (id: string) => void
+  onEdit?: (id: string) => void
 }
 
 export function TransactionRow({
@@ -36,6 +37,7 @@ export function TransactionRow({
   onSelect,
   onDelete,
   onDuplicate,
+  onEdit,
 }: Props) {
   const account = accounts[tx.account_id]
   const counter = tx.counter_account_id ? accounts[tx.counter_account_id] : undefined
@@ -123,6 +125,15 @@ export function TransactionRow({
           >
             <Paperclip className="h-3.5 w-3.5" />
             <span className="font-numeric text-[11px] font-bold">{attachmentCount}</span>
+          </button>
+        )}
+        {onEdit && !selectable && (
+          <button
+            onClick={() => onEdit(tx.id)}
+            className="rounded-xl p-1.5 text-muted-foreground opacity-0 hover:text-primary hover:bg-primary/10 transition-all duration-200 group-hover:opacity-100"
+            aria-label="Edit transaction"
+          >
+            <Pencil className="h-4 w-4" />
           </button>
         )}
         {onDuplicate && !selectable && (

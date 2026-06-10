@@ -20,13 +20,17 @@ import { useSetTransactionSplits } from './splits'
 import { useUploadAttachments } from '@/features/attachments/api'
 import { useRules } from '@/features/rules/api'
 import { evaluateRules } from '@/features/rules/engine'
-import { useCreateTransaction, usePayees } from './api'
-import type { TransactionType } from '@/types/db'
+import { useCreateTransaction, useUpdateTransaction, usePayees } from './api'
+import type { Transaction, TransactionSplit, TransactionType } from '@/types/db'
 
 interface Props {
   open: boolean
   onClose: () => void
   defaultAccountId?: string
+  transaction?: Transaction
+  initialTagIds?: string[]
+  initialSplits?: TransactionSplit[]
+  initialCounterAmount?: string
 }
 
 const TYPES: { value: TransactionType; label: string }[] = [
@@ -51,11 +55,33 @@ function todayLocal() {
   return new Date(d.getTime() - off * 60_000).toISOString().slice(0, 10)
 }
 
-export function TransactionForm({ open, onClose, defaultAccountId }: Props) {
-  // Modal unmounts its children when closed, so the body resets on every open.
+function toLocalDate(isoString: string) {
+  const d = new Date(isoString)
+  const off = d.getTimezoneOffset()
+  return new Date(d.getTime() - off * 60_000).toISOString().slice(0, 10)
+}
+
+export function TransactionForm({
+  open,
+  onClose,
+  defaultAccountId,
+  transaction,
+  initialTagIds,
+  initialSplits,
+  initialCounterAmount,
+}: Props) {
   return (
-    <Modal open={open} onClose={onClose} title="Add transaction">
-      {open && <TransactionFormBody onClose={onClose} defaultAccountId={defaultAccountId} />}
+    <Modal open={open} onClose={onClose} title={transaction ? 'Edit transaction' : 'Add transaction'}>
+      {open && (
+        <TransactionFormBody
+          onClose={onClose}
+          defaultAccountId={defaultAccountId}
+          transaction={transaction}
+          initialTagIds={initialTagIds}
+          initialSplits={initialSplits}
+          initialCounterAmount={initialCounterAmount}
+        />
+      )}
     </Modal>
   )
 }
@@ -63,9 +89,17 @@ export function TransactionForm({ open, onClose, defaultAccountId }: Props) {
 function TransactionFormBody({
   onClose,
   defaultAccountId,
+  transaction,
+  initialTagIds = [],
+  initialSplits = [],
+  initialCounterAmount = '',
 }: {
   onClose: () => void
   defaultAccountId?: string
+  transaction?: Transaction
+  initialTagIds?: string[]
+  initialSplits?: TransactionSplit[]
+  initialCounterAmount?: string
 }) {
   const navigate = useNavigate()
   const { profile } = useAuth()
@@ -75,36 +109,47 @@ function TransactionFormBody({
   const { data: fxRates = [] } = useFxRates()
   const { data: payeeSuggestions = [] } = usePayees()
   const { data: rules = [] } = useRules()
+  const editing = !!transaction
   const create = useCreateTransaction()
+  const update = useUpdateTransaction()
   const setTags = useSetTransactionTags()
   const setSplits = useSetTransactionSplits()
   const uploadFiles = useUploadAttachments()
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const [type, setType] = useState<TransactionType>('expense')
-  const [accountId, setAccountId] = useState(defaultAccountId ?? accounts[0]?.id ?? '')
-  const [counterId, setCounterId] = useState('')
-  const [categoryId, setCategoryId] = useState('')
-  const [amount, setAmount] = useState('')
-  const [date, setDate] = useState(todayLocal())
-  const [payee, setPayee] = useState('')
-  const [note, setNote] = useState('')
-  const [tagIds, setTagIds] = useState<string[]>([])
+  const [type, setType] = useState<TransactionType>(transaction?.type ?? 'expense')
+  const [accountId, setAccountId] = useState(
+    transaction?.account_id ?? (defaultAccountId ?? accounts[0]?.id ?? ''),
+  )
+  const [counterId, setCounterId] = useState(transaction?.counter_account_id ?? '')
+  const [categoryId, setCategoryId] = useState(transaction?.category_id ?? '')
+  const [amount, setAmount] = useState(
+    transaction ? String(fromMinorUnits(transaction.amount, transaction.currency)) : '',
+  )
+  const [date, setDate] = useState(transaction ? toLocalDate(transaction.occurred_at) : todayLocal())
+  const [payee, setPayee] = useState(transaction?.payee ?? '')
+  const [note, setNote] = useState(transaction?.note ?? '')
+  const [tagIds, setTagIds] = useState<string[]>(editing ? initialTagIds : [])
   const [files, setFiles] = useState<File[]>([])
-  const [splitMode, setSplitMode] = useState(false)
-  const [splits, setSplits_] = useState<SplitRow[]>([newRow(), newRow()])
-  const [counterAmount, setCounterAmount] = useState('')
-  const [counterEdited, setCounterEdited] = useState(false)
-  // Rule auto-fill stops touching a field once the user edits it themselves.
-  const [categoryTouched, setCategoryTouched] = useState(false)
-  const [tagsTouched, setTagsTouched] = useState(false)
+  const [splitMode, setSplitMode] = useState(initialSplits.length > 0)
+  const [splits, setSplits_] = useState<SplitRow[]>(
+    initialSplits.length > 0 && transaction
+      ? initialSplits.map((s) =>
+          newRow(s.category_id ?? '', String(fromMinorUnits(s.amount, transaction.currency))),
+        )
+      : [newRow(), newRow()],
+  )
+  const [counterAmount, setCounterAmount] = useState(initialCounterAmount)
+  const [counterEdited, setCounterEdited] = useState(editing && !!initialCounterAmount)
+  const [categoryTouched, setCategoryTouched] = useState(editing)
+  const [tagsTouched, setTagsTouched] = useState(editing)
   const [error, setError] = useState<string | null>(null)
 
   // Fall back to the first account if state is still empty (e.g. accounts
   // loaded after this body mounted).
   const effectiveAccountId = accountId || accounts[0]?.id || ''
   const account = accounts.find((a) => a.id === effectiveAccountId)
-  const currency = account?.currency ?? 'IDR'
+  const currency = account?.currency ?? transaction?.currency ?? 'IDR'
   const symbol = getCurrency(currency).symbol
 
   // Cross-currency transfer: the destination account holds a different currency,
@@ -244,24 +289,45 @@ function TransactionFormBody({
     const occurredAt = new Date(`${date}T${new Date().toTimeString().slice(0, 8)}`).toISOString()
 
     try {
-      const tx = await create.mutateAsync({
-        account_id: effectiveAccountId,
-        counter_account_id: type === 'transfer' ? counterId : null,
-        // A split transaction has no single category; its breakdown lives in splits.
-        category_id: type === 'transfer' || splitting ? null : effectiveCategoryId || null,
-        type,
-        amount: amountMinor,
-        currency,
-        counter_amount: counterAmountMinor,
-        counter_fx_rate: counterFxRate,
-        occurred_at: occurredAt,
-        payee: type === 'transfer' ? null : payee.trim() || null,
-        note: note.trim() || null,
-      })
-      if (splitting) await setSplits.mutateAsync({ transactionId: tx.id, splits: splitRows })
-      if (effectiveTagIds.length > 0)
-        await setTags.mutateAsync({ transactionId: tx.id, tagIds: effectiveTagIds })
-      if (files.length > 0) await uploadFiles.mutateAsync({ transactionId: tx.id, files })
+      if (editing) {
+        await update.mutateAsync({
+          id: transaction!.id,
+          patch: {
+            account_id: effectiveAccountId,
+            counter_account_id: type === 'transfer' ? counterId || null : null,
+            category_id: type === 'transfer' || splitting ? null : effectiveCategoryId || null,
+            type,
+            amount: amountMinor,
+            currency,
+            counter_amount: type === 'transfer' ? counterAmountMinor : null,
+            counter_fx_rate: type === 'transfer' ? counterFxRate : null,
+            occurred_at: occurredAt,
+            payee: type === 'transfer' ? null : payee.trim() || null,
+            note: note.trim() || null,
+          },
+        })
+        await setSplits.mutateAsync({ transactionId: transaction!.id, splits: splitRows })
+        await setTags.mutateAsync({ transactionId: transaction!.id, tagIds: effectiveTagIds })
+        if (files.length > 0) await uploadFiles.mutateAsync({ transactionId: transaction!.id, files })
+      } else {
+        const tx = await create.mutateAsync({
+          account_id: effectiveAccountId,
+          counter_account_id: type === 'transfer' ? counterId : null,
+          category_id: type === 'transfer' || splitting ? null : effectiveCategoryId || null,
+          type,
+          amount: amountMinor,
+          currency,
+          counter_amount: counterAmountMinor,
+          counter_fx_rate: counterFxRate,
+          occurred_at: occurredAt,
+          payee: type === 'transfer' ? null : payee.trim() || null,
+          note: note.trim() || null,
+        })
+        if (splitting) await setSplits.mutateAsync({ transactionId: tx.id, splits: splitRows })
+        if (effectiveTagIds.length > 0)
+          await setTags.mutateAsync({ transactionId: tx.id, tagIds: effectiveTagIds })
+        if (files.length > 0) await uploadFiles.mutateAsync({ transactionId: tx.id, files })
+      }
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save.')
@@ -559,10 +625,10 @@ function TransactionFormBody({
         className="w-full"
         size="lg"
         loading={
-          create.isPending || setTags.isPending || setSplits.isPending || uploadFiles.isPending
+          create.isPending || update.isPending || setTags.isPending || setSplits.isPending || uploadFiles.isPending
         }
       >
-        Save transaction
+        {editing ? 'Save changes' : 'Save transaction'}
         {splitting && splitTotal > 0 ? ` · ${formatMoney(splitTotal, currency, { signDisplay: 'never' })}` : ''}
       </Button>
     </form>

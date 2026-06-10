@@ -13,6 +13,7 @@ import { useTags, useTransactionTags } from '@/features/tags/api'
 import { useTransactionSplits } from '@/features/transactions/splits'
 import { useTransactionAttachments } from '@/features/attachments/api'
 import { AttachmentsModal } from '@/features/attachments/AttachmentsModal'
+import { TransactionForm } from '@/features/transactions/TransactionForm'
 import { TransactionRow } from '@/features/transactions/TransactionRow'
 import { BulkBar } from '@/features/transactions/BulkBar'
 import { FilterPanel } from '@/features/transactions/FilterPanel'
@@ -27,6 +28,7 @@ export function TransactionsPage() {
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [attachmentsTxId, setAttachmentsTxId] = useState<string | null>(null)
+  const [editTx, setEditTx] = useState<Transaction | null>(null)
 
   const { data: accounts = [] } = useAccounts(true)
   const { data: categories = [] } = useCategories()
@@ -158,6 +160,7 @@ export function TransactionsPage() {
         selectable={selectMode}
         selected={selectedIds.has(tx.id)}
         onSelect={toggleSelect}
+        onEdit={(id) => setEditTx(visible.find((t) => t.id === id) ?? null)}
         onDuplicate={() => handleDuplicate(tx)}
         onDelete={(id) => {
           if (confirm('Delete this transaction?')) del.mutate(id)
@@ -178,6 +181,20 @@ export function TransactionsPage() {
     }
     return Array.from(byDay.entries())
   }, [visible])
+
+  const editTxTagIds = useMemo(
+    () => (editTx ? (txTags[editTx.id] ?? []) : []),
+    [editTx, txTags],
+  )
+  const editTxSplits = useMemo(
+    () => (editTx ? (splitsByTx[editTx.id] ?? []) : []),
+    [editTx, splitsByTx],
+  )
+  const editInitCounterAmount = useMemo(() => {
+    if (!editTx?.counter_amount || !editTx?.counter_account_id) return ''
+    const destAcc = accountMap[editTx.counter_account_id]
+    return destAcc ? String(fromMinorUnits(editTx.counter_amount, destAcc.currency)) : ''
+  }, [editTx, accountMap])
 
   const selectedTxns = useMemo(
     () => visible.filter((tx) => selectedIds.has(tx.id)),
@@ -280,6 +297,15 @@ export function TransactionsPage() {
       )}
 
       <AttachmentsModal transactionId={attachmentsTxId} onClose={() => setAttachmentsTxId(null)} />
+
+      <TransactionForm
+        open={!!editTx}
+        onClose={() => setEditTx(null)}
+        transaction={editTx ?? undefined}
+        initialTagIds={editTxTagIds}
+        initialSplits={editTxSplits}
+        initialCounterAmount={editInitCounterAmount}
+      />
     </div>
   )
 }

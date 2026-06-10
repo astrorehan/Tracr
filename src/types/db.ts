@@ -8,6 +8,7 @@ export type AccountType =
   | 'crypto'
   | 'stocks'
   | 'loan'
+  | 'receivable'
   | 'other'
 export type TransactionType = 'income' | 'expense' | 'transfer'
 export type CategoryKind = 'income' | 'expense'
