@@ -7,6 +7,7 @@ import {
   Landmark,
   HandCoins,
   Coins,
+  Receipt,
 } from 'lucide-react'
 import type { AccountType } from '@/types/db'
 
@@ -18,6 +19,7 @@ export const ACCOUNT_TYPES: { value: AccountType; label: string; icon: typeof Wa
   { value: 'crypto', label: 'Crypto', icon: Bitcoin },
   { value: 'stocks', label: 'Stocks', icon: LineChart },
   { value: 'loan', label: 'Loan', icon: HandCoins },
+  { value: 'receivable', label: 'Receivable', icon: Receipt },
   { value: 'other', label: 'Other', icon: Coins },
 ]
 
