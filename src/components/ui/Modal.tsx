@@ -36,8 +36,8 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
         role="dialog"
         aria-modal="true"
         className={cn(
-          'card-surface relative w-full max-w-md max-h-[92vh] overflow-y-auto rounded-t-[28px] border border-border bg-surface p-6 shadow-lg sm:rounded-[28px]',
-          'animate-slide-up sm:animate-fade-in transition-all duration-300',
+          'card-surface relative w-full max-w-md max-h-[92vh] overflow-y-auto rounded-t-[28px] border border-border bg-surface p-6 shadow-lg sm:rounded-[22px]',
+          'animate-slide-up sm:animate-pop',
           className,
         )}
       >
@@ -46,7 +46,7 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
         
         {title && (
           <div className="mb-5 flex items-center justify-between">
-            <h2 className="text-xl font-bold tracking-tight">{title}</h2>
+            <h2 className="section-head text-[22px] text-foreground">{title}</h2>
             <button
               onClick={onClose}
               className="rounded-xl p-2 text-muted-foreground hover:bg-surface-muted hover:text-foreground transition-colors"

@@ -158,7 +158,10 @@ input[type='number'] {
   -moz-appearance: textfield;
 }
 
-/* Page transitions / modal pop animations */
+/* Page transitions / modal entrances.
+   Registered via @theme so responsive variants (sm:animate-pop …) exist —
+   plain CSS classes don't get variants in Tailwind v4. `both` fill keeps the
+   `from` state applied during any animation-delay (no flash before stagger). */
 @keyframes slideUp {
   from {
     transform: translateY(100%);
@@ -177,15 +180,18 @@ input[type='number'] {
   }
 }
 
-.animate-slide-up {
-  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+/* Desktop dialog entrance: settle in from slightly small + low */
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.2s ease-out forwards;
-}
-
-/* Staggered page-load rise used on workspace grids */
 @keyframes riseIn {
   from {
     opacity: 0;
@@ -196,9 +202,51 @@ input[type='number'] {
     transform: translateY(0);
   }
 }
-.animate-rise {
-  opacity: 0;
-  animation: riseIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+
+@theme {
+  --animate-slide-up: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-fade-in: fadeIn 0.2s ease-out both;
+  --animate-pop: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-rise: riseIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Stagger steps for grouped reveals — pair with animate-rise */
+.stagger-1 { animation-delay: 50ms; }
+.stagger-2 { animation-delay: 110ms; }
+.stagger-3 { animation-delay: 170ms; }
+.stagger-4 { animation-delay: 230ms; }
+.stagger-5 { animation-delay: 290ms; }
+
+/* Skeleton loading — muted block with a soft shimmer sweep */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--surface-muted);
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, var(--surface-highlight), transparent);
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Vestibular safety: collapse all motion when the OS asks for it */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Ambient workspace backdrop: faint grid + theme-tinted corner glows.
@@ -284,6 +332,30 @@ input[type='number'] {
     box-shadow: none !important;
     break-inside: avoid;
   }
+}
+
+/* ── Ledger devices ──────────────────────────────────────────────────────
+   Typographic furniture borrowed from paper finance: dotted leader lines
+   running from a label to its amount (receipts, passbooks, tables of
+   contents). Use inside `flex items-baseline`:
+     <span>Label</span> <span class="leaders" /> <span>Rp 120.000</span> */
+.leaders {
+  flex: 1;
+  min-width: 1.25rem;
+  align-self: flex-end;
+  margin-bottom: 0.345em;
+  border-bottom: 2px dotted color-mix(in oklab, currentColor 26%, transparent);
+}
+
+/* Section heads are set in the display serif, italic — the voice of the
+   ledger. Small caps stay reserved for tiny data labels only. */
+.section-head {
+  font-family: 'Fraunces', Georgia, serif;
+  font-style: italic;
+  font-optical-sizing: auto;
+  font-variation-settings: 'opsz' 40, 'SOFT' 40, 'WONK' 0;
+  letter-spacing: -0.01em;
+  font-weight: 600;
 }
 
 /* Sidebar active-link rail indicator */
