@@ -1,4 +1,4 @@
-import { ArrowDownLeft, ArrowUpRight, ArrowLeftRight, Check, Copy, Paperclip, Pencil, Split, Trash2 } from 'lucide-react'
+import { Check, Copy, Paperclip, Pencil, Split, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { formatMoney } from '@/lib/money'
@@ -57,14 +57,14 @@ export function TransactionRow({
           .filter(Boolean)
           .join(' · ')
 
-  const Icon =
-    tx.type === 'income' ? ArrowDownLeft : tx.type === 'transfer' ? ArrowLeftRight : ArrowUpRight
-  const tone =
+  // A slim ledger tick marks the row's direction; the amount color carries
+  // the rest. (Income gets the strong mark — in a ledger, money in is the event.)
+  const tick =
     tx.type === 'income'
-      ? 'text-positive bg-positive/10'
+      ? 'bg-positive'
       : tx.type === 'transfer'
-        ? 'text-muted-foreground bg-surface-muted'
-        : 'text-negative bg-negative/10'
+        ? 'bg-border'
+        : 'bg-negative/45'
   const sign = tx.type === 'income' ? '+' : tx.type === 'expense' ? '−' : ''
 
   return (
@@ -79,23 +79,21 @@ export function TransactionRow({
       {selectable ? (
         <div
           className={cn(
-            'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 transition-colors',
+            'flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition-colors',
             selected ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-transparent',
           )}
         >
-          <Check className="h-5 w-5 stroke-[3]" />
+          <Check className="h-3.5 w-3.5 stroke-[3.5]" />
         </div>
       ) : (
-        <div className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-sm transition-transform duration-300 group-hover:scale-105', tone)}>
-          <Icon className="h-5 w-5 stroke-[2.2]" />
-        </div>
+        <span aria-hidden className={cn('h-8 w-[3px] shrink-0 rounded-full', tick)} />
       )}
       <div className="min-w-0 flex-1">
-        <p className="flex items-center gap-1.5 text-sm font-bold leading-snug text-foreground">
+        <p className="flex items-center gap-1.5 text-sm font-semibold leading-snug text-foreground">
           {splitCount > 0 && <Split className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
           <span className="truncate">{title}</span>
         </p>
-        <p className="truncate text-[11px] font-semibold text-muted-foreground mt-0.5">
+        <p className="mt-0.5 truncate text-[11px] font-medium text-muted-foreground">
           {subtitle} · {format(new Date(tx.occurred_at), 'd MMM')}
         </p>
         {tags && tags.length > 0 && (

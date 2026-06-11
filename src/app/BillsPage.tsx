@@ -146,9 +146,9 @@ export function BillsPage() {
 function Section({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
   return (
     <div className="space-y-2.5">
-      <div className="flex items-center gap-2 px-1">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{title}</p>
-        <span className="font-numeric text-[10px] font-bold text-muted-foreground">{count}</span>
+      <div className="flex items-baseline gap-2 px-1">
+        <h2 className="section-head text-[17px] text-foreground">{title}</h2>
+        <span className="font-numeric text-[11px] font-bold text-muted-foreground">{count}</span>
       </div>
       <div className="space-y-3">{children}</div>
     </div>

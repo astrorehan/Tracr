@@ -15,12 +15,9 @@ import {
 } from 'recharts'
 import {
   BarChart3,
-  CalendarDays,
   ChevronRight,
   Download,
-  PieChart as PieIcon,
   Printer,
-  Store,
   Tag as TagIcon,
   TrendingDown,
   TrendingUp,
@@ -39,6 +36,7 @@ import { useTags, useTransactionTags } from '@/features/tags/api'
 import { useFxRates } from '@/features/fx/api'
 import { buildRateTable, convertMinor, rateBetween } from '@/features/fx/fx'
 import { indexById } from '@/lib/collections'
+import { chartCursor, chartTooltipStyle as tooltipStyle } from '@/lib/chartTheme'
 import {
   DATE_PRESETS,
   previousDateRange,
@@ -74,15 +72,18 @@ export function ReportsPage() {
   const [breakdownKind, setBreakdownKind] = useState<'expense' | 'income'>('expense')
   const [expandedCat, setExpandedCat] = useState<string | null>(null)
 
-  const range = { datePreset: preset, customFrom, customTo }
-  const resolved = resolveDateRange(range)
-  // Compare against the same *elapsed* span (clamp the end at now) so a partial
-  // current period (e.g. mid-month) isn't measured against a full previous one.
-  const compareEnd =
-    resolved.from && resolved.to
-      ? new Date(Math.min(+new Date(resolved.to), Date.now())).toISOString()
-      : undefined
-  const prevResolved = previousDateRange({ from: resolved.from, to: compareEnd })
+  // Memoized: range resolution reads the clock, which must not happen bare in
+  // render. Compare against the same *elapsed* span (clamp the end at now) so a
+  // partial current period (e.g. mid-month) isn't measured against a full
+  // previous one.
+  const { resolved, prevResolved } = useMemo(() => {
+    const resolved = resolveDateRange({ datePreset: preset, customFrom, customTo })
+    const compareEnd =
+      resolved.from && resolved.to
+        ? new Date(Math.min(+new Date(resolved.to), +new Date())).toISOString()
+        : undefined
+    return { resolved, prevResolved: previousDateRange({ from: resolved.from, to: compareEnd }) }
+  }, [preset, customFrom, customTo])
 
   const { data: categories = [] } = useCategories()
   const { data: transactions = [], isLoading } = useTransactions({
@@ -384,10 +385,8 @@ export function ReportsPage() {
 
           {/* Net worth over time */}
           <Card className="p-5">
-            <div className="mb-1 flex items-center justify-between gap-3">
-              <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                <Wallet className="h-3.5 w-3.5" /> Net worth over time
-              </p>
+            <div className="mb-1 flex items-baseline justify-between gap-3">
+              <h2 className="section-head text-[17px] text-foreground">Net worth over time</h2>
               <span className="font-numeric text-sm font-extrabold text-foreground">
                 {formatMoney(netWorth.nwNow, base)}
               </span>
@@ -436,9 +435,7 @@ export function ReportsPage() {
 
           {/* Income vs expense over time */}
           <Card className="p-5">
-            <p className="mb-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Income vs expense
-            </p>
+            <h2 className="section-head mb-4 text-[17px] text-foreground">Money in vs money out</h2>
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={timeline} margin={{ top: 8, right: 0, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
@@ -452,7 +449,7 @@ export function ReportsPage() {
                   minTickGap={16}
                 />
                 <Tooltip
-                  cursor={{ fill: 'var(--surface-muted)', opacity: 0.5 }}
+                  cursor={chartCursor}
                   contentStyle={tooltipStyle}
                   formatter={(value, name) => [formatMoney(Number(value), base), labelize(String(name))]}
                 />
@@ -468,19 +465,16 @@ export function ReportsPage() {
 
           {/* Spending calendar (daily heatmap) */}
           <Card className="p-5">
-            <p className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              <CalendarDays className="h-3.5 w-3.5" /> Spending calendar
-            </p>
+            <h2 className="section-head mb-4 text-[17px] text-foreground">Spending calendar</h2>
             <CalendarHeatmap data={heatmap} from={from} to={to} base={base} />
           </Card>
 
           {/* Category breakdown */}
           <Card className="p-5">
             <div className="mb-4 flex items-center justify-between">
-              <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                <PieIcon className="h-3.5 w-3.5" />
+              <h2 className="section-head text-[17px] text-foreground">
                 {breakdownKind === 'expense' ? 'Spending' : 'Income'} by category
-              </p>
+              </h2>
               <div className="inline-flex overflow-hidden rounded-lg border border-border text-xs font-semibold">
                 {(['expense', 'income'] as const).map((k) => (
                   <button
@@ -632,9 +626,7 @@ export function ReportsPage() {
 
           {/* Biggest transactions */}
           <Card className="p-5">
-            <p className="mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Biggest transactions
-            </p>
+            <h2 className="section-head mb-3 text-[17px] text-foreground">Biggest transactions</h2>
             <ul className="divide-y divide-border">
               {biggest.map((tx) => (
                 <BiggestRow key={tx.id} tx={tx} base={base} categoryName={categories.find((c) => c.id === tx.category_id)?.name} />
@@ -645,10 +637,9 @@ export function ReportsPage() {
           {/* Top payees */}
           {topPayees.length > 0 && (
             <Card className="p-5">
-              <p className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                <Store className="h-3.5 w-3.5" />
+              <h2 className="section-head mb-3 text-[17px] text-foreground">
                 Top {breakdownKind === 'expense' ? 'payees' : 'sources'}
-              </p>
+              </h2>
               <ul className="space-y-2.5">
                 {topPayees.map((p) => (
                   <li key={p.name} className="flex items-center gap-3">
@@ -681,14 +672,6 @@ export function ReportsPage() {
     </div>
   )
 }
-
-const tooltipStyle = {
-  background: 'var(--surface)',
-  border: '1px solid var(--border)',
-  borderRadius: 14,
-  fontSize: 12,
-  boxShadow: 'var(--shadow-md)',
-} as const
 
 function labelize(name: string) {
   return name.charAt(0).toUpperCase() + name.slice(1)
