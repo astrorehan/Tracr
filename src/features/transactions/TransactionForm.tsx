@@ -33,11 +33,18 @@ interface Props {
   initialCounterAmount?: string
 }
 
-const TYPES: { value: TransactionType; label: string }[] = [
-  { value: 'expense', label: 'Expense' },
-  { value: 'income', label: 'Income' },
-  { value: 'transfer', label: 'Transfer' },
+// Active pill takes the money-direction color so the chosen type reads at a glance.
+const TYPES: { value: TransactionType; label: string; activeText: string }[] = [
+  { value: 'expense', label: 'Expense', activeText: 'text-negative' },
+  { value: 'income', label: 'Income', activeText: 'text-positive' },
+  { value: 'transfer', label: 'Transfer', activeText: 'text-foreground' },
 ]
+
+const AMOUNT_TONE: Record<TransactionType, { label: string; border: string }> = {
+  expense: { label: 'text-negative', border: 'border-negative/30' },
+  income: { label: 'text-positive', border: 'border-positive/30' },
+  transfer: { label: 'text-muted-foreground', border: 'border-border' },
+}
 
 interface SplitRow {
   key: string
@@ -346,7 +353,7 @@ function TransactionFormBody({
             className={cn(
               'rounded-lg py-2 text-sm transition-all duration-200',
               type === t.value
-                ? 'bg-surface font-bold text-foreground shadow-sm'
+                ? cn('bg-surface font-bold shadow-sm', t.activeText)
                 : 'font-semibold text-muted-foreground hover:text-foreground',
             )}
           >
@@ -355,9 +362,19 @@ function TransactionFormBody({
         ))}
       </div>
 
-      {/* Amount — focal point */}
-      <div className="rounded-2xl border border-border bg-surface-muted p-5 text-center">
-        <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+      {/* Amount — focal point, tinted by money direction */}
+      <div
+        className={cn(
+          'rounded-2xl border bg-surface-muted p-5 text-center transition-colors duration-300',
+          AMOUNT_TONE[type].border,
+        )}
+      >
+        <p
+          className={cn(
+            'mb-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors duration-300',
+            AMOUNT_TONE[type].label,
+          )}
+        >
           {type} amount
         </p>
         <div className="flex items-center justify-center gap-1.5 font-numeric text-4xl font-extrabold">

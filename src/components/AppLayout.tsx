@@ -87,7 +87,7 @@ export function AppLayout() {
           aria-label="Log transaction"
         >
           <Plus className="h-5 w-5 stroke-[2.5] transition-transform duration-300 group-hover:rotate-90" />
-          <span className="hidden text-sm lg:inline">Log transaction</span>
+          <span className="hidden text-sm lg:inline">Write it down</span>
         </button>
       </aside>
 
@@ -102,22 +102,15 @@ export function AppLayout() {
               alt="Tracr"
               className="h-8 w-8 rounded-lg border border-border shadow-sm sm:hidden"
             />
-            <div className="hidden items-center gap-2 text-sm sm:flex">
-              <span className="font-semibold text-muted-foreground">Tracr</span>
-              <span className="text-muted-foreground/40">/</span>
-              <span className="font-bold text-foreground">{section}</span>
-            </div>
-            <span className="text-base font-extrabold tracking-tight sm:hidden">{section}</span>
+            <span className="section-head hidden text-lg text-foreground sm:block">{section}</span>
+            <span className="section-head text-base sm:hidden">{section}</span>
           </div>
 
           {/* Right: sync · theme · profile */}
           <div className="flex items-center gap-2 sm:gap-3">
-            <span className="hidden items-center gap-1.5 rounded-lg border border-border bg-surface-muted/60 px-2.5 py-1 text-[11px] font-semibold text-muted-foreground md:inline-flex">
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-positive opacity-60" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-positive" />
-              </span>
-              Synced
+            <span className="hidden items-center gap-1.5 text-[11px] font-medium text-muted-foreground md:inline-flex">
+              <span className="h-1.5 w-1.5 rounded-full bg-positive" />
+              Saved
             </span>
 
             <button
