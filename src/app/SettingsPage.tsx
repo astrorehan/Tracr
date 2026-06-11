@@ -199,7 +199,7 @@ export function SettingsPage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-2.5">
-      <p className="px-1 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{title}</p>
+      <h2 className="section-head px-1 text-[17px] text-foreground">{title}</h2>
       {children}
     </section>
   )

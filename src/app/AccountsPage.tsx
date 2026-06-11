@@ -148,9 +148,7 @@ function Section({ title, children }: { title: string | null; children: React.Re
   return (
     <section className="space-y-3">
       {title && (
-        <h2 className="px-1 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-          {title}
-        </h2>
+        <h2 className="section-head px-1 text-[17px] text-foreground">{title}</h2>
       )}
       {children}
     </section>

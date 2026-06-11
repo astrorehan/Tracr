@@ -74,9 +74,7 @@ export function GoalsPage() {
 
           {archived.length > 0 && (
             <div className="space-y-3">
-              <p className="px-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Archived
-              </p>
+              <h2 className="section-head px-1 text-[17px] text-foreground">Archived</h2>
               {archived.map((goal) => (
                 <GoalCard
                   key={goal.id}

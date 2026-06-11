@@ -214,9 +214,7 @@ function RateGroup({
 }) {
   return (
     <div>
-      <p className="mb-1 px-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-        {title}
-      </p>
+      <h2 className="section-head mb-1 px-1 text-[17px] text-foreground">{title}</h2>
       <ul className="divide-y divide-border/60">
         {rows.map((r) => {
           const meta = getCurrency(r.base)

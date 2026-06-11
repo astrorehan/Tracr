@@ -154,7 +154,7 @@ function CategoryGroup({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between px-1">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{title}</p>
+        <h2 className="section-head text-[17px] text-foreground">{title}</h2>
         <Button variant="ghost" size="sm" onClick={onAdd} className="h-8 rounded-xl">
           <Plus className="h-3.5 w-3.5" /> Add
         </Button>
@@ -365,9 +365,7 @@ function ArchivedSection({
 }) {
   return (
     <div className="space-y-2">
-      <p className="px-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-        Archived
-      </p>
+      <h2 className="section-head px-1 text-[17px] text-foreground">Archived</h2>
       <Card className="divide-y divide-border/60 py-1 px-4 shadow-sm">
         {items.map((c) => {
           const color = c.color ?? '#64748b'

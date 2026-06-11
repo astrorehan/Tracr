@@ -18,6 +18,7 @@ import { TransactionRow } from '@/features/transactions/TransactionRow'
 import { AccountForm } from '@/features/accounts/AccountForm'
 import { accountTypeMeta } from '@/features/accounts/meta'
 import { indexById } from '@/lib/collections'
+import { chartTooltipStyle } from '@/lib/chartTheme'
 import { amountToMinor, formatMoney, fromMinorUnits } from '@/lib/money'
 import { cn } from '@/lib/utils'
 import type { Transaction } from '@/types/db'
@@ -250,12 +251,7 @@ export function AccountDetailPage() {
                 minTickGap={28}
               />
               <Tooltip
-                contentStyle={{
-                  background: 'var(--surface)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 12,
-                  fontSize: 12,
-                }}
+                contentStyle={chartTooltipStyle}
                 formatter={(value) => [formatMoney(Number(value), account.currency), 'Balance']}
               />
               <Area
@@ -327,9 +323,7 @@ export function AccountDetailPage() {
       {/* Ledger */}
       <div>
         <div className="mb-2 flex items-center justify-between px-1">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Transactions
-          </h2>
+          <h2 className="section-head text-[17px] text-foreground">Transactions</h2>
           <span className="font-numeric text-xs font-semibold text-muted-foreground">
             {transactions.length}
           </span>

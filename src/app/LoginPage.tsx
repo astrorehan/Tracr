@@ -25,8 +25,11 @@ export function LoginPage() {
 
         <h1 className="text-5xl font-black tracking-tight text-foreground">Tracr</h1>
         
-        <p className="mt-3 text-sm font-medium text-muted-foreground leading-relaxed">
-          Track every account — cash, cards, e-wallets, crypto, stocks — in one lightweight, beautiful place.
+        <p className="section-head mt-3 text-base leading-relaxed text-muted-foreground">
+          A quiet ledger for everything you own.
+        </p>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground/80">
+          Cash, cards, e-wallets, crypto, stocks — written down in one place, in your own currency.
         </p>
 
         <Button
@@ -47,9 +50,10 @@ export function LoginPage() {
           Continue with Google
         </Button>
 
-        <p className="mt-8 text-xs text-muted-foreground leading-relaxed">
-          By continuing you agree to keep your finances safe. <br />
-          Your data is encrypted and private to your account.
+        <p className="mt-8 text-xs leading-relaxed text-muted-foreground">
+          Private by default — your numbers belong to your account
+          <br />
+          and nobody else sees them.
         </p>
       </div>
     </div>

@@ -1,17 +1,21 @@
-import { useMemo, type ComponentType } from 'react'
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { format, subMonths, startOfMonth } from 'date-fns'
 import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   ResponsiveContainer,
   Tooltip,
   XAxis,
 } from 'recharts'
-import { TrendingDown, TrendingUp, Wallet } from 'lucide-react'
+import { Wallet } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
-import { CenterSpinner, EmptyState } from '@/components/ui/States'
+import { AnimatedNumber } from '@/components/ui/AnimatedNumber'
+import { EmptyState, Skeleton } from '@/components/ui/States'
+import { chartCursor, chartTooltipStyle } from '@/lib/chartTheme'
+import { pctChange } from '@/features/reports/reports'
 import { formatMoney } from '@/lib/money'
 import { getCurrency } from '@/lib/currencies'
 import { useAuth } from '@/features/auth/useAuth'
@@ -32,7 +36,7 @@ export function DashboardPage() {
   const { data: accounts = [], isLoading: la } = useAccounts()
   const { data: balances = {}, isLoading: lb } = useBalances()
   const { data: categories = [] } = useCategories()
-  const { data: transactions = [], isLoading: lt } = useTransactions({ limit: 200 })
+  const { data: transactions = [], isLoading: lt } = useTransactions({ limit: 500 })
   const { data: fxRates = [] } = useFxRates()
 
   const accountMap = useMemo(() => indexById(accounts), [accounts])
@@ -89,18 +93,27 @@ export function DashboardPage() {
     return months
   }, [transactions, base])
 
-  // This-month cashflow in base currency (dense header metrics).
+  // This-month cashflow in base currency, plus last month as the comparison
+  // baseline for the ▲/▼ trend chips on the stat cards.
   const month = useMemo(() => {
-    const key = format(new Date(), 'yyyy-MM')
+    const cur = format(new Date(), 'yyyy-MM')
+    const prev = format(subMonths(new Date(), 1), 'yyyy-MM')
     let spent = 0
     let earned = 0
+    let prevSpent = 0
+    let prevEarned = 0
     for (const tx of transactions) {
       if (tx.currency !== base) continue
-      if (format(new Date(tx.occurred_at), 'yyyy-MM') !== key) continue
-      if (tx.type === 'expense') spent += tx.amount
-      else if (tx.type === 'income') earned += tx.amount
+      const key = format(new Date(tx.occurred_at), 'yyyy-MM')
+      if (key === cur) {
+        if (tx.type === 'expense') spent += tx.amount
+        else if (tx.type === 'income') earned += tx.amount
+      } else if (key === prev) {
+        if (tx.type === 'expense') prevSpent += tx.amount
+        else if (tx.type === 'income') prevEarned += tx.amount
+      }
     }
-    return { spent, earned, net: earned - spent }
+    return { spent, earned, net: earned - spent, prevSpent, prevEarned }
   }, [transactions, base])
 
   const recent = transactions.slice(0, 7)
@@ -129,32 +142,35 @@ export function DashboardPage() {
   const pctById: Record<string, number> = {}
   for (const x of allocation) pctById[x.id] = x.pct
 
-  if (loading) return <CenterSpinner />
+  if (loading) return <DashboardSkeleton />
 
   return (
     <div className="space-y-6">
-      {/* Greeting */}
-      <header className="py-1">
-        <h1 className="text-2xl font-extrabold tracking-tight lg:text-3xl">
-          {greeting()}
-          {profile?.display_name ? `, ${profile.display_name.split(' ')[0]}` : ''} 👋
-        </h1>
-        <p className="mt-1 text-sm font-medium text-muted-foreground">
-          Here is your financial status today.
+      {/* Masthead — date stamp, greeting, and one true sentence about the month */}
+      <header className="animate-rise py-1">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          {format(new Date(), 'EEEE, d MMMM yyyy')}
         </p>
+        <h1 className="mt-1 text-[26px] font-black tracking-tight lg:text-3xl">
+          {greeting()}
+          {profile?.display_name ? `, ${profile.display_name.split(' ')[0]}` : ''}.
+        </h1>
+        {accounts.length > 0 && (
+          <p className="mt-1.5 text-sm text-muted-foreground">{monthLine(month, base)}</p>
+        )}
       </header>
 
       {accounts.length === 0 ? (
         <EmptyState
           icon={<Wallet className="h-7 w-7" />}
-          title="Welcome to Tracr"
-          description="Create your first account to start tracking your money across cash, cards, e-wallets, crypto and stocks."
+          title="Start your ledger"
+          description="Add the first place your money lives — a wallet, a bank account, an e-wallet. Tracr keeps the book from there."
           action={
             <Link
               to="/accounts"
               className="btn-sheen rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition hover:brightness-[1.06]"
             >
-              Add your first account
+              Add an account
             </Link>
           }
         />
@@ -162,117 +178,120 @@ export function DashboardPage() {
         <div className="grid gap-5 xl:grid-cols-3">
           {/* ───────── Main pane ───────── */}
           <div className="space-y-5 xl:col-span-2">
-            {/* Hero net worth */}
-            <div className="grain animate-rise relative overflow-hidden rounded-[28px] border border-amber-400/20 bg-[#1e1810] p-6 text-white shadow-lg lg:p-7">
+            {/* Statement head — net worth, set like the top of a paper statement */}
+            <div className="grain animate-rise relative overflow-hidden rounded-[20px] border border-amber-400/20 bg-[#1e1810] p-6 text-white shadow-lg lg:p-7">
               <div className="pointer-events-none absolute -right-10 -top-14 h-40 w-40 rounded-full bg-amber-400/25 blur-[70px]" />
               <div className="pointer-events-none absolute -bottom-20 -left-14 h-32 w-32 rounded-full bg-orange-500/10 blur-[80px]" />
 
-              <div className="relative z-10 flex items-start justify-between">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-200/70">
-                    Total Net Worth · {base}
+              <div className="relative z-10">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                  <h2 className="section-head text-lg text-amber-100/90">Net worth</h2>
+                  <p className="text-[11px] font-medium text-amber-200/50">
+                    as of {format(new Date(), 'd MMMM')} · in {base}
                   </p>
-                  <p className="mt-2.5 font-numeric text-4xl font-extrabold leading-none tracking-tight lg:text-5xl">
-                    {formatMoney(netWorth.total, base)}
+                </div>
+
+                <p className="mt-3 font-numeric text-4xl font-extrabold leading-none tracking-tight lg:text-5xl">
+                  <AnimatedNumber value={netWorth.total} format={(v) => formatMoney(v, base)} />
+                </p>
+                {otherCurrencies.length > 0 && netWorth.missing.length === 0 && (
+                  <p className="mt-1.5 text-[10px] font-semibold text-amber-200/50">
+                    ≈ estimated at latest rates
                   </p>
-                  {otherCurrencies.length > 0 && netWorth.missing.length === 0 && (
-                    <p className="mt-1 text-[10px] font-semibold text-amber-200/50">
-                      ≈ estimated at latest rates
-                    </p>
-                  )}
-                  {netWorth.missing.length > 0 && (
-                    <Link
-                      to="/settings"
-                      className="mt-1 inline-block text-[10px] font-semibold text-amber-300/80 underline-offset-2 hover:underline"
-                    >
-                      Add a rate for {netWorth.missing.join(', ')} to include it
-                    </Link>
-                  )}
-                  {netWorth.debts > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-semibold">
-                      <span className="text-amber-100/80">
-                        Assets{' '}
-                        <span className="font-numeric">
-                          {formatMoney(netWorth.assets, base, { signDisplay: 'never' })}
-                        </span>
-                      </span>
-                      <span className="text-red-300/90">
-                        Debts{' '}
-                        <span className="font-numeric">
-                          {formatMoney(netWorth.debts, base, { signDisplay: 'never' })}
-                        </span>
+                )}
+                {netWorth.missing.length > 0 && (
+                  <Link
+                    to="/settings"
+                    className="mt-1.5 inline-block text-[10px] font-semibold text-amber-300/80 underline-offset-2 hover:underline"
+                  >
+                    Add a rate for {netWorth.missing.join(', ')} to include it
+                  </Link>
+                )}
+
+                {netWorth.debts > 0 && (
+                  <div className="mt-5 max-w-sm space-y-1.5 text-xs">
+                    <div className="flex items-baseline gap-2.5 text-amber-100/80">
+                      <span className="font-medium">What you own</span>
+                      <span className="leaders" />
+                      <span className="font-numeric font-bold text-amber-50">
+                        {formatMoney(netWorth.assets, base, { signDisplay: 'never' })}
                       </span>
                     </div>
-                  )}
-                </div>
-                {/* Card chip */}
-                <div className="flex h-9 w-12 shrink-0 flex-col justify-between rounded-lg border border-amber-300/20 bg-gradient-to-br from-yellow-200/50 via-amber-300/30 to-amber-500/10 p-1.5 shadow-inner">
-                  <div className="flex gap-0.5">
-                    <div className="h-1.5 w-2 rounded-sm bg-slate-950/20" />
-                    <div className="h-1.5 w-2 rounded-sm bg-slate-950/20" />
+                    <div className="flex items-baseline gap-2.5 text-amber-100/80">
+                      <span className="font-medium">What you owe</span>
+                      <span className="leaders" />
+                      <span className="font-numeric font-bold text-red-300">
+                        −{formatMoney(netWorth.debts, base, { signDisplay: 'never' })}
+                      </span>
+                    </div>
                   </div>
-                  <div className="h-2 w-full rounded-sm bg-slate-950/20" />
-                </div>
-              </div>
+                )}
 
-              {otherCurrencies.length > 0 && (
-                <div className="relative z-10 mt-6">
-                  <p className="mb-2 text-[9px] font-bold uppercase tracking-[0.2em] text-stone-400">
-                    Other currencies
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {otherCurrencies.map(([c, total]) => {
-                      const approx = convertMinor(total, c, base, buildRateTable(fxRates, base))
-                      return (
-                        <span
-                          key={c}
-                          className="rounded-lg border border-stone-700/50 bg-stone-800/60 px-2.5 py-1 font-numeric text-xs font-semibold text-stone-300"
-                        >
-                          {getCurrency(c).symbol} {formatMoney(total, c, { signDisplay: 'never' })}
-                          {approx != null && (
-                            <span className="ml-1 text-stone-500">
-                              ≈ {formatMoney(approx, base, { signDisplay: 'never' })}
-                            </span>
-                          )}
-                        </span>
-                      )
-                    })}
+                {otherCurrencies.length > 0 && (
+                  <div className="mt-6">
+                    <p className="mb-2 text-[9px] font-bold uppercase tracking-[0.2em] text-stone-400">
+                      Other currencies
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {otherCurrencies.map(([c, total]) => {
+                        const approx = convertMinor(total, c, base, buildRateTable(fxRates, base))
+                        return (
+                          <span
+                            key={c}
+                            className="rounded-lg border border-stone-700/50 bg-stone-800/60 px-2.5 py-1 font-numeric text-xs font-semibold text-stone-300"
+                          >
+                            {getCurrency(c).symbol} {formatMoney(total, c, { signDisplay: 'never' })}
+                            {approx != null && (
+                              <span className="ml-1 text-stone-500">
+                                ≈ {formatMoney(approx, base, { signDisplay: 'never' })}
+                              </span>
+                            )}
+                          </span>
+                        )
+                      })}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
-            {/* Dense cashflow metrics */}
-            <div className="grid grid-cols-2 gap-4">
-              <StatCard
-                label="Earned this month"
-                value={formatMoney(month.earned, base, { signDisplay: 'never' })}
-                icon={TrendingUp}
-                tone="positive"
+            {/* Statement strip — money in, money out, and the verdict. Numbers in
+                ink; only "Kept" takes a color. */}
+            <div className="animate-rise stagger-1 card-surface grid grid-cols-1 divide-y divide-border overflow-hidden rounded-2xl sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+              <StatCell
+                label="Money in"
+                amount={month.earned}
+                format={(v) => formatMoney(v, base, { signDisplay: 'never' })}
+                delta={deltaOf(month.earned, month.prevEarned, true)}
+                deltaLabel={`vs ${prevMonthName()}`}
               />
-              <StatCard
-                label="Spent this month"
-                value={formatMoney(month.spent, base, { signDisplay: 'never' })}
-                icon={TrendingDown}
-                tone="negative"
+              <StatCell
+                label="Money out"
+                amount={month.spent}
+                format={(v) => formatMoney(v, base, { signDisplay: 'never' })}
+                delta={deltaOf(month.spent, month.prevSpent, false)}
+                deltaLabel={`vs ${prevMonthName()}`}
+              />
+              <StatCell
+                label="Kept"
+                amount={month.net}
+                format={(v) => formatMoney(v, base, { signDisplay: 'always' })}
+                valueClass={month.net >= 0 ? 'text-positive' : 'text-negative'}
+                delta={deltaOf(month.net, month.prevEarned - month.prevSpent, true)}
+                deltaLabel={`vs ${prevMonthName()}`}
               />
             </div>
 
             {/* Spending chart */}
-            <Card className="p-5">
-              <div className="mb-4 flex items-center justify-between">
+            <Card className="animate-rise stagger-2 p-5">
+              <div className="mb-4 flex items-baseline justify-between gap-3">
+                <h2 className="section-head text-[17px] text-foreground">Six months of spending</h2>
                 <Link
                   to="/reports"
-                  className="text-xs font-bold uppercase tracking-wider text-muted-foreground transition hover:text-primary"
+                  className="shrink-0 text-xs font-semibold text-primary transition hover:underline"
                 >
-                  Spending · last 6 months →
+                  Reports →
                 </Link>
-                <span className="font-numeric text-sm font-bold text-foreground">
-                  {formatMoney(month.spent, base, { signDisplay: 'never' })}
-                  <span className="ml-1 text-[11px] font-semibold text-muted-foreground">
-                    this month
-                  </span>
-                </span>
               </div>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={chartData} margin={{ top: 8, right: 0, bottom: 0, left: 0 }}>
@@ -291,27 +310,24 @@ export function DashboardPage() {
                     stroke="var(--muted-foreground)"
                   />
                   <Tooltip
-                    cursor={{ fill: 'var(--surface-muted)', opacity: 0.5, radius: 8 }}
-                    contentStyle={{
-                      background: 'var(--surface)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 14,
-                      fontSize: 12,
-                      boxShadow: 'var(--shadow-md)',
-                    }}
+                    cursor={chartCursor}
+                    contentStyle={chartTooltipStyle}
                     formatter={(value) => [formatMoney(Number(value), base), 'Spent']}
                   />
-                  <Bar dataKey="total" fill="url(#barGradient)" radius={[8, 8, 0, 0]} maxBarSize={56} />
+                  {/* Current month leads; history recedes at lower opacity */}
+                  <Bar dataKey="total" fill="url(#barGradient)" radius={[3, 3, 0, 0]} maxBarSize={40}>
+                    {chartData.map((m, i) => (
+                      <Cell key={m.key} opacity={i === chartData.length - 1 ? 1 : 0.45} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </Card>
 
-            {/* Recent activity */}
-            <div>
-              <div className="mb-3 flex items-center justify-between px-1">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Recent activity
-                </h2>
+            {/* Recent activity — a ruled list straight on the page, like ledger paper */}
+            <div className="animate-rise stagger-3">
+              <div className="mb-2 flex items-baseline justify-between px-1">
+                <h2 className="section-head text-[17px] text-foreground">Recent activity</h2>
                 <Link
                   to="/transactions"
                   className="text-xs font-semibold text-primary transition hover:underline"
@@ -320,9 +336,12 @@ export function DashboardPage() {
                 </Link>
               </div>
               {recent.length === 0 ? (
-                <EmptyState title="No transactions yet" description="Tap + to add one." />
+                <EmptyState
+                  title="Nothing written down yet"
+                  description="Press + and give the first one a home."
+                />
               ) : (
-                <Card className="divide-y divide-border px-4 py-1">
+                <div className="divide-y divide-border px-1">
                   {recent.map((tx) => (
                     <TransactionRow
                       key={tx.id}
@@ -331,18 +350,16 @@ export function DashboardPage() {
                       categories={categoryMap}
                     />
                   ))}
-                </Card>
+                </div>
               )}
             </div>
           </div>
 
           {/* ───────── Right rail: accounts deck ───────── */}
-          <aside className="space-y-5">
+          <aside className="animate-rise stagger-2 space-y-5">
             <div className="xl:sticky xl:top-[88px]">
-              <div className="mb-3 flex items-center justify-between px-1">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Accounts · {accounts.length}
-                </h2>
+              <div className="mb-2 flex items-baseline justify-between px-1">
+                <h2 className="section-head text-[17px] text-foreground">Accounts</h2>
                 <Link
                   to="/accounts"
                   className="text-xs font-semibold text-primary transition hover:underline"
@@ -372,40 +389,37 @@ export function DashboardPage() {
                   </div>
                 )}
 
-                <div className="space-y-1">
+                {/* Leader-dot ledger lines: name …… balance */}
+                <div className="space-y-0.5">
                   {accounts.map((a) => {
                     const meta = accountTypeMeta(a.type)
-                    const Icon = meta.icon
                     const pct = pctById[a.id]
                     const color = a.color ?? '#9a8c74'
                     return (
                       <div
                         key={a.id}
-                        className="flex items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-surface-muted/60"
+                        className="rounded-lg px-2 py-2.5 transition-colors hover:bg-surface-muted/60"
                       >
-                        <span
-                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border"
-                          style={{ backgroundColor: `${color}1f`, color, borderColor: `${color}33` }}
-                        >
-                          <Icon className="h-4 w-4 stroke-[2.2]" />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-bold leading-tight text-foreground">
-                            {a.name}
-                          </p>
-                          <p className="text-[11px] font-medium text-muted-foreground">
-                            {meta.label}
-                            {pct !== undefined ? ` · ${pct.toFixed(0)}%` : ''}
-                          </p>
+                        <div className="flex items-baseline gap-2.5">
+                          <span
+                            className="h-2.5 w-2.5 shrink-0 self-center rounded-full"
+                            style={{ backgroundColor: color }}
+                          />
+                          <p className="truncate text-sm font-semibold text-foreground">{a.name}</p>
+                          <span className="leaders text-muted-foreground" />
+                          <span
+                            className={cn(
+                              'shrink-0 font-numeric text-sm font-bold',
+                              a.is_liability ? 'text-negative' : 'text-foreground',
+                            )}
+                          >
+                            {formatMoney(balances[a.id] ?? a.opening_balance, a.currency)}
+                          </span>
                         </div>
-                        <span
-                          className={cn(
-                            'font-numeric text-sm font-bold',
-                            a.is_liability ? 'text-danger' : 'text-foreground',
-                          )}
-                        >
-                          {formatMoney(balances[a.id] ?? a.opening_balance, a.currency)}
-                        </span>
+                        <p className="mt-0.5 pl-5 text-[11px] font-medium text-muted-foreground">
+                          {meta.label}
+                          {pct !== undefined ? ` · ${pct.toFixed(0)}% of what you own` : ''}
+                        </p>
                       </div>
                     )
                   })}
@@ -419,32 +433,98 @@ export function DashboardPage() {
   )
 }
 
-function StatCard({
+interface Delta {
+  pct: number
+  /** Whether this direction of change is good (drives the chip color). */
+  good: boolean
+}
+
+function deltaOf(cur: number, prev: number, higherIsBetter: boolean): Delta | undefined {
+  const pct = pctChange(cur, prev)
+  if (pct == null) return undefined
+  return { pct, good: higherIsBetter ? pct >= 0 : pct <= 0 }
+}
+
+/** One column of the statement strip: tiny caps label, ink number, dated delta. */
+function StatCell({
   label,
-  value,
-  icon: Icon,
-  tone,
+  amount,
+  format: fmt,
+  valueClass,
+  delta,
+  deltaLabel,
 }: {
   label: string
-  value: string
-  icon: ComponentType<{ className?: string }>
-  tone: 'positive' | 'negative'
+  amount: number
+  format: (value: number) => string
+  valueClass?: string
+  delta?: Delta
+  deltaLabel?: string
 }) {
-  const toneCls = tone === 'positive' ? 'text-positive bg-positive/10' : 'text-negative bg-negative/10'
   return (
-    <Card className="flex items-center gap-3.5 p-4">
-      <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${toneCls}`}>
-        <Icon className="h-5 w-5 stroke-[2.2]" />
-      </div>
-      <div className="min-w-0">
-        <p className="truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-          {label}
+    <div className="flex items-center justify-between gap-3 px-5 py-3.5 sm:block sm:py-4">
+      <p className="shrink-0 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+        {label}
+      </p>
+      <div className="min-w-0 text-right sm:mt-1.5 sm:text-left">
+        <p
+          className={cn(
+            'truncate font-numeric text-lg font-extrabold leading-tight sm:text-xl',
+            valueClass ?? 'text-foreground',
+          )}
+        >
+          <AnimatedNumber value={amount} format={fmt} />
         </p>
-        <p className="mt-0.5 truncate font-numeric text-lg font-extrabold leading-tight text-foreground">
-          {value}
-        </p>
+        {delta && (
+          <p className="mt-0.5 truncate text-[11px] font-semibold">
+            <span className={delta.good ? 'text-positive' : 'text-negative'}>
+              {delta.pct >= 0 ? '▲' : '▼'} {Math.abs(delta.pct).toFixed(0)}%
+            </span>{' '}
+            <span className="font-medium text-muted-foreground">{deltaLabel}</span>
+          </p>
+        )}
       </div>
-    </Card>
+    </div>
+  )
+}
+
+/** "May", "April" — deltas name the month they compare against. */
+function prevMonthName() {
+  return format(subMonths(new Date(), 1), 'MMMM')
+}
+
+/** One honest sentence about the month so far, written from the data. */
+function monthLine(month: { earned: number; spent: number; net: number }, base: string) {
+  const today = new Date()
+  const name = format(today, 'MMMM')
+  if (month.earned === 0 && month.spent === 0) return `Nothing in the book yet this ${name}.`
+  const day = format(today, 'd')
+  return month.net >= 0
+    ? `Day ${day} of ${name} — you've kept ${formatMoney(month.net, base, { signDisplay: 'never' })} of what came in.`
+    : `Day ${day} of ${name} — spending is ${formatMoney(-month.net, base, { signDisplay: 'never' })} ahead of income.`
+}
+
+/** Mirrors the dashboard grid so loading → loaded swaps without layout shift. */
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6" aria-busy="true" aria-label="Loading dashboard">
+      <header className="py-1">
+        <Skeleton className="h-3 w-40" />
+        <Skeleton className="mt-2 h-8 w-64 max-w-full" />
+        <Skeleton className="mt-2 h-4 w-72 max-w-full" />
+      </header>
+      <div className="grid gap-5 xl:grid-cols-3">
+        <div className="space-y-5 xl:col-span-2">
+          <Skeleton className="h-44 rounded-[20px]" />
+          <Skeleton className="h-[180px] rounded-2xl sm:h-[96px]" />
+          <Skeleton className="h-64 rounded-2xl" />
+          <Skeleton className="h-72 rounded-2xl" />
+        </div>
+        <aside className="hidden xl:block">
+          <Skeleton className="h-96 rounded-2xl" />
+        </aside>
+      </div>
+    </div>
   )
 }
 

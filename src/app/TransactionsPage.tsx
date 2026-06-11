@@ -275,9 +275,7 @@ export function TransactionsPage() {
             return (
               <div key={day} className="space-y-2">
                 <div className="flex items-center justify-between px-1">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    {day}
-                  </p>
+                  <h3 className="section-head text-[15px] text-foreground">{day}</h3>
                   <span className={cnTone(dayTotal)}>
                     {dayTotal > 0 ? '+' : ''}
                     {dayTotal !== 0 ? formatDayTotal(dayTotal, txs[0].currency) : ''}
