@@ -379,7 +379,7 @@ function ArchivedSection({
               </span>
               <span className="flex-1 truncate text-sm font-semibold text-muted-foreground">
                 {c.name}
-                <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground/60">
+                <span className="ml-2 text-xs font-bold uppercase tracking-wide text-muted-foreground/60">
                   {c.kind}
                 </span>
               </span>

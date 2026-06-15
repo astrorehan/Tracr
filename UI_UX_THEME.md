@@ -74,10 +74,14 @@ synthesized slant).
 | **Section head** | `.section-head` | Fraunces *italic* 600, opsz 40 | Every section/group/card/modal title — the voice of the ledger |
 | Body | (default) | Satoshi | Everything else |
 | Numbers | `.font-numeric` | Satoshi + `tabular-nums` | **All money and counts** — digits never jitter |
-| Data label | utility classes | 9–11px caps, wide tracking, muted | Tiny labels *inside* data displays only ("Allocation", column heads, type badges) |
+| Data label | utility classes | 12px (`text-xs`) caps, wide tracking, muted | Labels *inside* data displays only ("Allocation", column heads, type badges) |
 
 The caps/serif rule is strict: if it titles a section of the page → serif italic; if it
-labels a datum inside a component → tiny caps. Never both, never swapped.
+labels a datum inside a component → caps. Never both, never swapped.
+
+**Minimum size**: nothing renders below 12px (`text-xs`). Sub-12px arbitrary sizes
+(`text-[9px]`/`[10px]`/`[11px]`) are banned — labels and captions floor at `text-xs`,
+so even the quietest data label stays legible.
 
 ---
 

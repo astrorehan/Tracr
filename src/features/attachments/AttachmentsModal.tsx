@@ -82,7 +82,7 @@ function Body({ transactionId }: { transactionId: string }) {
       >
         <Plus className="h-4 w-4" /> Add files
       </Button>
-      <p className="text-center text-[11px] text-muted-foreground">Images or PDF, stored privately.</p>
+      <p className="text-center text-xs text-muted-foreground">Images or PDF, stored privately.</p>
     </div>
   )
 }
@@ -111,7 +111,7 @@ function AttachmentTile({
         ) : (
           <div className="flex flex-col items-center gap-1 p-2 text-center">
             <FileText className="h-6 w-6 text-muted-foreground" />
-            <span className="line-clamp-2 text-[10px] font-medium text-muted-foreground">
+            <span className="line-clamp-2 text-xs font-medium text-muted-foreground">
               {att.name}
             </span>
           </div>

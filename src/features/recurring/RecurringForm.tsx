@@ -251,7 +251,7 @@ function RecurringFormBody({
         </span>
         <span className="min-w-0">
           <span className="block text-sm font-semibold text-foreground">Auto-post on due date</span>
-          <span className="block text-[11px] font-medium text-muted-foreground">
+          <span className="block text-xs font-medium text-muted-foreground">
             {autoPost
               ? 'Posts automatically each time it’s due — no tap needed.'
               : 'Off — you’ll confirm each one with “Mark paid”.'}

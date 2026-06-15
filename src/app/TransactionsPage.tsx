@@ -314,7 +314,7 @@ function formatDayTotal(amount: number, currency: string) {
 
 function cnTone(total: number) {
   return cn(
-    'font-numeric text-[11px] font-bold tracking-wide',
+    'font-numeric text-xs font-bold tracking-wide',
     total > 0 && 'text-positive',
     total < 0 && 'text-negative',
     total === 0 && 'text-muted-foreground',

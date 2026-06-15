@@ -170,7 +170,7 @@ export function AccountDetailPage() {
               <Icon className="h-5 w-5 stroke-[2.2]" />
             </span>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
                 {meta.label} · {account.currency}
                 {account.is_liability ? ' · Liability' : ''}
                 {account.exclude_from_stats ? ' · Excluded from net worth' : ''}
@@ -184,7 +184,7 @@ export function AccountDetailPage() {
               >
                 {formatMoney(balance, account.currency)}
                 {account.is_liability && (
-                  <span className="ml-1.5 text-[11px] font-bold uppercase tracking-wide text-danger/70">
+                  <span className="ml-1.5 text-xs font-bold uppercase tracking-wide text-danger/70">
                     owed
                   </span>
                 )}
@@ -211,7 +211,7 @@ export function AccountDetailPage() {
                           style={{ width: `${pct}%`, backgroundColor: c }}
                         />
                       </div>
-                      <p className="mt-1 text-[10px] font-semibold text-muted-foreground">
+                      <p className="mt-1 text-xs font-semibold text-muted-foreground">
                         {pct.toFixed(0)}% of{' '}
                         {formatMoney(limit, account.currency, { signDisplay: 'never' })} ·{' '}
                         {available >= 0

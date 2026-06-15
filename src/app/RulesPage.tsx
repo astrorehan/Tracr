@@ -220,7 +220,7 @@ function RuleRow({
         <div className="flex items-center gap-2">
           <p className="truncate text-sm font-bold text-foreground">{rule.name}</p>
           {rule.stop_after && (
-            <span className="rounded bg-surface-muted px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+            <span className="rounded bg-surface-muted px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
               stop
             </span>
           )}
@@ -231,7 +231,7 @@ function RuleRow({
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
           {cat && (
             <span
-              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold"
               style={{ backgroundColor: `${cat.color ?? '#64748b'}20`, color: cat.color ?? '#64748b' }}
             >
               <CategoryIcon name={cat.icon} className="h-3 w-3" />
@@ -242,7 +242,7 @@ function RuleRow({
             <TagChip key={t.id} tag={t} />
           ))}
           {!cat && ruleTags.length === 0 && (
-            <span className="text-[11px] font-medium text-muted-foreground">No action set</span>
+            <span className="text-xs font-medium text-muted-foreground">No action set</span>
           )}
         </div>
       </div>

@@ -104,7 +104,7 @@ export function CurrenciesPage() {
             {getCurrency(base).symbol}
           </span>
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+            <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
               Base currency
             </p>
             <p className="font-numeric text-lg font-extrabold leading-tight text-foreground">
@@ -116,7 +116,7 @@ export function CurrenciesPage() {
           <Button variant="secondary" size="sm" onClick={refresh} loading={refreshing}>
             <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} /> Refresh
           </Button>
-          <span className="text-[11px] font-medium text-muted-foreground">
+          <span className="text-xs font-medium text-muted-foreground">
             {lastUpdated ? `Updated ${lastUpdated}` : 'Auto-updates daily'}
           </span>
         </div>
@@ -189,7 +189,7 @@ export function CurrenciesPage() {
               deleting={del.isPending}
             />
           )}
-          <p className="border-t border-border/60 pt-3 text-[11px] font-medium text-muted-foreground">
+          <p className="border-t border-border/60 pt-3 text-xs font-medium text-muted-foreground">
             Estimates use the latest rate. Logged transactions keep the rate frozen at their own date,
             so past reports never shift.
           </p>
@@ -230,7 +230,7 @@ function RateGroup({
                   <span className="truncate text-xs font-medium text-muted-foreground">{meta.name}</span>
                   <span
                     className={cn(
-                      'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide',
+                      'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide',
                       live
                         ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                         : 'bg-primary/10 text-primary',
@@ -240,13 +240,13 @@ function RateGroup({
                     {live ? 'Live' : 'Manual'}
                   </span>
                 </div>
-                <p className="text-[11px] font-medium text-muted-foreground">as of {r.as_of}</p>
+                <p className="text-xs font-medium text-muted-foreground">as of {r.as_of}</p>
               </div>
               <div className="text-right">
                 <p className="font-numeric text-sm font-extrabold text-foreground">
                   {formatRate(r.rate, base)}
                 </p>
-                <p className="text-[10px] font-medium text-muted-foreground">per 1 {r.base}</p>
+                <p className="text-xs font-medium text-muted-foreground">per 1 {r.base}</p>
               </div>
               <button
                 type="button"

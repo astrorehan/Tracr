@@ -137,7 +137,7 @@ export function SettingsPage() {
                   )}
                 >
                   <span className={cn('font-display font-black leading-none', A_PREVIEW[i])}>A</span>
-                  <span className="text-[11px] font-semibold">{s.label}</span>
+                  <span className="text-xs font-semibold">{s.label}</span>
                 </button>
               ))}
             </div>
@@ -195,7 +195,7 @@ export function SettingsPage() {
         <LogOut className="h-4 w-4" /> Sign out
       </Button>
 
-      <p className="pb-4 text-center text-[10px] font-bold tracking-wider text-muted-foreground">Tracr · v0.1</p>
+      <p className="pb-4 text-center text-xs font-bold tracking-wider text-muted-foreground">Tracr · v0.1</p>
     </div>
   )
 }

@@ -197,7 +197,7 @@ function AccountCard({
           </div>
           <span
             className={cn(
-              'rounded-lg border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
+              'rounded-lg border px-2 py-0.5 text-xs font-bold uppercase tracking-wide',
               isLiability
                 ? 'border-danger/30 bg-danger/10 text-danger'
                 : 'border-border bg-surface-muted/60 text-muted-foreground',
@@ -209,7 +209,7 @@ function AccountCard({
 
         <div className="mt-4">
           <p className="truncate text-base font-bold leading-tight text-foreground">{account.name}</p>
-          <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {account.currency}
             {isLiability ? ' · owed' : ''}
             {account.exclude_from_stats ? ' · excluded' : ''}
@@ -227,7 +227,7 @@ function AccountCard({
               {formatMoney(balance, account.currency)}
             </p>
             {baseEstimate != null && (
-              <p className="mt-1 font-numeric text-[11px] font-semibold text-muted-foreground">
+              <p className="mt-1 font-numeric text-xs font-semibold text-muted-foreground">
                 ≈ {formatMoney(baseEstimate, base)}
               </p>
             )}
@@ -266,7 +266,7 @@ function AccountCard({
                 style={{ width: `${utilPct}%`, backgroundColor: utilColor }}
               />
             </div>
-            <p className="mt-1.5 text-[10px] font-semibold text-muted-foreground">
+            <p className="mt-1.5 text-xs font-semibold text-muted-foreground">
               {utilPct.toFixed(0)}% of {formatMoney(limit, account.currency, { signDisplay: 'never' })}{' '}
               ·{' '}
               {available >= 0

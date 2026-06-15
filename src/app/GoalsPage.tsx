@@ -138,12 +138,12 @@ function GoalCard({
           <p className="flex items-center gap-1.5 truncate text-sm font-bold text-foreground">
             {goal.name}
             {p.complete && (
-              <span className="inline-flex items-center gap-0.5 rounded-md bg-positive/10 px-1.5 py-0.5 text-[10px] font-bold uppercase text-positive">
+              <span className="inline-flex items-center gap-0.5 rounded-md bg-positive/10 px-1.5 py-0.5 text-xs font-bold uppercase text-positive">
                 <Check className="h-2.5 w-2.5" /> Reached
               </span>
             )}
           </p>
-          <p className="truncate text-[11px] font-semibold text-muted-foreground">
+          <p className="truncate text-xs font-semibold text-muted-foreground">
             {formatMoney(p.saved, goal.currency, { signDisplay: 'never' })} of{' '}
             {formatMoney(goal.target_amount, goal.currency, { signDisplay: 'never' })}
           </p>
@@ -160,7 +160,7 @@ function GoalCard({
         />
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[11px] font-medium text-muted-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs font-medium text-muted-foreground">
         <span>
           {p.complete
             ? 'Goal reached 🎉'

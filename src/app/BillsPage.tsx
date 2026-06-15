@@ -148,7 +148,7 @@ function Section({ title, count, children }: { title: string; count: number; chi
     <div className="space-y-2.5">
       <div className="flex items-baseline gap-2 px-1">
         <h2 className="section-head text-[17px] text-foreground">{title}</h2>
-        <span className="font-numeric text-[11px] font-bold text-muted-foreground">{count}</span>
+        <span className="font-numeric text-xs font-bold text-muted-foreground">{count}</span>
       </div>
       <div className="space-y-3">{children}</div>
     </div>
@@ -202,14 +202,14 @@ function BillCard({
             <p className="truncate text-sm font-bold text-foreground">{rec.name}</p>
             {rec.auto_post && (
               <span
-                className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary"
+                className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide text-primary"
                 title="Auto-posts automatically on its due date"
               >
                 <Zap className="h-2.5 w-2.5" /> Auto
               </span>
             )}
           </div>
-          <p className="truncate text-[11px] font-semibold text-muted-foreground">
+          <p className="truncate text-xs font-semibold text-muted-foreground">
             {frequencyText(rec.frequency, rec.interval)}
             {category ? ` · ${category.name}` : ''}
             {account ? ` · ${account.name}` : ''}
@@ -225,7 +225,7 @@ function BillCard({
             {rec.type === 'income' ? '+' : ''}
             {formatMoney(rec.amount, rec.currency, { signDisplay: 'never' })}
           </p>
-          <p className={cn('text-[11px] font-semibold', dueTone)}>
+          <p className={cn('text-xs font-semibold', dueTone)}>
             {rec.is_active ? dueText(rec.next_due) : 'Paused'} · {format(new Date(rec.next_due), 'd MMM')}
           </p>
         </div>

@@ -196,11 +196,11 @@ function BudgetCard({
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold text-foreground">{name}</p>
           <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-            <span className="rounded-md bg-surface-muted px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+            <span className="rounded-md bg-surface-muted px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
               {PERIOD_LABEL[budget.period]}
             </span>
             {budget.rollover && (
-              <span className="inline-flex items-center gap-1 rounded-md bg-surface-muted px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              <span className="inline-flex items-center gap-1 rounded-md bg-surface-muted px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
                 <Repeat className="h-2.5 w-2.5" /> Rollover
                 {status.carry > 0 ? ` +${formatMoney(status.carry, currency, { signDisplay: 'never' })}` : ''}
               </span>
@@ -254,7 +254,7 @@ function BudgetCard({
           >
             {pctText}
           </p>
-          <p className="text-[11px] font-medium text-muted-foreground">
+          <p className="text-xs font-medium text-muted-foreground">
             {status.remaining >= 0
               ? `${formatMoney(status.remaining, currency, { signDisplay: 'never' })} left`
               : `Over by ${formatMoney(-status.remaining, currency, { signDisplay: 'never' })}`}
@@ -263,7 +263,7 @@ function BudgetCard({
       </div>
 
       {willExceed && (
-        <p className="text-[11px] font-semibold text-amber-500">
+        <p className="text-xs font-semibold text-amber-500">
           On track to spend {formatMoney(status.projected, currency, { signDisplay: 'never' })} —
           over budget.
         </p>
