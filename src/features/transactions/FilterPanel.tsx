@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Bookmark, Check, Search, SlidersHorizontal, X } from 'lucide-react'
-import { Select } from '@/components/ui/Input'
+import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown'
 import { cn } from '@/lib/utils'
 import { indexById } from '@/lib/collections'
 import { flattenWithDepth } from '@/features/categories/tree'
@@ -45,6 +45,31 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
       ),
     [categories, filter.type],
   )
+
+  const accountDropdown = useMemo<DropdownOption<string>[]>(
+    () => [{ value: '', label: 'All accounts' }, ...accounts.map((a) => ({ value: a.id, label: a.name }))],
+    [accounts],
+  )
+  const categoryDropdown = useMemo<DropdownOption<string>[]>(
+    () => [
+      { value: '', label: 'All categories' },
+      ...categoryOptions.map(({ category, depth }) => ({
+        value: category.id,
+        label: (depth ? '— ' : '') + category.name,
+      })),
+    ],
+    [categoryOptions],
+  )
+  const typeDropdown: DropdownOption<TxFilter['type']>[] = [
+    { value: '', label: 'All types' },
+    { value: 'expense', label: 'Expense' },
+    { value: 'income', label: 'Income' },
+    { value: 'transfer', label: 'Transfer' },
+  ]
+  const sourceDropdown: DropdownOption<TxFilter['source']>[] = [
+    { value: '', label: 'Any source' },
+    ...SOURCE_OPTIONS,
+  ]
 
   function set<K extends keyof TxFilter>(key: K, value: TxFilter[K]) {
     onChange({ ...filter, [key]: value })
@@ -126,33 +151,23 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
 
       {/* Always-visible controls: date preset · sort · advanced toggle */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-[1fr_1fr_auto]">
-        <Select
+        <Dropdown
           value={filter.datePreset}
-          onChange={(e) => set('datePreset', e.target.value as TxFilter['datePreset'])}
-          className="bg-surface"
-        >
-          {DATE_PRESETS.map((p) => (
-            <option key={p.value} value={p.value}>
-              {p.label}
-            </option>
-          ))}
-        </Select>
-        <Select
+          onChange={(v) => set('datePreset', v)}
+          options={DATE_PRESETS}
+          aria-label="Date range"
+        />
+        <Dropdown
           value={filter.sort}
-          onChange={(e) => set('sort', e.target.value as TxFilter['sort'])}
-          className="bg-surface"
-        >
-          {SORT_OPTIONS.map((s) => (
-            <option key={s.value} value={s.value}>
-              {s.label}
-            </option>
-          ))}
-        </Select>
+          onChange={(v) => set('sort', v)}
+          options={SORT_OPTIONS}
+          aria-label="Sort order"
+        />
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
           className={cn(
-            'col-span-2 inline-flex h-12 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-semibold shadow-sm transition-all sm:col-span-1',
+            'col-span-2 inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-semibold shadow-sm transition-all sm:col-span-1',
             open || count > 0
               ? 'border-primary/60 bg-primary/10 text-primary'
               : 'border-border bg-surface text-foreground hover:bg-surface-muted',
@@ -162,7 +177,7 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
           <SlidersHorizontal className="h-4 w-4" />
           Filters
           {count > 0 && (
-            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-primary-foreground">
+            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-bold text-primary-foreground">
               {count}
             </span>
           )}
@@ -196,49 +211,30 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
           )}
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Select value={filter.accountId} onChange={(e) => set('accountId', e.target.value)} className="bg-surface">
-              <option value="">All accounts</option>
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </Select>
-            <Select
+            <Dropdown
+              value={filter.accountId}
+              onChange={(v) => set('accountId', v)}
+              options={accountDropdown}
+              aria-label="Account"
+            />
+            <Dropdown
               value={filter.type}
-              onChange={(e) => set('type', e.target.value as TxFilter['type'])}
-              className="bg-surface"
-            >
-              <option value="">All types</option>
-              <option value="expense">Expense</option>
-              <option value="income">Income</option>
-              <option value="transfer">Transfer</option>
-            </Select>
-            <Select
+              onChange={(v) => set('type', v)}
+              options={typeDropdown}
+              aria-label="Type"
+            />
+            <Dropdown
               value={filter.categoryId}
-              onChange={(e) => set('categoryId', e.target.value)}
-              className="bg-surface"
-            >
-              <option value="">All categories</option>
-              {categoryOptions.map(({ category, depth }) => (
-                <option key={category.id} value={category.id}>
-                  {depth ? '  — ' : ''}
-                  {category.name}
-                </option>
-              ))}
-            </Select>
-            <Select
+              onChange={(v) => set('categoryId', v)}
+              options={categoryDropdown}
+              aria-label="Category"
+            />
+            <Dropdown
               value={filter.source}
-              onChange={(e) => set('source', e.target.value as TxFilter['source'])}
-              className="bg-surface"
-            >
-              <option value="">Any source</option>
-              {SOURCE_OPTIONS.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </Select>
+              onChange={(v) => set('source', v)}
+              options={sourceDropdown}
+              aria-label="Source"
+            />
           </div>
 
           {/* Amount range */}
@@ -284,7 +280,7 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-muted-foreground">Tags</span>
                 {filter.tagIds.length > 1 && (
-                  <div className="inline-flex overflow-hidden rounded-lg border border-border text-[11px] font-semibold">
+                  <div className="inline-flex overflow-hidden rounded-lg border border-border text-xs font-semibold">
                     {(['any', 'all'] as const).map((m) => (
                       <button
                         key={m}
