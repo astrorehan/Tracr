@@ -221,14 +221,7 @@ function RateGroup({
           const live = r.source !== 'manual'
           return (
             <li key={r.id} className="flex items-center gap-3 py-3">
-              <span
-                className={cn(
-                  'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold ring-1',
-                  meta.crypto
-                    ? 'bg-amber-500/10 text-amber-600 ring-amber-500/15 dark:text-amber-400'
-                    : 'bg-surface-muted text-foreground ring-border',
-                )}
-              >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-muted text-sm font-bold text-foreground ring-1 ring-border">
                 {meta.symbol}
               </span>
               <div className="min-w-0 flex-1">

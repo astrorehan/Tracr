@@ -202,7 +202,7 @@ export function AccountDetailPage() {
                   const owed = Math.abs(balance)
                   const pct = Math.min(100, (owed / limit) * 100)
                   const available = limit - owed
-                  const c = pct >= 90 ? 'var(--danger)' : pct >= 70 ? '#d97706' : color
+                  const c = pct >= 90 ? 'var(--danger)' : pct >= 70 ? '#f59e0b' : color
                   return (
                     <div className="mt-2 max-w-[220px]">
                       <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-muted">
