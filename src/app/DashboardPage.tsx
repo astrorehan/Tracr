@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { format, subMonths, startOfMonth } from 'date-fns'
 import {
@@ -16,6 +16,7 @@ import {
 } from 'recharts'
 import { Wallet } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
+import { Segmented } from '@/components/ui/Segmented'
 import { AnimatedNumber } from '@/components/ui/AnimatedNumber'
 import { EmptyState, Skeleton } from '@/components/ui/States'
 import { chartCursor, chartTooltipStyle } from '@/lib/chartTheme'
@@ -33,14 +34,28 @@ import { accountTypeMeta } from '@/features/accounts/meta'
 import { indexById } from '@/lib/collections'
 import { cn } from '@/lib/utils'
 
+type ChartRange = '3m' | '6m' | '12m'
+const RANGE_OPTIONS: { value: ChartRange; label: string }[] = [
+  { value: '3m', label: '3M' },
+  { value: '6m', label: '6M' },
+  { value: '12m', label: '12M' },
+]
+
 export function DashboardPage() {
   const { profile } = useAuth()
   const base = profile?.base_currency ?? 'IDR'
+
+  const [range, setRange] = useState<ChartRange>('6m')
+  const rangeMonths = range === '3m' ? 3 : range === '12m' ? 12 : 6
 
   const { data: accounts = [], isLoading: la } = useAccounts()
   const { data: balances = {}, isLoading: lb } = useBalances()
   const { data: categories = [] } = useCategories()
   const { data: transactions = [], isLoading: lt } = useTransactions({ limit: 500 })
+  // A full 12-month window for the time-series charts/stats, independent of the
+  // 500 most-recent rows used for the activity feed and current-month figures.
+  const chartFrom = useMemo(() => startOfMonth(subMonths(new Date(), 11)).toISOString(), [])
+  const { data: chartTxns = [] } = useTransactions({ from: chartFrom, limit: 3000 })
   const { data: fxRates = [] } = useFxRates()
 
   const accountMap = useMemo(() => indexById(accounts), [accounts])
@@ -80,17 +95,17 @@ export function DashboardPage() {
     return { total, assets, debts, missing: [...missing] }
   }, [accounts, balances, fxRates, base])
 
-  // Last 6 months of cashflow in the base currency — money in, money out, and the
-  // net kept. Drives the in-vs-out bars and the net-trend area.
+  // Cashflow over the selected range in the base currency — money in, money out,
+  // and the net kept. Drives the in-vs-out bars and the net-trend area.
   const monthly = useMemo(() => {
     const months: { key: string; label: string; income: number; expense: number; net: number }[] =
       []
-    for (let i = 5; i >= 0; i--) {
+    for (let i = rangeMonths - 1; i >= 0; i--) {
       const d = startOfMonth(subMonths(new Date(), i))
       months.push({ key: format(d, 'yyyy-MM'), label: format(d, 'MMM'), income: 0, expense: 0, net: 0 })
     }
     const index = new Map(months.map((m) => [m.key, m]))
-    for (const tx of transactions) {
+    for (const tx of chartTxns) {
       if (tx.currency !== base) continue
       const m = index.get(format(new Date(tx.occurred_at), 'yyyy-MM'))
       if (!m) continue
@@ -99,7 +114,7 @@ export function DashboardPage() {
     }
     for (const m of months) m.net = m.income - m.expense
     return months
-  }, [transactions, base])
+  }, [chartTxns, base, rangeMonths])
 
   // This month's spending grouped by category (base currency), ranked high→low.
   // Top 5 stand alone; the long tail folds into one "Everything else" slice so the
@@ -154,6 +169,43 @@ export function DashboardPage() {
     return { spent, earned, net: earned - spent, prevSpent, prevEarned }
   }, [transactions, base])
 
+  // Quick figures for the at-a-glance row: the share of income kept, average
+  // daily spend so far this month, and the single biggest expense this month.
+  const glance = useMemo(() => {
+    const cur = format(new Date(), 'yyyy-MM')
+    let biggest = 0
+    let biggestLabel = ''
+    for (const tx of transactions) {
+      if (tx.currency !== base || tx.type !== 'expense') continue
+      if (format(new Date(tx.occurred_at), 'yyyy-MM') !== cur) continue
+      if (tx.amount > biggest) {
+        biggest = tx.amount
+        biggestLabel =
+          tx.payee || (tx.category_id ? categoryMap[tx.category_id]?.name ?? '' : '') || 'Expense'
+      }
+    }
+    return {
+      savingsRate: month.earned > 0 ? (month.net / month.earned) * 100 : null,
+      avgPerDay: month.spent / Math.max(1, new Date().getDate()),
+      biggest,
+      biggestLabel,
+    }
+  }, [transactions, base, categoryMap, month])
+
+  // Spending by weekday across the selected range — which days cost the most.
+  const weekday = useMemo(() => {
+    const fromKey = format(startOfMonth(subMonths(new Date(), rangeMonths - 1)), 'yyyy-MM')
+    const sums = [0, 0, 0, 0, 0, 0, 0] // JS getDay(): 0=Sun … 6=Sat
+    for (const tx of chartTxns) {
+      if (tx.currency !== base || tx.type !== 'expense') continue
+      if (format(new Date(tx.occurred_at), 'yyyy-MM') < fromKey) continue
+      sums[new Date(tx.occurred_at).getDay()] += tx.amount
+    }
+    const order = [1, 2, 3, 4, 5, 6, 0]
+    const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    return order.map((d, i) => ({ label: labels[i], total: sums[d] }))
+  }, [chartTxns, base, rangeMonths])
+
   const recent = transactions.slice(0, 7)
   const otherCurrencies = Object.entries(totalsByCurrency).filter(([c]) => c !== base)
   const loading = la || lb || lt
@@ -186,7 +238,7 @@ export function DashboardPage() {
     <div className="space-y-6">
       {/* Masthead — date stamp, greeting, and one true sentence about the month */}
       <header className="animate-rise py-1">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           {format(new Date(), 'EEEE, d MMMM yyyy')}
         </p>
         <h1 className="mt-1 text-[26px] font-black tracking-tight lg:text-3xl">
@@ -224,7 +276,7 @@ export function DashboardPage() {
               <div className="relative z-10">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                   <h2 className="section-head text-lg text-white/90">Net worth</h2>
-                  <p className="text-[11px] font-medium text-white/45">
+                  <p className="text-xs font-medium text-white/45">
                     as of {format(new Date(), 'd MMMM')} · in {base}
                   </p>
                 </div>
@@ -233,14 +285,14 @@ export function DashboardPage() {
                   <AnimatedNumber value={netWorth.total} format={(v) => formatMoney(v, base)} />
                 </p>
                 {otherCurrencies.length > 0 && netWorth.missing.length === 0 && (
-                  <p className="mt-1.5 text-[10px] font-semibold text-white/45">
+                  <p className="mt-1.5 text-xs font-semibold text-white/45">
                     ≈ estimated at latest rates
                   </p>
                 )}
                 {netWorth.missing.length > 0 && (
                   <Link
                     to="/settings"
-                    className="mt-1.5 inline-block text-[10px] font-semibold text-white/75 underline-offset-2 hover:underline"
+                    className="mt-1.5 inline-block text-xs font-semibold text-white/75 underline-offset-2 hover:underline"
                   >
                     Add a rate for {netWorth.missing.join(', ')} to include it
                   </Link>
@@ -267,7 +319,7 @@ export function DashboardPage() {
 
                 {otherCurrencies.length > 0 && (
                   <div className="mt-6">
-                    <p className="mb-2 text-[9px] font-bold uppercase tracking-[0.2em] text-white/40">
+                    <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-white/40">
                       Other currencies
                     </p>
                     <div className="flex flex-wrap gap-1.5">
@@ -320,16 +372,36 @@ export function DashboardPage() {
               />
             </div>
 
-            {/* Money in vs money out — six months, ink bars (in) vs gray (out) */}
+            {/* At a glance — three quick figures for the month */}
+            <div className="animate-rise stagger-1 grid grid-cols-3 gap-3 sm:gap-4">
+              <Glance
+                label="Savings rate"
+                value={glance.savingsRate == null ? '—' : `${Math.round(glance.savingsRate)}%`}
+                hint="of income kept"
+              />
+              <Glance
+                label="Avg / day"
+                value={formatMoney(Math.round(glance.avgPerDay), base, { signDisplay: 'never' })}
+                hint="spent so far"
+              />
+              <Glance
+                label="Biggest"
+                value={formatMoney(glance.biggest, base, { signDisplay: 'never' })}
+                hint={glance.biggestLabel || 'no expenses yet'}
+              />
+            </div>
+
+            {/* Money in vs money out — ink bars (in) vs gray (out), over the chosen range */}
             <Card className="animate-rise stagger-2 p-5">
-              <div className="mb-4 flex items-baseline justify-between gap-3">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <h2 className="section-head text-[17px] text-foreground">Money in vs money out</h2>
-                <Link
-                  to="/reports"
-                  className="shrink-0 text-xs font-semibold text-primary transition hover:underline"
-                >
-                  Reports →
-                </Link>
+                <Segmented
+                  value={range}
+                  onChange={setRange}
+                  options={RANGE_OPTIONS}
+                  size="sm"
+                  aria-label="Chart range"
+                />
               </div>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={monthly} margin={{ top: 8, right: 0, bottom: 0, left: 0 }} barGap={3}>
@@ -442,7 +514,7 @@ export function DashboardPage() {
                         </PieChart>
                       </ResponsiveContainer>
                       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                           Spent
                         </span>
                         <span className="font-numeric text-xs font-extrabold text-foreground">
@@ -470,8 +542,31 @@ export function DashboardPage() {
               </Card>
             </div>
 
+            {/* Spending by weekday — which days cost the most, over the chosen range */}
+            <Card className="animate-rise stagger-4 p-5">
+              <h2 className="section-head mb-4 text-[17px] text-foreground">Spending by weekday</h2>
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={weekday} margin={{ top: 8, right: 0, bottom: 0, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis
+                    dataKey="label"
+                    tickLine={false}
+                    axisLine={false}
+                    fontSize={11}
+                    stroke="var(--muted-foreground)"
+                  />
+                  <Tooltip
+                    cursor={chartCursor}
+                    contentStyle={chartTooltipStyle}
+                    formatter={(value) => [formatMoney(Number(value), base), 'Spent']}
+                  />
+                  <Bar dataKey="total" fill="var(--foreground)" radius={[3, 3, 0, 0]} maxBarSize={36} />
+                </BarChart>
+              </ResponsiveContainer>
+            </Card>
+
             {/* Recent activity — a ruled list straight on the page, like ledger paper */}
-            <div className="animate-rise stagger-4">
+            <div className="animate-rise stagger-5">
               <div className="mb-2 flex items-baseline justify-between px-1">
                 <h2 className="section-head text-[17px] text-foreground">Recent activity</h2>
                 <Link
@@ -518,10 +613,10 @@ export function DashboardPage() {
                 {allocation.length > 1 && (
                   <div className="mb-3 px-2 pt-1">
                     <div className="mb-2 flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                         Allocation
                       </span>
-                      <span className="text-[10px] font-semibold text-muted-foreground">{base}</span>
+                      <span className="text-xs font-semibold text-muted-foreground">{base}</span>
                     </div>
                     <div className="flex h-2.5 w-full gap-0.5 overflow-hidden rounded-full">
                       {allocation.map((x) => (
@@ -562,7 +657,7 @@ export function DashboardPage() {
                             {formatMoney(balances[a.id] ?? a.opening_balance, a.currency)}
                           </span>
                         </div>
-                        <p className="mt-0.5 pl-5 text-[11px] font-medium text-muted-foreground">
+                        <p className="mt-0.5 pl-5 text-xs font-medium text-muted-foreground">
                           {meta.label}
                           {pct !== undefined ? ` · ${pct.toFixed(0)}% of what you own` : ''}
                         </p>
@@ -609,7 +704,7 @@ function StatCell({
 }) {
   return (
     <div className="flex items-center justify-between gap-3 px-5 py-3.5 sm:block sm:py-4">
-      <p className="shrink-0 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+      <p className="shrink-0 text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">
         {label}
       </p>
       <div className="min-w-0 text-right sm:mt-1.5 sm:text-left">
@@ -622,7 +717,7 @@ function StatCell({
           <AnimatedNumber value={amount} format={fmt} />
         </p>
         {delta && (
-          <p className="mt-0.5 truncate text-[11px] font-semibold">
+          <p className="mt-0.5 truncate text-xs font-semibold">
             <span className={delta.good ? 'text-positive' : 'text-negative'}>
               {delta.pct >= 0 ? '▲' : '▼'} {Math.abs(delta.pct).toFixed(0)}%
             </span>{' '}
@@ -631,6 +726,19 @@ function StatCell({
         )}
       </div>
     </div>
+  )
+}
+
+/** A small at-a-glance figure: tiny-caps label, ink number, one-line context. */
+function Glance({ label, value, hint }: { label: string; value: string; hint: string }) {
+  return (
+    <Card className="p-4">
+      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="mt-1.5 truncate font-numeric text-lg font-extrabold text-foreground sm:text-xl">
+        {value}
+      </p>
+      <p className="mt-0.5 truncate text-xs font-medium text-muted-foreground">{hint}</p>
+    </Card>
   )
 }
 
@@ -669,11 +777,17 @@ function DashboardSkeleton() {
         <div className="space-y-5 xl:col-span-2">
           <Skeleton className="h-44 rounded-[20px]" />
           <Skeleton className="h-[180px] rounded-2xl sm:h-[96px]" />
+          <div className="grid grid-cols-3 gap-3 sm:gap-4">
+            <Skeleton className="h-24 rounded-2xl" />
+            <Skeleton className="h-24 rounded-2xl" />
+            <Skeleton className="h-24 rounded-2xl" />
+          </div>
           <Skeleton className="h-64 rounded-2xl" />
           <div className="grid gap-5 lg:grid-cols-2">
             <Skeleton className="h-60 rounded-2xl" />
             <Skeleton className="h-60 rounded-2xl" />
           </div>
+          <Skeleton className="h-60 rounded-2xl" />
           <Skeleton className="h-72 rounded-2xl" />
         </div>
         <aside className="hidden xl:block">
