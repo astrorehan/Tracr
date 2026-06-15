@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Field, Input } from '@/components/ui/Input'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
+import { useConfirm } from '@/components/ui/confirm'
 import { useAuth } from '@/features/auth/useAuth'
 import { useAccounts, useArchiveAccount, useBalances } from '@/features/accounts/api'
 import { useFxRates } from '@/features/fx/api'
@@ -48,6 +49,7 @@ export function AccountDetailPage() {
   const ensureAdjustmentCategory = useEnsureAdjustmentCategory()
   const del = useDeleteTransaction()
   const archive = useArchiveAccount()
+  const confirm = useConfirm()
 
   const [editOpen, setEditOpen] = useState(false)
   const [reconcileOpen, setReconcileOpen] = useState(false)
@@ -148,8 +150,15 @@ export function AccountDetailPage() {
         </button>
         {!account.is_archived && (
           <button
-            onClick={() => {
-              if (confirm(`Archive "${account.name}"?`)) archive.mutate(account.id)
+            onClick={async () => {
+              if (
+                await confirm({
+                  title: `Archive "${account.name}"?`,
+                  message: 'It moves out of your active accounts but keeps its history.',
+                  confirmLabel: 'Archive',
+                })
+              )
+                archive.mutate(account.id)
             }}
             className="rounded-lg border border-transparent p-2 text-muted-foreground transition-colors hover:border-danger/20 hover:bg-danger/10 hover:text-danger"
             aria-label="Archive account"
@@ -341,8 +350,9 @@ export function AccountDetailPage() {
                 accounts={accountMap}
                 categories={categoryMap}
                 splitCount={splitsByTx[tx.id]?.length ?? 0}
-                onDelete={(txId) => {
-                  if (confirm('Delete this transaction?')) del.mutate(txId)
+                onDelete={async (txId) => {
+                  if (await confirm({ title: 'Delete this transaction?', tone: 'danger', confirmLabel: 'Delete' }))
+                    del.mutate(txId)
                 }}
               />
             ))}

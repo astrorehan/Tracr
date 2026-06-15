@@ -5,6 +5,7 @@ import { Archive, ArrowLeft, Check, PiggyBank, Plus, Pencil, Trash2 } from 'luci
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
+import { useConfirm } from '@/components/ui/confirm'
 import { useGoals, useGoalContributions, useDeleteGoal, useUpdateGoal } from '@/features/goals/api'
 import { GoalForm } from '@/features/goals/GoalForm'
 import { ContributeForm } from '@/features/goals/ContributeForm'
@@ -115,14 +116,23 @@ function GoalCard({
 }) {
   const update = useUpdateGoal()
   const del = useDeleteGoal()
+  const confirm = useConfirm()
 
   const p = useMemo(() => goalProgress(goal.target_amount, contributions), [goal.target_amount, contributions])
   const accent = goal.color ?? 'var(--primary)'
   const days = daysToTarget(goal.target_date)
   const busy = update.isPending || del.isPending
 
-  function remove() {
-    if (confirm(`Delete "${goal.name}"? Its contribution history is removed too.`)) del.mutate(goal.id)
+  async function remove() {
+    if (
+      await confirm({
+        title: `Delete "${goal.name}"?`,
+        message: 'Its contribution history is removed too. This cannot be undone.',
+        tone: 'danger',
+        confirmLabel: 'Delete',
+      })
+    )
+      del.mutate(goal.id)
   }
 
   return (

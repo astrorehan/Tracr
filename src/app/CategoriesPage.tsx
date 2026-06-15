@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Field, Select } from '@/components/ui/Input'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
+import { useConfirm } from '@/components/ui/confirm'
 import {
   useCategories,
   useDeleteCategory,
@@ -34,6 +35,7 @@ export function CategoriesPage() {
   const del = useDeleteCategory()
   const setArchived = useSetCategoryArchived()
   const reorder = useReorderCategories()
+  const confirm = useConfirm()
   const [editing, setEditing] = useState<Category | null>(null)
   const [creatingKind, setCreatingKind] = useState<CategoryKind | null>(null)
   const [merging, setMerging] = useState<Category | null>(null)
@@ -48,8 +50,15 @@ export function CategoriesPage() {
     return { activeByKind: active, archived }
   }, [categories])
 
-  function remove(c: Category) {
-    if (confirm(`Delete "${c.name}"? Existing transactions stay but become uncategorized.`))
+  async function remove(c: Category) {
+    if (
+      await confirm({
+        title: `Delete "${c.name}"?`,
+        message: 'Existing transactions stay but become uncategorized.',
+        tone: 'danger',
+        confirmLabel: 'Delete',
+      })
+    )
       del.mutate(c.id)
   }
 

@@ -16,6 +16,7 @@ import {
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
+import { useConfirm } from '@/components/ui/confirm'
 import { CategoryIcon } from '@/features/categories/CategoryIcon'
 import { useAccounts } from '@/features/accounts/api'
 import { useCategories } from '@/features/categories/api'
@@ -170,6 +171,7 @@ function BillCard({
   const skip = useSkipRecurring()
   const update = useUpdateRecurring()
   const del = useDeleteRecurring()
+  const confirm = useConfirm()
 
   const { status } = dueInfo(rec.next_due)
   const accent = category?.color ?? (rec.type === 'income' ? 'var(--positive)' : 'var(--primary)')
@@ -184,8 +186,16 @@ function BillCard({
 
   const busy = markPaid.isPending || skip.isPending || update.isPending || del.isPending
 
-  function remove() {
-    if (confirm(`Delete "${rec.name}"? Past transactions it created are kept.`)) del.mutate(rec.id)
+  async function remove() {
+    if (
+      await confirm({
+        title: `Delete "${rec.name}"?`,
+        message: 'Past transactions it already created are kept.',
+        tone: 'danger',
+        confirmLabel: 'Delete',
+      })
+    )
+      del.mutate(rec.id)
   }
 
   return (

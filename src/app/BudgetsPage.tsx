@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
+import { useConfirm } from '@/components/ui/confirm'
 import { CategoryIcon } from '@/features/categories/CategoryIcon'
 import { useAuth } from '@/features/auth/useAuth'
 import { useCategories } from '@/features/categories/api'
@@ -31,6 +32,7 @@ export function BudgetsPage() {
   const { data: budgets = [], isLoading: lb } = useBudgets()
   const { data: categories = [] } = useCategories()
   const del = useDeleteBudget()
+  const confirm = useConfirm()
 
   const [editing, setEditing] = useState<Budget | null>(null)
   const [creating, setCreating] = useState(false)
@@ -87,9 +89,17 @@ export function BudgetsPage() {
     return list.sort((a, b) => b.status.pct - a.status.pct)
   }, [budgets, transactions, childIdsByParent, categoryMap, splitsByTx])
 
-  function remove(b: Budget) {
+  async function remove(b: Budget) {
     const name = b.category_id ? (categoryMap[b.category_id]?.name ?? 'this category') : 'overall spending'
-    if (confirm(`Delete the ${PERIOD_LABEL[b.period].toLowerCase()} budget for ${name}?`)) del.mutate(b.id)
+    if (
+      await confirm({
+        title: `Delete this ${PERIOD_LABEL[b.period].toLowerCase()} budget?`,
+        message: `The budget for ${name} will be removed. Your transactions stay untouched.`,
+        tone: 'danger',
+        confirmLabel: 'Delete',
+      })
+    )
+      del.mutate(b.id)
   }
 
   const loading = lb || (budgets.length > 0 && lt)

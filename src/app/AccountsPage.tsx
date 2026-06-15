@@ -4,6 +4,7 @@ import { Plus, Pencil, Archive } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
+import { useConfirm } from '@/components/ui/confirm'
 import { formatMoney } from '@/lib/money'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/features/auth/useAuth'
@@ -21,6 +22,7 @@ export function AccountsPage() {
   const { data: balances = {} } = useBalances()
   const { data: fxRates = [] } = useFxRates()
   const archive = useArchiveAccount()
+  const confirm = useConfirm()
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Account | null>(null)
 
@@ -54,6 +56,16 @@ export function AccountsPage() {
   function openEdit(account: Account) {
     setEditing(account)
     setFormOpen(true)
+  }
+  async function handleArchive(account: Account) {
+    if (
+      await confirm({
+        title: `Archive "${account.name}"?`,
+        message: 'It moves out of your active accounts but keeps its history.',
+        confirmLabel: 'Archive',
+      })
+    )
+      archive.mutate(account.id)
   }
 
   const hasLiabilities = liabilities.length > 0
@@ -108,9 +120,7 @@ export function AccountsPage() {
                   base={base}
                   rateTable={rateTable}
                   onEdit={() => openEdit(account)}
-                  onArchive={() => {
-                    if (confirm(`Archive "${account.name}"?`)) archive.mutate(account.id)
-                  }}
+                  onArchive={() => handleArchive(account)}
                 />
               ))}
               <NewAccountTile onClick={openNew} />
@@ -128,9 +138,7 @@ export function AccountsPage() {
                     base={base}
                     rateTable={rateTable}
                     onEdit={() => openEdit(account)}
-                    onArchive={() => {
-                      if (confirm(`Archive "${account.name}"?`)) archive.mutate(account.id)
-                    }}
+                    onArchive={() => handleArchive(account)}
                   />
                 ))}
               </div>
