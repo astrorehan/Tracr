@@ -39,21 +39,25 @@ interface NavItem {
   tint: string
 }
 
+// Monochrome icon treatment — ink glyph on an inset surface, hairline ring. Keeps
+// the settings index in step with the black-and-white system (no rainbow tints).
+const TINT = 'bg-surface-muted text-foreground ring-border'
+
 const ORGANIZE: NavItem[] = [
-  { to: '/categories', label: 'Categories', desc: 'Income & expense groups', icon: Tag, tint: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-amber-500/10' },
-  { to: '/tags', label: 'Tags', desc: 'Free-form labels', icon: Tags, tint: 'bg-rose-500/10 text-rose-500 ring-rose-500/10' },
-  { to: '/rules', label: 'Rules', desc: 'Auto-categorize & tag', icon: Zap, tint: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 ring-indigo-500/10' },
+  { to: '/categories', label: 'Categories', desc: 'Income & expense groups', icon: Tag, tint: TINT },
+  { to: '/tags', label: 'Tags', desc: 'Free-form labels', icon: Tags, tint: TINT },
+  { to: '/rules', label: 'Rules', desc: 'Auto-categorize & tag', icon: Zap, tint: TINT },
 ]
 
 const PLANNING: NavItem[] = [
-  { to: '/budgets', label: 'Budgets', desc: 'Limits & rollover', icon: Target, tint: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-emerald-500/10' },
-  { to: '/bills', label: 'Bills', desc: 'Recurring & due dates', icon: Receipt, tint: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 ring-sky-500/10' },
-  { to: '/goals', label: 'Savings goals', desc: 'Targets & progress', icon: PiggyBank, tint: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 ring-violet-500/10' },
+  { to: '/budgets', label: 'Budgets', desc: 'Limits & rollover', icon: Target, tint: TINT },
+  { to: '/bills', label: 'Bills', desc: 'Recurring & due dates', icon: Receipt, tint: TINT },
+  { to: '/goals', label: 'Savings goals', desc: 'Targets & progress', icon: PiggyBank, tint: TINT },
 ]
 
 const SYSTEM: NavItem[] = [
-  { to: '/currencies', label: 'Exchange rates', desc: 'Multi-currency conversion', icon: Coins, tint: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 ring-yellow-500/10' },
-  { to: '/data', label: 'Data & backup', desc: 'Import, export, restore', icon: Database, tint: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 ring-teal-500/10' },
+  { to: '/currencies', label: 'Exchange rates', desc: 'Multi-currency conversion', icon: Coins, tint: TINT },
+  { to: '/data', label: 'Data & backup', desc: 'Import, export, restore', icon: Database, tint: TINT },
 ]
 
 export function SettingsPage() {
@@ -172,10 +176,10 @@ export function SettingsPage() {
       <Section title="Coming soon">
         <Card className="divide-y divide-border/60 py-1 px-5 shadow-sm">
           {[
-            { icon: Sparkles, label: 'AI spending insights', color: 'text-yellow-500 bg-yellow-500/10' },
-            { icon: MessageCircle, label: 'Log via WhatsApp bot', color: 'text-green-500 bg-green-500/10' },
-            { icon: Split, label: 'Split bills with friends', color: 'text-pink-500 bg-pink-500/10' },
-            { icon: Table, label: 'Export to Google Sheets', color: 'text-teal-500 bg-teal-500/10' },
+            { icon: Sparkles, label: 'AI spending insights', color: 'text-foreground bg-surface-muted' },
+            { icon: MessageCircle, label: 'Log via WhatsApp bot', color: 'text-foreground bg-surface-muted' },
+            { icon: Split, label: 'Split bills with friends', color: 'text-foreground bg-surface-muted' },
+            { icon: Table, label: 'Export to Google Sheets', color: 'text-foreground bg-surface-muted' },
           ].map(({ icon: Icon, label, color }) => (
             <div key={label} className="flex items-center gap-3.5 py-3 text-sm font-semibold text-muted-foreground">
               <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg border border-transparent', color)}>

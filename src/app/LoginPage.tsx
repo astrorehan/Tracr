@@ -13,13 +13,13 @@ export function LoginPage() {
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 bg-background">
-      {/* Decorative warm blurs */}
-      <div className="absolute top-1/4 -left-20 -z-10 h-72 w-72 rounded-full bg-amber-500/12 dark:bg-amber-500/8 blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-1/4 -right-20 -z-10 h-80 w-80 rounded-full bg-orange-500/10 dark:bg-orange-500/6 blur-[120px] pointer-events-none" />
+      {/* Decorative monochrome blurs */}
+      <div className="absolute top-1/4 -left-20 -z-10 h-72 w-72 rounded-full bg-foreground/[0.05] blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-1/4 -right-20 -z-10 h-80 w-80 rounded-full bg-foreground/[0.04] blur-[120px] pointer-events-none" />
 
       <div className="w-full max-w-md rounded-[32px] border border-border/80 bg-surface/60 backdrop-blur-md p-8 shadow-xl text-center animate-fade-in relative">
         <div className="relative mx-auto mb-6 h-20 w-20">
-          <div className="absolute inset-0 rounded-3xl bg-amber-500 blur-xl opacity-30 dark:opacity-25" />
+          <div className="absolute inset-0 rounded-3xl bg-foreground blur-xl opacity-[0.12] dark:opacity-[0.15]" />
           <img src="/logo.svg" alt="" className="relative h-20 w-20 rounded-3xl shadow-md border border-border" />
         </div>
 
