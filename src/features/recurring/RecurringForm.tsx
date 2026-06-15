@@ -12,10 +12,18 @@ import { FREQ_LABEL } from './schedule'
 import { useCreateRecurring, useUpdateRecurring } from './api'
 import type { RecurrenceFreq, RecurringTransaction } from '@/types/db'
 
+export interface RecurringPreset {
+  name?: string
+  type?: 'expense' | 'income'
+  frequency?: RecurrenceFreq
+  note?: string
+}
+
 interface Props {
   open: boolean
   onClose: () => void
   recurring?: RecurringTransaction | null
+  preset?: RecurringPreset
 }
 
 const FREQS: RecurrenceFreq[] = ['weekly', 'monthly', 'yearly']
@@ -30,10 +38,10 @@ function todayLocal() {
   return new Date(d.getTime() - off * 60_000).toISOString().slice(0, 10)
 }
 
-export function RecurringForm({ open, onClose, recurring }: Props) {
+export function RecurringForm({ open, onClose, recurring, preset }: Props) {
   return (
     <Modal open={open} onClose={onClose} title={recurring ? 'Edit bill' : 'New bill / subscription'}>
-      {open && <RecurringFormBody onClose={onClose} recurring={recurring ?? null} />}
+      {open && <RecurringFormBody onClose={onClose} recurring={recurring ?? null} preset={preset} />}
     </Modal>
   )
 }
@@ -41,26 +49,30 @@ export function RecurringForm({ open, onClose, recurring }: Props) {
 function RecurringFormBody({
   onClose,
   recurring,
+  preset,
 }: {
   onClose: () => void
   recurring: RecurringTransaction | null
+  preset?: RecurringPreset
 }) {
   const { data: accounts = [] } = useAccounts()
   const { data: categories = [] } = useCategories()
   const create = useCreateRecurring()
   const update = useUpdateRecurring()
 
-  const [name, setName] = useState(recurring?.name ?? '')
+  const [name, setName] = useState(recurring?.name ?? preset?.name ?? '')
   const [type, setType] = useState<'expense' | 'income'>(
-    recurring?.type === 'income' ? 'income' : 'expense',
+    (recurring?.type ?? preset?.type) === 'income' ? 'income' : 'expense',
   )
   const [accountId, setAccountId] = useState(recurring?.account_id ?? accounts[0]?.id ?? '')
   const [categoryId, setCategoryId] = useState(recurring?.category_id ?? '')
-  const [frequency, setFrequency] = useState<RecurrenceFreq>(recurring?.frequency ?? 'monthly')
+  const [frequency, setFrequency] = useState<RecurrenceFreq>(
+    recurring?.frequency ?? preset?.frequency ?? 'monthly',
+  )
   const [interval, setIntervalValue] = useState(String(recurring?.interval ?? 1))
   const [nextDue, setNextDue] = useState(recurring?.next_due ?? todayLocal())
   const [autoPost, setAutoPost] = useState(recurring?.auto_post ?? false)
-  const [note, setNote] = useState(recurring?.note ?? '')
+  const [note, setNote] = useState(recurring?.note ?? preset?.note ?? '')
   const [error, setError] = useState<string | null>(null)
 
   const effectiveAccountId = accountId || accounts[0]?.id || ''

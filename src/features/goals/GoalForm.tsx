@@ -10,21 +10,35 @@ import { useAccounts } from '@/features/accounts/api'
 import { useCreateGoal, useUpdateGoal } from './api'
 import type { SavingsGoal } from '@/types/db'
 
+export interface GoalPreset {
+  name?: string
+  color?: string
+}
+
 interface Props {
   open: boolean
   onClose: () => void
   goal?: SavingsGoal | null
+  preset?: GoalPreset
 }
 
-export function GoalForm({ open, onClose, goal }: Props) {
+export function GoalForm({ open, onClose, goal, preset }: Props) {
   return (
     <Modal open={open} onClose={onClose} title={goal ? 'Edit goal' : 'New savings goal'}>
-      {open && <GoalFormBody onClose={onClose} goal={goal ?? null} />}
+      {open && <GoalFormBody onClose={onClose} goal={goal ?? null} preset={preset} />}
     </Modal>
   )
 }
 
-function GoalFormBody({ onClose, goal }: { onClose: () => void; goal: SavingsGoal | null }) {
+function GoalFormBody({
+  onClose,
+  goal,
+  preset,
+}: {
+  onClose: () => void
+  goal: SavingsGoal | null
+  preset?: GoalPreset
+}) {
   const { profile } = useAuth()
   const base = profile?.base_currency ?? 'IDR'
   const currency = goal?.currency ?? base
@@ -34,11 +48,11 @@ function GoalFormBody({ onClose, goal }: { onClose: () => void; goal: SavingsGoa
   const create = useCreateGoal()
   const update = useUpdateGoal()
 
-  const [name, setName] = useState(goal?.name ?? '')
+  const [name, setName] = useState(goal?.name ?? preset?.name ?? '')
   const [target, setTarget] = useState(goal ? String(fromMinorUnits(goal.target_amount, currency)) : '')
   const [targetDate, setTargetDate] = useState(goal?.target_date ?? '')
   const [accountId, setAccountId] = useState(goal?.account_id ?? '')
-  const [color, setColor] = useState(goal?.color ?? ACCOUNT_COLORS[0])
+  const [color, setColor] = useState(goal?.color ?? preset?.color ?? ACCOUNT_COLORS[0])
   const [error, setError] = useState<string | null>(null)
 
   const pending = create.isPending || update.isPending

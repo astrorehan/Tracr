@@ -3,15 +3,16 @@ import { ArrowLeft, Pencil, PiggyBank, Plus, Repeat, Target, Trash2 } from 'luci
 import { Link } from 'react-router-dom'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { CenterSpinner, EmptyState } from '@/components/ui/States'
+import { CenterSpinner } from '@/components/ui/States'
 import { useConfirm } from '@/components/ui/confirm'
+import { StarterGuide } from '@/components/ui/StarterGuide'
 import { CategoryIcon } from '@/features/categories/CategoryIcon'
 import { useAuth } from '@/features/auth/useAuth'
 import { useCategories } from '@/features/categories/api'
 import { useTransactions } from '@/features/transactions/api'
 import { useTransactionSplits } from '@/features/transactions/splits'
 import { useBudgets, useDeleteBudget } from '@/features/budgets/api'
-import { BudgetForm } from '@/features/budgets/BudgetForm'
+import { BudgetForm, type BudgetPreset } from '@/features/budgets/BudgetForm'
 import {
   budgetStatus,
   PERIOD_LABEL,
@@ -36,6 +37,13 @@ export function BudgetsPage() {
 
   const [editing, setEditing] = useState<Budget | null>(null)
   const [creating, setCreating] = useState(false)
+  const [preset, setPreset] = useState<BudgetPreset | undefined>()
+
+  function startTemplate(p: BudgetPreset) {
+    setPreset(p)
+    setEditing(null)
+    setCreating(true)
+  }
 
   const categoryMap = useMemo(() => indexById(categories), [categories])
   const childIdsByParent = useMemo(() => {
@@ -125,15 +133,32 @@ export function BudgetsPage() {
       {loading ? (
         <CenterSpinner />
       ) : budgets.length === 0 ? (
-        <EmptyState
-          icon={<Target className="h-8 w-8" />}
-          title="No budgets yet"
-          description="Set a monthly, weekly or yearly limit per category (or overall) and track your progress."
-          action={
-            <Button size="sm" onClick={() => setCreating(true)}>
-              <Plus className="h-4 w-4" /> Create a budget
-            </Button>
-          }
+        <StarterGuide
+          icon={<Target className="h-6 w-6" />}
+          title="Tell your money where to go"
+          intro="Set a spending limit and Tracr keeps a running tally against it."
+          points={[
+            {
+              title: 'Pick a limit',
+              body: 'Per category (like Food or Transport) or one overall cap on all spending.',
+            },
+            {
+              title: 'Choose how often it resets',
+              body: 'Weekly, monthly, or yearly — the bar refills each new period.',
+            },
+            {
+              title: 'Watch the bar',
+              body: 'It fills as you spend, warns near the limit, and can roll unused budget forward.',
+            },
+          ]}
+          templates={[
+            { label: 'Overall monthly limit', hint: 'One cap on all spending', onClick: () => startTemplate({ period: 'monthly' }) },
+            { label: 'Groceries', hint: 'Monthly food budget', onClick: () => startTemplate({ period: 'monthly', categoryNames: ['Groceries', 'Food', 'Food & Drink', 'Groceries & Food'] }) },
+            { label: 'Dining out', hint: 'Cafés & restaurants', onClick: () => startTemplate({ period: 'monthly', categoryNames: ['Dining', 'Dining out', 'Eating out', 'Restaurants'] }) },
+            { label: 'Transport', hint: 'Fuel, rides, transit', onClick: () => startTemplate({ period: 'monthly', categoryNames: ['Transport', 'Transportation', 'Travel'] }) },
+            { label: 'Shopping', hint: 'Monthly shopping cap', onClick: () => startTemplate({ period: 'monthly', categoryNames: ['Shopping'] }) },
+            { label: 'Weekly spending cap', hint: 'Reset every week', onClick: () => startTemplate({ period: 'weekly' }) },
+          ]}
         />
       ) : (
         <div className="space-y-3">
@@ -155,8 +180,10 @@ export function BudgetsPage() {
         onClose={() => {
           setCreating(false)
           setEditing(null)
+          setPreset(undefined)
         }}
         budget={editing}
+        preset={preset}
       />
 
       {budgets.length > 0 && (

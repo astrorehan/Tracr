@@ -12,23 +12,38 @@ import { PERIOD_LABEL } from './progress'
 import { useCreateBudget, useUpdateBudget } from './api'
 import type { Budget, BudgetPeriod } from '@/types/db'
 
+export interface BudgetPreset {
+  /** Candidate category names to preselect if the user has a matching one. */
+  categoryNames?: string[]
+  period?: BudgetPeriod
+}
+
 interface Props {
   open: boolean
   onClose: () => void
   budget?: Budget | null
+  preset?: BudgetPreset
 }
 
 const PERIODS: BudgetPeriod[] = ['weekly', 'monthly', 'yearly']
 
-export function BudgetForm({ open, onClose, budget }: Props) {
+export function BudgetForm({ open, onClose, budget, preset }: Props) {
   return (
     <Modal open={open} onClose={onClose} title={budget ? 'Edit budget' : 'New budget'}>
-      {open && <BudgetFormBody onClose={onClose} budget={budget ?? null} />}
+      {open && <BudgetFormBody onClose={onClose} budget={budget ?? null} preset={preset} />}
     </Modal>
   )
 }
 
-function BudgetFormBody({ onClose, budget }: { onClose: () => void; budget: Budget | null }) {
+function BudgetFormBody({
+  onClose,
+  budget,
+  preset,
+}: {
+  onClose: () => void
+  budget: Budget | null
+  preset?: BudgetPreset
+}) {
   const { profile } = useAuth()
   const base = profile?.base_currency ?? 'IDR'
   const currency = budget?.currency ?? base
@@ -43,8 +58,19 @@ function BudgetFormBody({ onClose, budget }: { onClose: () => void; budget: Budg
     [categories],
   )
 
-  const [categoryId, setCategoryId] = useState(budget?.category_id ?? '')
-  const [period, setPeriod] = useState<BudgetPeriod>(budget?.period ?? 'monthly')
+  // Best-effort: if a template named candidate categories, preselect the first
+  // the user actually has; otherwise fall back to overall (empty).
+  const presetCategoryId = useMemo(() => {
+    if (budget || !preset?.categoryNames?.length) return ''
+    const wanted = preset.categoryNames.map((n) => n.toLowerCase())
+    const match = categories.find(
+      (c) => c.kind === 'expense' && !c.is_archived && wanted.includes(c.name.toLowerCase()),
+    )
+    return match?.id ?? ''
+  }, [budget, preset, categories])
+
+  const [categoryId, setCategoryId] = useState(budget?.category_id ?? presetCategoryId)
+  const [period, setPeriod] = useState<BudgetPeriod>(budget?.period ?? preset?.period ?? 'monthly')
   const [amount, setAmount] = useState(
     budget ? String(fromMinorUnits(budget.amount, currency)) : '',
   )
