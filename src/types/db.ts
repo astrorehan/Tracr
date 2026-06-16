@@ -13,6 +13,8 @@ export type AccountType =
 export type TransactionType = 'income' | 'expense' | 'transfer'
 export type CategoryKind = 'income' | 'expense'
 export type TransactionSource = 'web' | 'whatsapp' | 'import'
+/** Reconciliation state: just recorded, seen on the statement, or matched & locked. */
+export type TransactionStatus = 'pending' | 'cleared' | 'reconciled'
 
 export interface Profile {
   id: string
@@ -77,6 +79,8 @@ export interface Transaction {
   /** Merchant / payee (free text); null = not recorded. */
   payee: string | null
   source: TransactionSource
+  /** Reconciliation state; defaults to 'pending' on insert. */
+  status: TransactionStatus
   external_ref: string | null
   created_at: string
 }
@@ -228,6 +232,7 @@ export type NewTransaction = Omit<
   | 'created_at'
   | 'source'
   | 'payee'
+  | 'status'
   | 'external_ref'
   | 'base_amount'
   | 'fx_rate'
@@ -237,7 +242,7 @@ export type NewTransaction = Omit<
   Partial<
     Pick<
       Transaction,
-      'source' | 'payee' | 'base_amount' | 'fx_rate' | 'counter_amount' | 'counter_fx_rate'
+      'source' | 'payee' | 'status' | 'base_amount' | 'fx_rate' | 'counter_amount' | 'counter_fx_rate'
     >
   >
 

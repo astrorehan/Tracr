@@ -31,6 +31,7 @@ function tx(overrides: Partial<Transaction> = {}): Transaction {
     note: null,
     payee: null,
     source: 'web',
+    status: 'pending',
     external_ref: null,
     created_at: '2024-03-15T12:00:00',
     ...overrides,

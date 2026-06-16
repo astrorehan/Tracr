@@ -12,7 +12,7 @@ import {
   subQuarters,
   subWeeks,
 } from 'date-fns'
-import type { TransactionSource, TransactionType } from '@/types/db'
+import type { TransactionSource, TransactionStatus, TransactionType } from '@/types/db'
 
 export type DatePreset =
   | 'all'
@@ -45,6 +45,7 @@ export interface TxFilter {
   amountMin: string
   amountMax: string
   source: TransactionSource | ''
+  status: TransactionStatus | ''
   sort: TxSort
 }
 
@@ -62,6 +63,7 @@ export const defaultFilter: TxFilter = {
   amountMin: '',
   amountMax: '',
   source: '',
+  status: '',
   sort: 'date_desc',
 }
 
@@ -90,6 +92,12 @@ export const SOURCE_OPTIONS: { value: TransactionSource; label: string }[] = [
   { value: 'web', label: 'Added in app' },
   { value: 'import', label: 'Imported' },
   { value: 'whatsapp', label: 'WhatsApp' },
+]
+
+export const STATUS_OPTIONS: { value: TransactionStatus; label: string }[] = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'cleared', label: 'Cleared' },
+  { value: 'reconciled', label: 'Reconciled' },
 ]
 
 const WEEK_OPTS = { weekStartsOn: 1 } as const // Monday-based weeks
@@ -166,6 +174,7 @@ export function activeFilterCount(f: TxFilter): number {
   if (f.datePreset !== 'all') n++
   if (f.amountMin || f.amountMax) n++
   if (f.source) n++
+  if (f.status) n++
   return n
 }
 

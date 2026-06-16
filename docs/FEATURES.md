@@ -29,7 +29,7 @@ Status legend: ✅ have · 🟡 partial · ⬜ new · 🔧 schema change needed
 | **Bulk actions** | Multi-select → delete / recategorize / tag | ✅ | Activity "Select" mode → checkboxes + select-all; floating bar: set category (skips transfers), add tags (dedupes), delete. Bulk mutations `useBulkDeleteTransactions`/`useBulkSetCategory`/`useBulkAddTags` |
 | **Duplicate / clone** | Copy an existing transaction | ✅ | Copy button on each Activity row → `useDuplicateTransaction` clones core fields + tags + splits as a fresh entry dated now (FX snapshot recomputed, source `web`). No schema change |
 | **Refund / reimbursement link** | Tie a refund to its original expense | ⬜🔧 | `linked_transaction_id` |
-| **Cleared / reconciled flag** | Mark which entries match the bank | ⬜🔧 | add `status` (`pending`/`cleared`/`reconciled`) |
+| **Cleared / reconciled flag** | Mark which entries match the bank | ✅ | `transactions.status` enum `pending`/`cleared`/`reconciled` (migration `0021`, default `pending`). Status badge on the row (Cleared ✓ / Reconciled 🔒); reconciliation-status filter on Activity (dropdown + chip + client filter); **bulk "Status"** action (`useBulkSetStatus`) to mark a multi-selection cleared/reconciled/pending |
 | **Calculator in amount field** | `12000+3500` evaluates inline | ✅ | Safe expression evaluator (`lib/calc.ts`); `amountToMinor` used by every amount field (transaction, splits, budget, goal, contribution, bill, account, reconcile); live `= …` preview in the add form |
 | **Cross-currency transfers** | Transfer between accounts of different currencies w/ rate | ✅ | `counter_amount`/`counter_fx_rate` on transfers (migration `0009`); when the From/To accounts differ in currency the add form reveals an "Amount received" field (auto-suggested from the latest rate, editable) + shows the implied rate; `account_balances` view & Account-detail ledger credit the counter account by `counter_amount` |
 
@@ -181,7 +181,9 @@ Dedicated **Reports** page (`/reports`, sidebar + Dashboard link) with a date-ra
 - ✅ `recurring_transactions.auto_post` + `app_secrets` + pg_cron/pg_net cron→Edge Function (migrations `0013`/`0014`, recurring auto-generator)
 - ✅ `accounts.is_liability` + `credit_card`/`loan` account types (migrations `0015`/`0016`)
 - ✅ `accounts.credit_limit` (migration `0017`) + `accounts.exclude_from_stats` (migration `0018`)
-- Column adds: `transactions.status`, `transactions.linked_transaction_id`, `accounts.sort_order`
+- ✅ `transactions.status` (migration `0021`, reconciliation flag)
+- ✅ `delete_current_user()` RPC for self-service account deletion (migration `0020`)
+- Column adds still open: `transactions.linked_transaction_id` (refund link), `accounts.sort_order`
 - Optional: `saved_views`, `spaces` + membership (sharing)
 
 All additions stay RLS-scoped per user, consistent with the existing schema.

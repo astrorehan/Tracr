@@ -83,4 +83,9 @@ describe('activeFilterCount / isFilterEmpty', () => {
     expect(activeFilterCount({ ...defaultFilter, amountMin: '10' })).toBe(1)
     expect(activeFilterCount({ ...defaultFilter, amountMin: '10', amountMax: '50' })).toBe(1)
   })
+
+  it('counts a reconciliation-status filter', () => {
+    expect(activeFilterCount({ ...defaultFilter, status: 'cleared' })).toBe(1)
+    expect(isFilterEmpty({ ...defaultFilter, status: 'reconciled' })).toBe(false)
+  })
 })

@@ -70,6 +70,7 @@ export function TransactionsPage() {
     const rows = (transactions ?? []).filter((tx) => {
       if (categoryMatchIds && !(tx.category_id && categoryMatchIds.has(tx.category_id))) return false
       if (filter.source && tx.source !== filter.source) return false
+      if (filter.status && tx.status !== filter.status) return false
       if (payeeQ && !(tx.payee ?? '').toLowerCase().includes(payeeQ)) return false
 
       const txt = txTags[tx.id] ?? []

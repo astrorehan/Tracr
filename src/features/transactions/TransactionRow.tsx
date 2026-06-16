@@ -1,4 +1,4 @@
-import { Check, Copy, Paperclip, Pencil, Split, Trash2 } from 'lucide-react'
+import { Check, Copy, Lock, Paperclip, Pencil, Split, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { formatMoney } from '@/lib/money'
@@ -105,6 +105,26 @@ export function TransactionRow({
         )}
       </div>
       <div className="flex items-center gap-2">
+        {tx.status !== 'pending' && (
+          <span
+            className={cn(
+              'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold',
+              tx.status === 'reconciled'
+                ? 'bg-foreground/10 text-foreground'
+                : 'bg-surface-muted text-muted-foreground',
+            )}
+            title={tx.status === 'reconciled' ? 'Reconciled' : 'Cleared'}
+          >
+            {tx.status === 'reconciled' ? (
+              <Lock className="h-3 w-3" />
+            ) : (
+              <Check className="h-3 w-3 stroke-[3]" />
+            )}
+            <span className="hidden sm:inline">
+              {tx.status === 'reconciled' ? 'Reconciled' : 'Cleared'}
+            </span>
+          </span>
+        )}
         <span
           className={cn(
             'text-[15px] font-bold font-numeric tracking-wide',
