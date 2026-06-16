@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, Link } from 'react-router-dom'
 import { useAuth } from '@/features/auth/useAuth'
 import { Button } from '@/components/ui/Button'
 import { CenterSpinner } from '@/components/ui/States'
@@ -54,6 +54,18 @@ export function LoginPage() {
           Private by default — your numbers belong to your account
           <br />
           and nobody else sees them.
+        </p>
+
+        <p className="mt-6 text-xs text-muted-foreground/80">
+          By continuing you agree to our{' '}
+          <Link to="/legal/terms" className="font-semibold text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
+            Terms
+          </Link>{' '}
+          and{' '}
+          <Link to="/legal/privacy" className="font-semibold text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
+            Privacy Policy
+          </Link>
+          .
         </p>
       </div>
     </div>

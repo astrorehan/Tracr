@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { qk } from '@/lib/queryClient'
-import type { NewTransaction, Transaction } from '@/types/db'
+import type { NewTransaction, Transaction, TransactionStatus } from '@/types/db'
 import { computeFxSnapshot } from '@/features/fx/snapshot'
 
 /**
@@ -212,6 +212,19 @@ export function useBulkSetCategory() {
         .from('transactions')
         .update({ category_id: categoryId })
         .in('id', ids)
+      if (error) throw error
+    },
+    onSuccess: () => invalidateAll(qc),
+  })
+}
+
+/** Set the reconciliation status on many transactions at once. */
+export function useBulkSetStatus() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ ids, status }: { ids: string[]; status: TransactionStatus }) => {
+      if (ids.length === 0) return
+      const { error } = await supabase.from('transactions').update({ status }).in('id', ids)
       if (error) throw error
     },
     onSuccess: () => invalidateAll(qc),

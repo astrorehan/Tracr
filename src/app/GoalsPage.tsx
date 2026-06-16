@@ -5,7 +5,7 @@ import { Archive, ArrowLeft, Check, PiggyBank, Plus, Pencil, Trash2 } from 'luci
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { CenterSpinner } from '@/components/ui/States'
-import { useConfirm } from '@/components/ui/confirm'
+import { useConfirm } from '@/components/ui/confirm-context'
 import { StarterGuide } from '@/components/ui/StarterGuide'
 import { useGoals, useGoalContributions, useDeleteGoal, useUpdateGoal } from '@/features/goals/api'
 import { GoalForm, type GoalPreset } from '@/features/goals/GoalForm'

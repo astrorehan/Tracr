@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Field, Select } from '@/components/ui/Input'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
-import { useConfirm } from '@/components/ui/confirm'
+import { useConfirm } from '@/components/ui/confirm-context'
 import {
   useCategories,
   useDeleteCategory,

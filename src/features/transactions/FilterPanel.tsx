@@ -11,6 +11,7 @@ import {
   isFilterEmpty,
   SORT_OPTIONS,
   SOURCE_OPTIONS,
+  STATUS_OPTIONS,
   defaultFilter,
   type TxFilter,
 } from './filters'
@@ -69,6 +70,10 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
   const sourceDropdown: DropdownOption<TxFilter['source']>[] = [
     { value: '', label: 'Any source' },
     ...SOURCE_OPTIONS,
+  ]
+  const statusDropdown: DropdownOption<TxFilter['status']>[] = [
+    { value: '', label: 'Any status' },
+    ...STATUS_OPTIONS,
   ]
 
   function set<K extends keyof TxFilter>(key: K, value: TxFilter[K]) {
@@ -134,6 +139,12 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
       key: 'source',
       label: SOURCE_OPTIONS.find((s) => s.value === filter.source)?.label ?? 'Source',
       onRemove: () => set('source', ''),
+    })
+  if (filter.status)
+    chips.push({
+      key: 'status',
+      label: STATUS_OPTIONS.find((s) => s.value === filter.status)?.label ?? 'Status',
+      onRemove: () => set('status', ''),
     })
 
   return (
@@ -234,6 +245,12 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
               onChange={(v) => set('source', v)}
               options={sourceDropdown}
               aria-label="Source"
+            />
+            <Dropdown
+              value={filter.status}
+              onChange={(v) => set('status', v)}
+              options={statusDropdown}
+              aria-label="Reconciliation status"
             />
           </div>
 

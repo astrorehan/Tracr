@@ -4,7 +4,7 @@ import { ArrowLeft, GripVertical, Pencil, Plus, Trash2, Wand2, Zap } from 'lucid
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
-import { useConfirm } from '@/components/ui/confirm'
+import { useConfirm } from '@/components/ui/confirm-context'
 import { CategoryIcon } from '@/features/categories/CategoryIcon'
 import { TagChip } from '@/features/tags/TagChip'
 import { useCategories } from '@/features/categories/api'

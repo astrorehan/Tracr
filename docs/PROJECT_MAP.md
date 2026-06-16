@@ -126,7 +126,8 @@ UI primitives: [src/components/ui/](../src/components/ui/) — `Button`, `Card`,
   - `react-refresh/only-export-components` — don't export constants/helpers from a file that also exports a component (put them in a `*.ts`).
   - `react-hooks/purity` — no `Date.now()`/`new Date()` impurity in render; compute inside `useMemo` and thread the value through.
 - **Code-splitting**: pages are `lazy()`-loaded in `App.tsx`; charts (Recharts) land in a shared async chunk.
-- **No tests yet** and **no FX** — the two biggest gaps before a confident `1.0.0` (plus legal/billing). See FEATURES.md "Recommended build order".
+- **Tests**: **Vitest** (`npm test` / `npm run test:watch`, config in `vitest.config.ts`). Unit suites are colocated as `*.test.ts` and cover the **money-critical pure logic** — `lib/money`, `lib/calc`, `features/fx/fx`, `transactions/splits`, `budgets/progress`, `recurring/schedule`, `rules/engine` (57 tests). Still uncovered: `reports/reports`, `goals/progress`, `transactions/filters`, and any component/integration tests.
+- **Remaining `1.0.0` gaps**: broader test coverage + **legal/billing** (payments, terms/privacy, export-my-data / delete-account). FX base conversion has shipped. See FEATURES.md "Recommended build order".
 
 ---
 

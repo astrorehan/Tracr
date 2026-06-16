@@ -1,15 +1,16 @@
 import { useState } from 'react'
-import { Tag as TagIcon, Trash2, X, FolderTree } from 'lucide-react'
+import { Tag as TagIcon, Trash2, X, FolderTree, CircleCheck } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Select } from '@/components/ui/Input'
-import { useConfirm } from '@/components/ui/confirm'
+import { useConfirm } from '@/components/ui/confirm-context'
 import { useCategories } from '@/features/categories/api'
 import { flattenWithDepth } from '@/features/categories/tree'
 import { useTags, useBulkAddTags } from '@/features/tags/api'
 import { TagPicker } from '@/features/tags/TagPicker'
-import { useBulkDeleteTransactions, useBulkSetCategory } from './api'
-import type { Transaction } from '@/types/db'
+import { STATUS_OPTIONS } from './filters'
+import { useBulkDeleteTransactions, useBulkSetCategory, useBulkSetStatus } from './api'
+import type { Transaction, TransactionStatus } from '@/types/db'
 
 interface Props {
   selected: Transaction[]
@@ -23,11 +24,13 @@ export function BulkBar({ selected, onClear }: Props) {
   const bulkDelete = useBulkDeleteTransactions()
   const bulkCategory = useBulkSetCategory()
   const bulkTags = useBulkAddTags()
+  const bulkStatus = useBulkSetStatus()
   const confirm = useConfirm()
 
-  const [mode, setMode] = useState<'category' | 'tag' | null>(null)
+  const [mode, setMode] = useState<'category' | 'tag' | 'status' | null>(null)
   const [categoryId, setCategoryId] = useState('')
   const [tagIds, setTagIds] = useState<string[]>([])
+  const [status, setStatus] = useState<TransactionStatus>('cleared')
 
   const ids = selected.map((t) => t.id)
   // Transfers have no category, so recategorize skips them.
@@ -38,6 +41,7 @@ export function BulkBar({ selected, onClear }: Props) {
     setMode(null)
     setCategoryId('')
     setTagIds([])
+    setStatus('cleared')
   }
 
   async function handleDelete() {
@@ -78,6 +82,18 @@ export function BulkBar({ selected, onClear }: Props) {
     )
   }
 
+  function applyStatus() {
+    bulkStatus.mutate(
+      { ids, status },
+      {
+        onSuccess: () => {
+          close()
+          onClear()
+        },
+      },
+    )
+  }
+
   return (
     <>
       <div className="fixed inset-x-0 bottom-24 z-40 flex justify-center px-4 sm:bottom-6">
@@ -92,6 +108,7 @@ export function BulkBar({ selected, onClear }: Props) {
           <span className="px-2 font-numeric text-sm font-bold text-foreground">{ids.length}</span>
           <BarButton icon={<FolderTree className="h-4 w-4" />} label="Category" onClick={() => setMode('category')} />
           <BarButton icon={<TagIcon className="h-4 w-4" />} label="Tag" onClick={() => setMode('tag')} />
+          <BarButton icon={<CircleCheck className="h-4 w-4" />} label="Status" onClick={() => setMode('status')} />
           <BarButton
             icon={<Trash2 className="h-4 w-4" />}
             label="Delete"
@@ -126,6 +143,29 @@ export function BulkBar({ selected, onClear }: Props) {
               disabled={categorizableIds.length === 0}
               onClick={applyCategory}
             >
+              Apply
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal open={mode === 'status'} onClose={close} title="Set status">
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Mark {ids.length} transaction{ids.length === 1 ? '' : 's'} as:
+          </p>
+          <Select value={status} onChange={(e) => setStatus(e.target.value as TransactionStatus)}>
+            {STATUS_OPTIONS.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </Select>
+          <div className="flex gap-3">
+            <Button variant="secondary" className="flex-1" onClick={close}>
+              Cancel
+            </Button>
+            <Button className="flex-1" loading={bulkStatus.isPending} onClick={applyStatus}>
               Apply
             </Button>
           </div>
