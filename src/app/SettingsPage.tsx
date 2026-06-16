@@ -26,6 +26,7 @@ import { CURRENCIES, CURRENCY_CODES } from '@/lib/currencies'
 import { useAuth } from '@/features/auth/useAuth'
 import { useTheme } from '@/features/settings/theme-context'
 import { useTextSize, TEXT_SIZES } from '@/features/settings/text-size-context'
+import { DeleteAccountCard } from '@/features/account/DeleteAccountCard'
 import { cn } from '@/lib/utils'
 
 // Relative "A" preview sizes shown on each text-size step.
@@ -191,9 +192,20 @@ export function SettingsPage() {
         </Card>
       </Section>
 
+      {/* Account */}
+      <Section title="Account">
+        <DeleteAccountCard />
+      </Section>
+
       <Button variant="outline" className="w-full border-border/80 hover:bg-danger/5 hover:text-danger hover:border-danger/20 transition-all font-bold" onClick={() => signOut()}>
         <LogOut className="h-4 w-4" /> Sign out
       </Button>
+
+      <div className="flex items-center justify-center gap-4 text-xs font-semibold text-muted-foreground">
+        <Link to="/legal/terms" className="hover:text-foreground">Terms</Link>
+        <span aria-hidden className="text-border">·</span>
+        <Link to="/legal/privacy" className="hover:text-foreground">Privacy</Link>
+      </div>
 
       <p className="pb-4 text-center text-xs font-bold tracking-wider text-muted-foreground">Tracr · v0.1</p>
     </div>

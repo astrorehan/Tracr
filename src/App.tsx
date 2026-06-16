@@ -41,6 +41,7 @@ const CurrenciesPage = lazy(() =>
   import('./app/CurrenciesPage').then((m) => ({ default: m.CurrenciesPage })),
 )
 const DataPage = lazy(() => import('./app/DataPage').then((m) => ({ default: m.DataPage })))
+const LegalPage = lazy(() => import('./app/LegalPage').then((m) => ({ default: m.LegalPage })))
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth()
@@ -56,6 +57,14 @@ export default function App() {
     <ConfirmProvider>
       <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/legal/:doc"
+        element={
+          <Suspense fallback={<CenterSpinner />}>
+            <LegalPage />
+          </Suspense>
+        }
+      />
       <Route
         path="/"
         element={
