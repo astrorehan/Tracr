@@ -127,9 +127,9 @@ Dedicated **Reports** page (`/reports`, sidebar + Dashboard link) with a date-ra
 - Per-account statement import — ⬜
 
 ## 12. Notifications & reminders (Tier 3)
-- Web push (service worker) — non-AI
-- Bill due / overdue alerts, budget threshold alerts, daily/weekly "log your spending" nudge
-- In-app notification center
+- ✅ **In-app notification center** — a bell in the header (`features/notifications/`) with an unread badge + popover. Notifications are derived **purely client-side** from cached data (no backend): overdue / due-soon (≤7d) **bills** and **near (≥80%) / over (≥100%) budgets**, each linking to its page. Read-state is per-id in localStorage (`tracr.notifications.read.v1`) with **stable ids** so it survives refreshes and only resets when the situation worsens (due date advances, budget rolls into a new period, or crosses a worse threshold). Pure builders (`notifications.ts`) are unit-tested; budget spend reuses `budgets/progress.ts` exactly. "Mark all read" supported.
+- ⬜ **Web push** (service worker + VAPID + a cron edge function to send) — the builders are designed to be reused server-side; needs VAPID keys, a `push_subscriptions` table, and a daily send job.
+- ⬜ Daily/weekly "log your spending" nudge
 
 ## 13. Power-user & sharing (Tier 3)
 - ✅ **Rules engine** (Firefly-style): "if payee contains GoFood → category Food, tag delivery". `rules` table (migration `0012`, RLS per user): JSONB conditions (`field` payee/note/amount/type · `op` contains/equals/starts_with/gt/lt) with all/any matching, JSONB actions (set category + add tags), `stop_after`, drag-ordered, active toggle. Pure engine in `features/rules/engine.ts`. Applies in 3 places — **live auto-fill** in the add form (fills category+tags until the user edits them; "Auto-filled by rule" hint), **CSV import** (fills empty category + adds tags, transfers excluded), and **"Run now"** on the Rules page (over uncategorized income/expense). Managed on `/rules` (`app/RulesPage.tsx`, linked from Settings → Organize). Backup/restore includes rules
