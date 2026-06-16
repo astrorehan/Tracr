@@ -18,6 +18,7 @@ import { useAuth } from '@/features/auth/useAuth'
 import { useTheme } from '@/features/settings/theme-context'
 import { useLiveRatesSync } from '@/features/fx/useLiveRatesSync'
 import { TransactionForm } from '@/features/transactions/TransactionForm'
+import { NotificationBell } from '@/features/notifications/NotificationBell'
 
 type IconType = ComponentType<{ className?: string }>
 
@@ -112,6 +113,8 @@ export function AppLayout() {
               <span className="h-1.5 w-1.5 rounded-full bg-positive" />
               Saved
             </span>
+
+            <NotificationBell />
 
             <button
               onClick={toggle}
