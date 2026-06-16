@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import { ArrowLeftRight, ListChecks } from 'lucide-react'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
-import { useConfirm } from '@/components/ui/confirm'
+import { useConfirm } from '@/components/ui/confirm-context'
 import { useAccounts } from '@/features/accounts/api'
 import { useCategories } from '@/features/categories/api'
 import {
