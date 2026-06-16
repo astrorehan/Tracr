@@ -93,7 +93,7 @@ export function TransactionRow({
           {splitCount > 0 && <Split className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
           <span className="truncate">{title}</span>
         </p>
-        <p className="mt-0.5 truncate text-[11px] font-medium text-muted-foreground">
+        <p className="mt-0.5 truncate text-xs font-medium text-muted-foreground">
           {subtitle} · {format(new Date(tx.occurred_at), 'd MMM')}
         </p>
         {tags && tags.length > 0 && (
@@ -122,7 +122,7 @@ export function TransactionRow({
             aria-label={`${attachmentCount} attachment(s)`}
           >
             <Paperclip className="h-3.5 w-3.5" />
-            <span className="font-numeric text-[11px] font-bold">{attachmentCount}</span>
+            <span className="font-numeric text-xs font-bold">{attachmentCount}</span>
           </button>
         )}
         {onEdit && !selectable && (

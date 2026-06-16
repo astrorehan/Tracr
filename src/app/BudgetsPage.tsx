@@ -3,14 +3,16 @@ import { ArrowLeft, Pencil, PiggyBank, Plus, Repeat, Target, Trash2 } from 'luci
 import { Link } from 'react-router-dom'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { CenterSpinner, EmptyState } from '@/components/ui/States'
+import { CenterSpinner } from '@/components/ui/States'
+import { useConfirm } from '@/components/ui/confirm'
+import { StarterGuide } from '@/components/ui/StarterGuide'
 import { CategoryIcon } from '@/features/categories/CategoryIcon'
 import { useAuth } from '@/features/auth/useAuth'
 import { useCategories } from '@/features/categories/api'
 import { useTransactions } from '@/features/transactions/api'
 import { useTransactionSplits } from '@/features/transactions/splits'
 import { useBudgets, useDeleteBudget } from '@/features/budgets/api'
-import { BudgetForm } from '@/features/budgets/BudgetForm'
+import { BudgetForm, type BudgetPreset } from '@/features/budgets/BudgetForm'
 import {
   budgetStatus,
   PERIOD_LABEL,
@@ -31,9 +33,17 @@ export function BudgetsPage() {
   const { data: budgets = [], isLoading: lb } = useBudgets()
   const { data: categories = [] } = useCategories()
   const del = useDeleteBudget()
+  const confirm = useConfirm()
 
   const [editing, setEditing] = useState<Budget | null>(null)
   const [creating, setCreating] = useState(false)
+  const [preset, setPreset] = useState<BudgetPreset | undefined>()
+
+  function startTemplate(p: BudgetPreset) {
+    setPreset(p)
+    setEditing(null)
+    setCreating(true)
+  }
 
   const categoryMap = useMemo(() => indexById(categories), [categories])
   const childIdsByParent = useMemo(() => {
@@ -87,9 +97,17 @@ export function BudgetsPage() {
     return list.sort((a, b) => b.status.pct - a.status.pct)
   }, [budgets, transactions, childIdsByParent, categoryMap, splitsByTx])
 
-  function remove(b: Budget) {
+  async function remove(b: Budget) {
     const name = b.category_id ? (categoryMap[b.category_id]?.name ?? 'this category') : 'overall spending'
-    if (confirm(`Delete the ${PERIOD_LABEL[b.period].toLowerCase()} budget for ${name}?`)) del.mutate(b.id)
+    if (
+      await confirm({
+        title: `Delete this ${PERIOD_LABEL[b.period].toLowerCase()} budget?`,
+        message: `The budget for ${name} will be removed. Your transactions stay untouched.`,
+        tone: 'danger',
+        confirmLabel: 'Delete',
+      })
+    )
+      del.mutate(b.id)
   }
 
   const loading = lb || (budgets.length > 0 && lt)
@@ -115,15 +133,32 @@ export function BudgetsPage() {
       {loading ? (
         <CenterSpinner />
       ) : budgets.length === 0 ? (
-        <EmptyState
-          icon={<Target className="h-8 w-8" />}
-          title="No budgets yet"
-          description="Set a monthly, weekly or yearly limit per category (or overall) and track your progress."
-          action={
-            <Button size="sm" onClick={() => setCreating(true)}>
-              <Plus className="h-4 w-4" /> Create a budget
-            </Button>
-          }
+        <StarterGuide
+          icon={<Target className="h-6 w-6" />}
+          title="Tell your money where to go"
+          intro="Set a spending limit and Tracr keeps a running tally against it."
+          points={[
+            {
+              title: 'Pick a limit',
+              body: 'Per category (like Food or Transport) or one overall cap on all spending.',
+            },
+            {
+              title: 'Choose how often it resets',
+              body: 'Weekly, monthly, or yearly — the bar refills each new period.',
+            },
+            {
+              title: 'Watch the bar',
+              body: 'It fills as you spend, warns near the limit, and can roll unused budget forward.',
+            },
+          ]}
+          templates={[
+            { label: 'Overall monthly limit', hint: 'One cap on all spending', onClick: () => startTemplate({ period: 'monthly' }) },
+            { label: 'Groceries', hint: 'Monthly food budget', onClick: () => startTemplate({ period: 'monthly', categoryNames: ['Groceries', 'Food', 'Food & Drink', 'Groceries & Food'] }) },
+            { label: 'Dining out', hint: 'Cafés & restaurants', onClick: () => startTemplate({ period: 'monthly', categoryNames: ['Dining', 'Dining out', 'Eating out', 'Restaurants'] }) },
+            { label: 'Transport', hint: 'Fuel, rides, transit', onClick: () => startTemplate({ period: 'monthly', categoryNames: ['Transport', 'Transportation', 'Travel'] }) },
+            { label: 'Shopping', hint: 'Monthly shopping cap', onClick: () => startTemplate({ period: 'monthly', categoryNames: ['Shopping'] }) },
+            { label: 'Weekly spending cap', hint: 'Reset every week', onClick: () => startTemplate({ period: 'weekly' }) },
+          ]}
         />
       ) : (
         <div className="space-y-3">
@@ -145,8 +180,10 @@ export function BudgetsPage() {
         onClose={() => {
           setCreating(false)
           setEditing(null)
+          setPreset(undefined)
         }}
         budget={editing}
+        preset={preset}
       />
 
       {budgets.length > 0 && (
@@ -196,11 +233,11 @@ function BudgetCard({
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold text-foreground">{name}</p>
           <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-            <span className="rounded-md bg-surface-muted px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+            <span className="rounded-md bg-surface-muted px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
               {PERIOD_LABEL[budget.period]}
             </span>
             {budget.rollover && (
-              <span className="inline-flex items-center gap-1 rounded-md bg-surface-muted px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              <span className="inline-flex items-center gap-1 rounded-md bg-surface-muted px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
                 <Repeat className="h-2.5 w-2.5" /> Rollover
                 {status.carry > 0 ? ` +${formatMoney(status.carry, currency, { signDisplay: 'never' })}` : ''}
               </span>
@@ -254,7 +291,7 @@ function BudgetCard({
           >
             {pctText}
           </p>
-          <p className="text-[11px] font-medium text-muted-foreground">
+          <p className="text-xs font-medium text-muted-foreground">
             {status.remaining >= 0
               ? `${formatMoney(status.remaining, currency, { signDisplay: 'never' })} left`
               : `Over by ${formatMoney(-status.remaining, currency, { signDisplay: 'never' })}`}
@@ -263,7 +300,7 @@ function BudgetCard({
       </div>
 
       {willExceed && (
-        <p className="text-[11px] font-semibold text-amber-500">
+        <p className="text-xs font-semibold text-amber-500">
           On track to spend {formatMoney(status.projected, currency, { signDisplay: 'never' })} —
           over budget.
         </p>

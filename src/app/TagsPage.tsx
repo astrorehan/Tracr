@@ -4,6 +4,7 @@ import { ArrowLeft, Pencil, Plus, Tags, Trash2 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
+import { useConfirm } from '@/components/ui/confirm'
 import { useDeleteTag, useTags } from '@/features/tags/api'
 import { TagForm } from '@/features/tags/TagForm'
 import type { Tag } from '@/types/db'
@@ -11,11 +12,19 @@ import type { Tag } from '@/types/db'
 export function TagsPage() {
   const { data: tags, isLoading } = useTags()
   const del = useDeleteTag()
+  const confirm = useConfirm()
   const [editing, setEditing] = useState<Tag | null>(null)
   const [creating, setCreating] = useState(false)
 
-  function remove(t: Tag) {
-    if (confirm(`Delete "${t.name}"? It will be removed from any transactions it's on.`))
+  async function remove(t: Tag) {
+    if (
+      await confirm({
+        title: `Delete "${t.name}"?`,
+        message: "It will be removed from any transactions it's on.",
+        tone: 'danger',
+        confirmLabel: 'Delete',
+      })
+    )
       del.mutate(t.id)
   }
 

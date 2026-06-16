@@ -4,6 +4,7 @@ import { Plus, Pencil, Archive } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
+import { useConfirm } from '@/components/ui/confirm'
 import { formatMoney } from '@/lib/money'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/features/auth/useAuth'
@@ -21,6 +22,7 @@ export function AccountsPage() {
   const { data: balances = {} } = useBalances()
   const { data: fxRates = [] } = useFxRates()
   const archive = useArchiveAccount()
+  const confirm = useConfirm()
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Account | null>(null)
 
@@ -54,6 +56,16 @@ export function AccountsPage() {
   function openEdit(account: Account) {
     setEditing(account)
     setFormOpen(true)
+  }
+  async function handleArchive(account: Account) {
+    if (
+      await confirm({
+        title: `Archive "${account.name}"?`,
+        message: 'It moves out of your active accounts but keeps its history.',
+        confirmLabel: 'Archive',
+      })
+    )
+      archive.mutate(account.id)
   }
 
   const hasLiabilities = liabilities.length > 0
@@ -108,9 +120,7 @@ export function AccountsPage() {
                   base={base}
                   rateTable={rateTable}
                   onEdit={() => openEdit(account)}
-                  onArchive={() => {
-                    if (confirm(`Archive "${account.name}"?`)) archive.mutate(account.id)
-                  }}
+                  onArchive={() => handleArchive(account)}
                 />
               ))}
               <NewAccountTile onClick={openNew} />
@@ -128,9 +138,7 @@ export function AccountsPage() {
                     base={base}
                     rateTable={rateTable}
                     onEdit={() => openEdit(account)}
-                    onArchive={() => {
-                      if (confirm(`Archive "${account.name}"?`)) archive.mutate(account.id)
-                    }}
+                    onArchive={() => handleArchive(account)}
                   />
                 ))}
               </div>
@@ -183,7 +191,7 @@ function AccountCard({
   const showUtil = isLiability && limit > 0
   const utilPct = showUtil ? Math.min(100, (owed / limit) * 100) : 0
   const available = limit - owed
-  const utilColor = utilPct >= 90 ? 'var(--danger)' : utilPct >= 70 ? '#d97706' : color
+  const utilColor = utilPct >= 90 ? 'var(--danger)' : utilPct >= 70 ? '#f59e0b' : color
 
   return (
     <Card hoverable className="group p-0">
@@ -197,7 +205,7 @@ function AccountCard({
           </div>
           <span
             className={cn(
-              'rounded-lg border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
+              'rounded-lg border px-2 py-0.5 text-xs font-bold uppercase tracking-wide',
               isLiability
                 ? 'border-danger/30 bg-danger/10 text-danger'
                 : 'border-border bg-surface-muted/60 text-muted-foreground',
@@ -209,7 +217,7 @@ function AccountCard({
 
         <div className="mt-4">
           <p className="truncate text-base font-bold leading-tight text-foreground">{account.name}</p>
-          <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {account.currency}
             {isLiability ? ' · owed' : ''}
             {account.exclude_from_stats ? ' · excluded' : ''}
@@ -227,7 +235,7 @@ function AccountCard({
               {formatMoney(balance, account.currency)}
             </p>
             {baseEstimate != null && (
-              <p className="mt-1 font-numeric text-[11px] font-semibold text-muted-foreground">
+              <p className="mt-1 font-numeric text-xs font-semibold text-muted-foreground">
                 ≈ {formatMoney(baseEstimate, base)}
               </p>
             )}
@@ -266,7 +274,7 @@ function AccountCard({
                 style={{ width: `${utilPct}%`, backgroundColor: utilColor }}
               />
             </div>
-            <p className="mt-1.5 text-[10px] font-semibold text-muted-foreground">
+            <p className="mt-1.5 text-xs font-semibold text-muted-foreground">
               {utilPct.toFixed(0)}% of {formatMoney(limit, account.currency, { signDisplay: 'never' })}{' '}
               ·{' '}
               {available >= 0

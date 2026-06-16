@@ -4,6 +4,7 @@ import { ArrowLeft, GripVertical, Pencil, Plus, Trash2, Wand2, Zap } from 'lucid
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
+import { useConfirm } from '@/components/ui/confirm'
 import { CategoryIcon } from '@/features/categories/CategoryIcon'
 import { TagChip } from '@/features/tags/TagChip'
 import { useCategories } from '@/features/categories/api'
@@ -42,6 +43,7 @@ export function RulesPage() {
   const del = useDeleteRule()
   const reorder = useReorderRules()
   const apply = useApplyRulesToUncategorized()
+  const confirm = useConfirm()
 
   const [editing, setEditing] = useState<Rule | null>(null)
   const [creating, setCreating] = useState(false)
@@ -137,8 +139,9 @@ export function RulesPage() {
                 onDrop={handleDrop}
                 onToggle={() => update.mutate({ id: rule.id, patch: { is_active: !rule.is_active } })}
                 onEdit={() => setEditing(rule)}
-                onDelete={() => {
-                  if (confirm(`Delete rule "${rule.name}"?`)) del.mutate(rule.id)
+                onDelete={async () => {
+                  if (await confirm({ title: `Delete rule "${rule.name}"?`, tone: 'danger', confirmLabel: 'Delete' }))
+                    del.mutate(rule.id)
                 }}
               />
             ))}
@@ -220,7 +223,7 @@ function RuleRow({
         <div className="flex items-center gap-2">
           <p className="truncate text-sm font-bold text-foreground">{rule.name}</p>
           {rule.stop_after && (
-            <span className="rounded bg-surface-muted px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+            <span className="rounded bg-surface-muted px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
               stop
             </span>
           )}
@@ -231,7 +234,7 @@ function RuleRow({
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
           {cat && (
             <span
-              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold"
               style={{ backgroundColor: `${cat.color ?? '#64748b'}20`, color: cat.color ?? '#64748b' }}
             >
               <CategoryIcon name={cat.icon} className="h-3 w-3" />
@@ -242,7 +245,7 @@ function RuleRow({
             <TagChip key={t.id} tag={t} />
           ))}
           {!cat && ruleTags.length === 0 && (
-            <span className="text-[11px] font-medium text-muted-foreground">No action set</span>
+            <span className="text-xs font-medium text-muted-foreground">No action set</span>
           )}
         </div>
       </div>

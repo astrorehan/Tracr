@@ -5,6 +5,7 @@ import { useAuth } from './features/auth/useAuth'
 import { CenterSpinner } from './components/ui/States'
 import { AppLayout } from './components/AppLayout'
 import { SetupNotice } from './components/SetupNotice'
+import { ConfirmProvider } from './components/ui/confirm'
 import { LoginPage } from './app/LoginPage'
 
 // Route-level code splitting keeps the initial bundle small (charts load on demand).
@@ -52,7 +53,8 @@ export default function App() {
   if (!isSupabaseConfigured) return <SetupNotice />
 
   return (
-    <Routes>
+    <ConfirmProvider>
+      <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route
         path="/"
@@ -175,7 +177,8 @@ export default function App() {
           }
         />
       </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </ConfirmProvider>
   )
 }

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import { ArrowLeftRight, ListChecks } from 'lucide-react'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
+import { useConfirm } from '@/components/ui/confirm'
 import { useAccounts } from '@/features/accounts/api'
 import { useCategories } from '@/features/categories/api'
 import {
@@ -46,6 +47,7 @@ export function TransactionsPage() {
   })
   const del = useDeleteTransaction()
   const duplicate = useDuplicateTransaction()
+  const confirm = useConfirm()
 
   const accountMap = useMemo(() => indexById(accounts), [accounts])
   const categoryMap = useMemo(() => indexById(categories), [categories])
@@ -162,8 +164,9 @@ export function TransactionsPage() {
         onSelect={toggleSelect}
         onEdit={(id) => setEditTx(visible.find((t) => t.id === id) ?? null)}
         onDuplicate={() => handleDuplicate(tx)}
-        onDelete={(id) => {
-          if (confirm('Delete this transaction?')) del.mutate(id)
+        onDelete={async (id) => {
+          if (await confirm({ title: 'Delete this transaction?', tone: 'danger', confirmLabel: 'Delete' }))
+            del.mutate(id)
         }}
       />
     )
@@ -314,7 +317,7 @@ function formatDayTotal(amount: number, currency: string) {
 
 function cnTone(total: number) {
   return cn(
-    'font-numeric text-[11px] font-bold tracking-wide',
+    'font-numeric text-xs font-bold tracking-wide',
     total > 0 && 'text-positive',
     total < 0 && 'text-negative',
     total === 0 && 'text-muted-foreground',

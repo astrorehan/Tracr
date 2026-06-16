@@ -1,11 +1,17 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="amber" x1="120" y1="360" x2="384" y2="168" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#f59e0b"/>
-      <stop offset="1" stop-color="#fbbf24"/>
+    <linearGradient id="ink" x1="96" y1="256" x2="416" y2="256" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1b1e21"/>
+      <stop offset="0.52" stop-color="#5d636a"/>
+      <stop offset="1" stop-color="#9298a0"/>
     </linearGradient>
+    <path id="hook" d="M80 354 C70 296 96 232 152 206 C204 184 254 204 276 250 C294 286 296 316 262 322" />
   </defs>
-  <rect width="512" height="512" rx="112" fill="#1a140c"/>
-  <path d="M120 352 L208 292 L288 326 L384 168" stroke="url(#amber)" stroke-width="40" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-  <circle cx="384" cy="168" r="30" fill="#fde68a"/>
+  <rect width="512" height="512" rx="112" fill="#ffffff"/>
+  <!-- Slightly larger, bolder mark so it still reads at 16px -->
+  <g fill="none" stroke="url(#ink)" stroke-width="54" stroke-linecap="round" stroke-linejoin="round"
+     transform="translate(256 256) scale(1.08) translate(-256 -256)">
+    <use href="#hook"/>
+    <use href="#hook" transform="matrix(-1 0 0 1 512 0)"/>
+  </g>
 </svg>

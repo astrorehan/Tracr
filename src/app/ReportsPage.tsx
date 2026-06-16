@@ -24,7 +24,7 @@ import {
   Wallet,
 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
-import { Select } from '@/components/ui/Input'
+import { Dropdown } from '@/components/ui/Dropdown'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
 import { CategoryIcon } from '@/features/categories/CategoryIcon'
 import { useAuth } from '@/features/auth/useAuth'
@@ -304,17 +304,13 @@ export function ReportsPage() {
 
       {/* Range selector */}
       <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-surface/95 p-4 shadow-sm print:hidden">
-        <Select
+        <Dropdown
           value={preset}
-          onChange={(e) => setPreset(e.target.value as DatePreset)}
-          className="h-11 w-full bg-surface sm:w-56"
-        >
-          {DATE_PRESETS.map((p) => (
-            <option key={p.value} value={p.value}>
-              {p.label}
-            </option>
-          ))}
-        </Select>
+          onChange={setPreset}
+          options={DATE_PRESETS}
+          aria-label="Date range"
+          className="w-full sm:w-56"
+        />
         {preset === 'custom' && (
           <div className="flex flex-1 flex-wrap items-center gap-3">
             <input
@@ -393,7 +389,7 @@ export function ReportsPage() {
             </div>
             <p
               className={cn(
-                'mb-3 text-[11px] font-bold',
+                'mb-3 text-xs font-bold',
                 netWorth.change >= 0 ? 'text-positive' : 'text-negative',
               )}
             >
@@ -526,7 +522,7 @@ export function ReportsPage() {
                     </PieChart>
                   </ResponsiveContainer>
                   <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                       Total
                     </span>
                     <span className="font-numeric text-sm font-extrabold text-foreground">
@@ -575,7 +571,7 @@ export function ReportsPage() {
                                   style={{ width: `${s.pct}%`, backgroundColor: s.color }}
                                 />
                               </div>
-                              <span className="w-9 text-right text-[11px] font-semibold text-muted-foreground">
+                              <span className="w-9 text-right text-xs font-semibold text-muted-foreground">
                                 {s.pct.toFixed(0)}%
                               </span>
                             </div>
@@ -593,7 +589,7 @@ export function ReportsPage() {
                           <div className="ml-11 mt-1 mb-2 space-y-3 border-l border-border pl-3">
                             {s.children.length > 0 && (
                               <div className="space-y-2">
-                                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                                   Subcategories
                                 </p>
                                 {s.children.map((c) => (
@@ -603,7 +599,7 @@ export function ReportsPage() {
                             )}
                             {drillTags.length > 0 && (
                               <div className="space-y-2">
-                                <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                                <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                                   <TagIcon className="h-3 w-3" /> Tags
                                 </p>
                                 {drillTags.map((t) => (
@@ -657,7 +653,7 @@ export function ReportsPage() {
                             style={{ width: `${p.pct}%` }}
                           />
                         </div>
-                        <span className="w-16 text-right text-[11px] font-semibold text-muted-foreground">
+                        <span className="w-16 text-right text-xs font-semibold text-muted-foreground">
                           {p.count}×
                         </span>
                       </div>
@@ -724,7 +720,7 @@ function Stat({
         <Icon className="h-5 w-5 stroke-[2.2]" />
       </div>
       <div className="min-w-0">
-        <p className="truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+        <p className="truncate text-xs font-bold uppercase tracking-wide text-muted-foreground">
           {label}
         </p>
         <p className="mt-0.5 truncate font-numeric text-base font-extrabold leading-tight text-foreground">
@@ -733,7 +729,7 @@ function Stat({
         {delta && (
           <p
             className={cn(
-              'mt-0.5 flex items-center gap-1 text-[11px] font-bold',
+              'mt-0.5 flex items-center gap-1 text-xs font-bold',
               delta.good ? 'text-positive' : 'text-negative',
             )}
           >
@@ -814,7 +810,7 @@ function CalendarHeatmap({
   return (
     <div className="flex gap-2 overflow-x-auto pb-1">
       {/* Weekday labels */}
-      <div className="mt-[18px] flex shrink-0 flex-col gap-[3px] pr-1 text-[9px] font-semibold text-muted-foreground">
+      <div className="mt-[18px] flex shrink-0 flex-col gap-[3px] pr-1 text-xs font-semibold text-muted-foreground">
         {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
           <span key={i} className="flex h-[13px] items-center leading-none">
             {i % 2 === 0 ? d : ''}
@@ -826,7 +822,7 @@ function CalendarHeatmap({
         {/* Month labels above each week column */}
         <div className="mb-1 flex gap-[3px]">
           {weeks.map((week, i) => (
-            <span key={i} className="w-[13px] text-[9px] font-semibold text-muted-foreground">
+            <span key={i} className="w-[13px] text-xs font-semibold text-muted-foreground">
               {week[0].getDate() <= 7 ? format(week[0], 'MMM') : ''}
             </span>
           ))}
@@ -857,7 +853,7 @@ function CalendarHeatmap({
         </div>
 
         {/* Legend */}
-        <div className="mt-3 flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground">
+        <div className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
           <span>Less</span>
           <span className="h-[11px] w-[11px] rounded-[3px]" style={{ backgroundColor: 'var(--surface-muted)' }} />
           {HEAT_LEVELS.map((o) => (
@@ -886,7 +882,7 @@ function BiggestRow({
         <p className="truncate text-sm font-semibold text-foreground">
           {tx.note || categoryName || (income ? 'Income' : 'Expense')}
         </p>
-        <p className="text-[11px] font-medium text-muted-foreground">
+        <p className="text-xs font-medium text-muted-foreground">
           {format(new Date(tx.occurred_at), 'd MMM yyyy')}
           {categoryName ? ` · ${categoryName}` : ''}
         </p>

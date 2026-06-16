@@ -15,7 +15,9 @@ import {
 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { CenterSpinner, EmptyState } from '@/components/ui/States'
+import { CenterSpinner } from '@/components/ui/States'
+import { useConfirm } from '@/components/ui/confirm'
+import { StarterGuide } from '@/components/ui/StarterGuide'
 import { CategoryIcon } from '@/features/categories/CategoryIcon'
 import { useAccounts } from '@/features/accounts/api'
 import { useCategories } from '@/features/categories/api'
@@ -26,7 +28,7 @@ import {
   useSkipRecurring,
   useUpdateRecurring,
 } from '@/features/recurring/api'
-import { RecurringForm } from '@/features/recurring/RecurringForm'
+import { RecurringForm, type RecurringPreset } from '@/features/recurring/RecurringForm'
 import { dueInfo, dueText, frequencyText, type DueStatus } from '@/features/recurring/schedule'
 import { indexById } from '@/lib/collections'
 import { formatMoney } from '@/lib/money'
@@ -50,6 +52,13 @@ export function BillsPage() {
 
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<RecurringTransaction | null>(null)
+  const [preset, setPreset] = useState<RecurringPreset | undefined>()
+
+  function startTemplate(p: RecurringPreset) {
+    setPreset(p)
+    setEditing(null)
+    setCreating(true)
+  }
 
   const { active, paused } = useMemo(() => {
     const active = recurring.filter((r) => r.is_active)
@@ -87,15 +96,32 @@ export function BillsPage() {
       {isLoading ? (
         <CenterSpinner />
       ) : recurring.length === 0 ? (
-        <EmptyState
-          icon={<Receipt className="h-8 w-8" />}
-          title="No bills yet"
-          description="Add recurring bills, subscriptions or income. We’ll remind you when they’re due — tap Mark paid to log it, or turn on Auto-post to have it logged for you."
-          action={
-            <Button size="sm" onClick={() => setCreating(true)}>
-              <Plus className="h-4 w-4" /> Add a bill
-            </Button>
-          }
+        <StarterGuide
+          icon={<Receipt className="h-6 w-6" />}
+          title="Stay on top of what repeats"
+          intro="Track recurring bills, subscriptions, and income — and never miss a due date."
+          points={[
+            {
+              title: 'Add anything that repeats',
+              body: 'Rent, subscriptions, utilities, even your salary. Pick the account and how often.',
+            },
+            {
+              title: 'Get a heads-up when it’s due',
+              body: 'Tracr sorts them into Overdue, Due soon, and Upcoming so nothing slips.',
+            },
+            {
+              title: 'Log it in one tap',
+              body: '“Mark paid” records the transaction — or switch on Auto-post to log it for you.',
+            },
+          ]}
+          templates={[
+            { label: 'Rent', hint: 'Monthly housing', onClick: () => startTemplate({ name: 'Rent', type: 'expense', frequency: 'monthly' }) },
+            { label: 'Electricity', hint: 'Monthly utility', onClick: () => startTemplate({ name: 'Electricity', type: 'expense', frequency: 'monthly' }) },
+            { label: 'Internet', hint: 'Monthly utility', onClick: () => startTemplate({ name: 'Internet', type: 'expense', frequency: 'monthly' }) },
+            { label: 'Phone', hint: 'Monthly plan', onClick: () => startTemplate({ name: 'Phone', type: 'expense', frequency: 'monthly' }) },
+            { label: 'Streaming', hint: 'Netflix, Spotify, etc.', onClick: () => startTemplate({ name: 'Streaming', type: 'expense', frequency: 'monthly' }) },
+            { label: 'Salary', hint: 'Monthly income', onClick: () => startTemplate({ name: 'Salary', type: 'income', frequency: 'monthly' }) },
+          ]}
         />
       ) : (
         <div className="space-y-6">
@@ -136,8 +162,10 @@ export function BillsPage() {
         onClose={() => {
           setCreating(false)
           setEditing(null)
+          setPreset(undefined)
         }}
         recurring={editing}
+        preset={preset}
       />
     </div>
   )
@@ -148,7 +176,7 @@ function Section({ title, count, children }: { title: string; count: number; chi
     <div className="space-y-2.5">
       <div className="flex items-baseline gap-2 px-1">
         <h2 className="section-head text-[17px] text-foreground">{title}</h2>
-        <span className="font-numeric text-[11px] font-bold text-muted-foreground">{count}</span>
+        <span className="font-numeric text-xs font-bold text-muted-foreground">{count}</span>
       </div>
       <div className="space-y-3">{children}</div>
     </div>
@@ -170,6 +198,7 @@ function BillCard({
   const skip = useSkipRecurring()
   const update = useUpdateRecurring()
   const del = useDeleteRecurring()
+  const confirm = useConfirm()
 
   const { status } = dueInfo(rec.next_due)
   const accent = category?.color ?? (rec.type === 'income' ? 'var(--positive)' : 'var(--primary)')
@@ -184,8 +213,16 @@ function BillCard({
 
   const busy = markPaid.isPending || skip.isPending || update.isPending || del.isPending
 
-  function remove() {
-    if (confirm(`Delete "${rec.name}"? Past transactions it created are kept.`)) del.mutate(rec.id)
+  async function remove() {
+    if (
+      await confirm({
+        title: `Delete "${rec.name}"?`,
+        message: 'Past transactions it already created are kept.',
+        tone: 'danger',
+        confirmLabel: 'Delete',
+      })
+    )
+      del.mutate(rec.id)
   }
 
   return (
@@ -202,14 +239,14 @@ function BillCard({
             <p className="truncate text-sm font-bold text-foreground">{rec.name}</p>
             {rec.auto_post && (
               <span
-                className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary"
+                className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide text-primary"
                 title="Auto-posts automatically on its due date"
               >
                 <Zap className="h-2.5 w-2.5" /> Auto
               </span>
             )}
           </div>
-          <p className="truncate text-[11px] font-semibold text-muted-foreground">
+          <p className="truncate text-xs font-semibold text-muted-foreground">
             {frequencyText(rec.frequency, rec.interval)}
             {category ? ` · ${category.name}` : ''}
             {account ? ` · ${account.name}` : ''}
@@ -225,7 +262,7 @@ function BillCard({
             {rec.type === 'income' ? '+' : ''}
             {formatMoney(rec.amount, rec.currency, { signDisplay: 'never' })}
           </p>
-          <p className={cn('text-[11px] font-semibold', dueTone)}>
+          <p className={cn('text-xs font-semibold', dueTone)}>
             {rec.is_active ? dueText(rec.next_due) : 'Paused'} · {format(new Date(rec.next_due), 'd MMM')}
           </p>
         </div>

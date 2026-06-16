@@ -142,7 +142,7 @@ function RuleFormBody({ onClose, rule }: { onClose: () => void; rule: Rule | nul
       <div>
         <div className="mb-1.5 flex items-center justify-between">
           <Label className="mb-0">Conditions</Label>
-          <div className="inline-flex overflow-hidden rounded-lg border border-border text-[11px] font-semibold">
+          <div className="inline-flex overflow-hidden rounded-lg border border-border text-xs font-semibold">
             {(['all', 'any'] as const).map((m) => (
               <button
                 key={m}
@@ -228,7 +228,7 @@ function RuleFormBody({ onClose, rule }: { onClose: () => void; rule: Rule | nul
       </div>
 
       <div className="space-y-3 rounded-xl border border-border p-3">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Then</p>
+        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Then</p>
         <Field label="Set category">
           <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
             <option value="">Don’t change</option>

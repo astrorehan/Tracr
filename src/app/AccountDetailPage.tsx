@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Field, Input } from '@/components/ui/Input'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
+import { useConfirm } from '@/components/ui/confirm'
 import { useAuth } from '@/features/auth/useAuth'
 import { useAccounts, useArchiveAccount, useBalances } from '@/features/accounts/api'
 import { useFxRates } from '@/features/fx/api'
@@ -48,6 +49,7 @@ export function AccountDetailPage() {
   const ensureAdjustmentCategory = useEnsureAdjustmentCategory()
   const del = useDeleteTransaction()
   const archive = useArchiveAccount()
+  const confirm = useConfirm()
 
   const [editOpen, setEditOpen] = useState(false)
   const [reconcileOpen, setReconcileOpen] = useState(false)
@@ -148,8 +150,15 @@ export function AccountDetailPage() {
         </button>
         {!account.is_archived && (
           <button
-            onClick={() => {
-              if (confirm(`Archive "${account.name}"?`)) archive.mutate(account.id)
+            onClick={async () => {
+              if (
+                await confirm({
+                  title: `Archive "${account.name}"?`,
+                  message: 'It moves out of your active accounts but keeps its history.',
+                  confirmLabel: 'Archive',
+                })
+              )
+                archive.mutate(account.id)
             }}
             className="rounded-lg border border-transparent p-2 text-muted-foreground transition-colors hover:border-danger/20 hover:bg-danger/10 hover:text-danger"
             aria-label="Archive account"
@@ -170,7 +179,7 @@ export function AccountDetailPage() {
               <Icon className="h-5 w-5 stroke-[2.2]" />
             </span>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
                 {meta.label} · {account.currency}
                 {account.is_liability ? ' · Liability' : ''}
                 {account.exclude_from_stats ? ' · Excluded from net worth' : ''}
@@ -184,7 +193,7 @@ export function AccountDetailPage() {
               >
                 {formatMoney(balance, account.currency)}
                 {account.is_liability && (
-                  <span className="ml-1.5 text-[11px] font-bold uppercase tracking-wide text-danger/70">
+                  <span className="ml-1.5 text-xs font-bold uppercase tracking-wide text-danger/70">
                     owed
                   </span>
                 )}
@@ -202,7 +211,7 @@ export function AccountDetailPage() {
                   const owed = Math.abs(balance)
                   const pct = Math.min(100, (owed / limit) * 100)
                   const available = limit - owed
-                  const c = pct >= 90 ? 'var(--danger)' : pct >= 70 ? '#d97706' : color
+                  const c = pct >= 90 ? 'var(--danger)' : pct >= 70 ? '#f59e0b' : color
                   return (
                     <div className="mt-2 max-w-[220px]">
                       <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-muted">
@@ -211,7 +220,7 @@ export function AccountDetailPage() {
                           style={{ width: `${pct}%`, backgroundColor: c }}
                         />
                       </div>
-                      <p className="mt-1 text-[10px] font-semibold text-muted-foreground">
+                      <p className="mt-1 text-xs font-semibold text-muted-foreground">
                         {pct.toFixed(0)}% of{' '}
                         {formatMoney(limit, account.currency, { signDisplay: 'never' })} ·{' '}
                         {available >= 0
@@ -341,8 +350,9 @@ export function AccountDetailPage() {
                 accounts={accountMap}
                 categories={categoryMap}
                 splitCount={splitsByTx[tx.id]?.length ?? 0}
-                onDelete={(txId) => {
-                  if (confirm('Delete this transaction?')) del.mutate(txId)
+                onDelete={async (txId) => {
+                  if (await confirm({ title: 'Delete this transaction?', tone: 'danger', confirmLabel: 'Delete' }))
+                    del.mutate(txId)
                 }}
               />
             ))}

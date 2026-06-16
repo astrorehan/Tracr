@@ -14,8 +14,8 @@
 
 Tracr is designed as **a well-kept ledger** — the digital descendant of a paper account
 book. Every visual decision borrows from real finance artifacts (statements, passbooks,
-receipts) rather than from dashboard templates. Warm paper surfaces, ink-colored numbers,
-ruled lines, dotted leaders, and a serif voice.
+receipts) rather than from dashboard templates. Monochrome black-and-white surfaces
+(Vercel/Geist-style), ink-colored numbers, ruled lines, dotted leaders, and a serif voice.
 
 ### What we refuse to ship (the "AI slop" list)
 1. **Icon-in-a-tinted-squircle next to every number.** The single strongest AI tell.
@@ -35,26 +35,30 @@ ruled lines, dotted leaders, and a serif voice.
 
 ## 2. Color Tokens
 
-Two themes, both warm. Defined as CSS variables in `:root` / `.dark`, mapped to Tailwind
-utilities via `@theme inline` (`bg-surface`, `text-muted-foreground`, etc.).
+Monochrome — black-and-white, Vercel/Geist-style. Two modes defined as CSS variables in
+`:root` / `.dark`, mapped to Tailwind utilities via `@theme inline` (`bg-surface`,
+`text-muted-foreground`, etc.). The brand is *ink*: black in the light, flipping to white
+in the dark. Borders carry elevation; color is reserved strictly for money direction.
 
-| Token | Warm Paper (light) | Warm Charcoal (dark) | Role |
+| Token | Light | Dark | Role |
 | :--- | :--- | :--- | :--- |
-| `--background` | `#faf7f2` | `#120f09` | App canvas |
-| `--surface` | `#ffffff` | `#221c14` | Panels, cards |
-| `--surface-muted` | `#f4eee3` | `#2d2619` | Inset fields, hovers |
-| `--border` | `#ece2d3` | `rgba(255,238,214,.13)` | Hairlines, rules |
-| `--foreground` | `#1c160d` | `#f3ecdf` | Ink |
-| `--muted-foreground` | `#8a7c66` | `#b1a48c` | Secondary ink |
-| `--primary` | `#d97706` amber | `#f5a623` gold | Brand, actions, focus |
-| `--positive` | `#15966a` | `#34d399` | Money in, good verdicts |
-| `--negative` / `--danger` | `#d6492f` | `#f0796a` | Money out, debts, destructive |
+| `--background` | `#fafafa` | `#000000` | App canvas |
+| `--surface` | `#ffffff` | `#0a0a0a` | Panels, cards |
+| `--surface-muted` | `#f4f4f5` | `#1a1a1a` | Inset fields, hovers |
+| `--border` | `#e6e6e6` | `#2a2a2a` | Hairlines, rules |
+| `--foreground` | `#0a0a0a` | `#ededed` | Ink |
+| `--muted-foreground` | `#6b6b6b` | `#a1a1a1` | Secondary ink |
+| `--primary` | `#0a0a0a` ink | `#ffffff` ink | Brand, actions, focus, active nav |
+| `--positive` | `#15915b` | `#3ecf8e` | Money in, good verdicts |
+| `--negative` / `--danger` | `#d93636` | `#ff6166` | Money out, debts, destructive |
 
-**Color discipline**: amber = the product speaking (buttons, links, focus, active nav).
-Green/rose = money speaking. Nothing else gets color.
+**Color discipline**: the brand is monochrome — buttons, links, focus, and active nav all
+sit in ink (black in the light, white in the dark). Green/red = money speaking, the *only*
+color in the system. Nothing else gets color. (Functional status accents — amber "due
+soon"/"near limit", an emerald "live rate" dot — are the deliberate exceptions.)
 
 Supporting tokens: layered `--shadow-sm/md/lg`, `--surface-highlight` (1px lit top edge
-baked into cards), `--primary-glow` / `--grid-line` (ambient backdrop).
+baked into cards), `--primary-glow` / `--grid-line` (ambient backdrop, neutral grey).
 
 ---
 
@@ -70,10 +74,14 @@ synthesized slant).
 | **Section head** | `.section-head` | Fraunces *italic* 600, opsz 40 | Every section/group/card/modal title — the voice of the ledger |
 | Body | (default) | Satoshi | Everything else |
 | Numbers | `.font-numeric` | Satoshi + `tabular-nums` | **All money and counts** — digits never jitter |
-| Data label | utility classes | 9–11px caps, wide tracking, muted | Tiny labels *inside* data displays only ("Allocation", column heads, type badges) |
+| Data label | utility classes | 12px (`text-xs`) caps, wide tracking, muted | Labels *inside* data displays only ("Allocation", column heads, type badges) |
 
 The caps/serif rule is strict: if it titles a section of the page → serif italic; if it
-labels a datum inside a component → tiny caps. Never both, never swapped.
+labels a datum inside a component → caps. Never both, never swapped.
+
+**Minimum size**: nothing renders below 12px (`text-xs`). Sub-12px arbitrary sizes
+(`text-[9px]`/`[10px]`/`[11px]`) are banned — labels and captions floor at `text-xs`,
+so even the quietest data label stays legible.
 
 ---
 
@@ -142,12 +150,19 @@ One shared theme — `src/lib/chartTheme.ts` (`chartTooltipStyle`, `chartCursor`
 in both modes.
 
 Rules:
-- Bars: amber gradient fill, **3px** top radius (crisp, not bubbly), `maxBarSize` ≤ 40.
-- Emphasis: the current period at full opacity, history receded to ~45% (`<Cell />`).
+- Monochrome data-viz: series read in **ink vs grey**, not colour. Bars/areas use
+  `var(--foreground)` (lead) and `var(--muted-foreground)` (recessive); the category
+  donut is one tonal ink ramp via per-slice `fillOpacity` on `var(--foreground)` (see
+  `shadeFor` in `DashboardPage.tsx`). Money in vs money out may use `--positive`/`--negative`
+  where the in/out distinction must read at a glance (Reports). **3px** top radius, `maxBarSize` ≤ 40.
 - Grid: horizontal dashed hairlines only (`vertical={false}`), `stroke="var(--border)"`.
 - Axes: no axis/tick lines, 11px muted labels.
 - Tooltips: surface panel, hairline border, `--shadow-md`, 14px radius.
 - Areas: 2px stroke, gradient fade to transparent.
+
+The dashboard *is* a dashboard: net-worth statement head (black card) → money-in/out strip
+→ a chart deck (six-month **money in vs money out** bars, a **what you kept** net-trend
+area, a **where it goes** category donut) → recent activity, with a sticky accounts rail.
 
 ---
 

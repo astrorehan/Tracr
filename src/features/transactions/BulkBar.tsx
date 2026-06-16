@@ -3,6 +3,7 @@ import { Tag as TagIcon, Trash2, X, FolderTree } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Select } from '@/components/ui/Input'
+import { useConfirm } from '@/components/ui/confirm'
 import { useCategories } from '@/features/categories/api'
 import { flattenWithDepth } from '@/features/categories/tree'
 import { useTags, useBulkAddTags } from '@/features/tags/api'
@@ -22,6 +23,7 @@ export function BulkBar({ selected, onClear }: Props) {
   const bulkDelete = useBulkDeleteTransactions()
   const bulkCategory = useBulkSetCategory()
   const bulkTags = useBulkAddTags()
+  const confirm = useConfirm()
 
   const [mode, setMode] = useState<'category' | 'tag' | null>(null)
   const [categoryId, setCategoryId] = useState('')
@@ -38,8 +40,16 @@ export function BulkBar({ selected, onClear }: Props) {
     setTagIds([])
   }
 
-  function handleDelete() {
-    if (confirm(`Delete ${ids.length} transaction${ids.length === 1 ? '' : 's'}?`)) {
+  async function handleDelete() {
+    const n = ids.length
+    if (
+      await confirm({
+        title: `Delete ${n} transaction${n === 1 ? '' : 's'}?`,
+        message: 'This permanently removes the selected entries.',
+        tone: 'danger',
+        confirmLabel: 'Delete',
+      })
+    ) {
       bulkDelete.mutate(ids, { onSuccess: onClear })
     }
   }

@@ -1,21 +1,26 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { format, subMonths, startOfMonth } from 'date-fns'
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
 } from 'recharts'
 import { Wallet } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
+import { Segmented } from '@/components/ui/Segmented'
 import { AnimatedNumber } from '@/components/ui/AnimatedNumber'
 import { EmptyState, Skeleton } from '@/components/ui/States'
 import { chartCursor, chartTooltipStyle } from '@/lib/chartTheme'
-import { pctChange } from '@/features/reports/reports'
+import { categoryBreakdown, pctChange } from '@/features/reports/reports'
 import { formatMoney } from '@/lib/money'
 import { getCurrency } from '@/lib/currencies'
 import { useAuth } from '@/features/auth/useAuth'
@@ -29,14 +34,28 @@ import { accountTypeMeta } from '@/features/accounts/meta'
 import { indexById } from '@/lib/collections'
 import { cn } from '@/lib/utils'
 
+type ChartRange = '3m' | '6m' | '12m'
+const RANGE_OPTIONS: { value: ChartRange; label: string }[] = [
+  { value: '3m', label: '3M' },
+  { value: '6m', label: '6M' },
+  { value: '12m', label: '12M' },
+]
+
 export function DashboardPage() {
   const { profile } = useAuth()
   const base = profile?.base_currency ?? 'IDR'
+
+  const [range, setRange] = useState<ChartRange>('6m')
+  const rangeMonths = range === '3m' ? 3 : range === '12m' ? 12 : 6
 
   const { data: accounts = [], isLoading: la } = useAccounts()
   const { data: balances = {}, isLoading: lb } = useBalances()
   const { data: categories = [] } = useCategories()
   const { data: transactions = [], isLoading: lt } = useTransactions({ limit: 500 })
+  // A full 12-month window for the time-series charts/stats, independent of the
+  // 500 most-recent rows used for the activity feed and current-month figures.
+  const chartFrom = useMemo(() => startOfMonth(subMonths(new Date(), 11)).toISOString(), [])
+  const { data: chartTxns = [] } = useTransactions({ from: chartFrom, limit: 3000 })
   const { data: fxRates = [] } = useFxRates()
 
   const accountMap = useMemo(() => indexById(accounts), [accounts])
@@ -76,22 +95,56 @@ export function DashboardPage() {
     return { total, assets, debts, missing: [...missing] }
   }, [accounts, balances, fxRates, base])
 
-  // Last 6 months of expenses in the base currency.
-  const chartData = useMemo(() => {
-    const months: { key: string; label: string; total: number }[] = []
-    for (let i = 5; i >= 0; i--) {
+  // Cashflow over the selected range in the base currency — money in, money out,
+  // and the net kept. Drives the in-vs-out bars and the net-trend area.
+  const monthly = useMemo(() => {
+    const months: { key: string; label: string; income: number; expense: number; net: number }[] =
+      []
+    for (let i = rangeMonths - 1; i >= 0; i--) {
       const d = startOfMonth(subMonths(new Date(), i))
-      months.push({ key: format(d, 'yyyy-MM'), label: format(d, 'MMM'), total: 0 })
+      months.push({ key: format(d, 'yyyy-MM'), label: format(d, 'MMM'), income: 0, expense: 0, net: 0 })
     }
     const index = new Map(months.map((m) => [m.key, m]))
-    for (const tx of transactions) {
-      if (tx.type !== 'expense' || tx.currency !== base) continue
-      const key = format(new Date(tx.occurred_at), 'yyyy-MM')
-      const m = index.get(key)
-      if (m) m.total += tx.amount
+    for (const tx of chartTxns) {
+      if (tx.currency !== base) continue
+      const m = index.get(format(new Date(tx.occurred_at), 'yyyy-MM'))
+      if (!m) continue
+      if (tx.type === 'expense') m.expense += tx.amount
+      else if (tx.type === 'income') m.income += tx.amount
     }
+    for (const m of months) m.net = m.income - m.expense
     return months
-  }, [transactions, base])
+  }, [chartTxns, base, rangeMonths])
+
+  // This month's spending grouped by category (base currency), ranked high→low.
+  // Top 5 stand alone; the long tail folds into one "Everything else" slice so the
+  // donut stays legible. Rendered as a tonal ink ramp to stay monochrome.
+  const donut = useMemo(() => {
+    const cur = format(new Date(), 'yyyy-MM')
+    const txns = transactions.filter(
+      (tx) =>
+        tx.type === 'expense' &&
+        tx.currency === base &&
+        format(new Date(tx.occurred_at), 'yyyy-MM') === cur,
+    )
+    const slices = categoryBreakdown(txns, categories, 'expense')
+    if (slices.length <= 6) return slices
+    const head = slices.slice(0, 5)
+    const tail = slices.slice(5)
+    const tailTotal = tail.reduce((s, x) => s + x.total, 0)
+    const grand = slices.reduce((s, x) => s + x.total, 0)
+    return [
+      ...head,
+      {
+        id: '__other',
+        name: 'Everything else',
+        color: '#999999',
+        icon: null,
+        total: tailTotal,
+        pct: grand ? (tailTotal / grand) * 100 : 0,
+      },
+    ]
+  }, [transactions, categories, base])
 
   // This-month cashflow in base currency, plus last month as the comparison
   // baseline for the ▲/▼ trend chips on the stat cards.
@@ -115,6 +168,43 @@ export function DashboardPage() {
     }
     return { spent, earned, net: earned - spent, prevSpent, prevEarned }
   }, [transactions, base])
+
+  // Quick figures for the at-a-glance row: the share of income kept, average
+  // daily spend so far this month, and the single biggest expense this month.
+  const glance = useMemo(() => {
+    const cur = format(new Date(), 'yyyy-MM')
+    let biggest = 0
+    let biggestLabel = ''
+    for (const tx of transactions) {
+      if (tx.currency !== base || tx.type !== 'expense') continue
+      if (format(new Date(tx.occurred_at), 'yyyy-MM') !== cur) continue
+      if (tx.amount > biggest) {
+        biggest = tx.amount
+        biggestLabel =
+          tx.payee || (tx.category_id ? categoryMap[tx.category_id]?.name ?? '' : '') || 'Expense'
+      }
+    }
+    return {
+      savingsRate: month.earned > 0 ? (month.net / month.earned) * 100 : null,
+      avgPerDay: month.spent / Math.max(1, new Date().getDate()),
+      biggest,
+      biggestLabel,
+    }
+  }, [transactions, base, categoryMap, month])
+
+  // Spending by weekday across the selected range — which days cost the most.
+  const weekday = useMemo(() => {
+    const fromKey = format(startOfMonth(subMonths(new Date(), rangeMonths - 1)), 'yyyy-MM')
+    const sums = [0, 0, 0, 0, 0, 0, 0] // JS getDay(): 0=Sun … 6=Sat
+    for (const tx of chartTxns) {
+      if (tx.currency !== base || tx.type !== 'expense') continue
+      if (format(new Date(tx.occurred_at), 'yyyy-MM') < fromKey) continue
+      sums[new Date(tx.occurred_at).getDay()] += tx.amount
+    }
+    const order = [1, 2, 3, 4, 5, 6, 0]
+    const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    return order.map((d, i) => ({ label: labels[i], total: sums[d] }))
+  }, [chartTxns, base, rangeMonths])
 
   const recent = transactions.slice(0, 7)
   const otherCurrencies = Object.entries(totalsByCurrency).filter(([c]) => c !== base)
@@ -148,7 +238,7 @@ export function DashboardPage() {
     <div className="space-y-6">
       {/* Masthead — date stamp, greeting, and one true sentence about the month */}
       <header className="animate-rise py-1">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           {format(new Date(), 'EEEE, d MMMM yyyy')}
         </p>
         <h1 className="mt-1 text-[26px] font-black tracking-tight lg:text-3xl">
@@ -179,14 +269,14 @@ export function DashboardPage() {
           {/* ───────── Main pane ───────── */}
           <div className="space-y-5 xl:col-span-2">
             {/* Statement head — net worth, set like the top of a paper statement */}
-            <div className="grain animate-rise relative overflow-hidden rounded-[20px] border border-amber-400/20 bg-[#1e1810] p-6 text-white shadow-lg lg:p-7">
-              <div className="pointer-events-none absolute -right-10 -top-14 h-40 w-40 rounded-full bg-amber-400/25 blur-[70px]" />
-              <div className="pointer-events-none absolute -bottom-20 -left-14 h-32 w-32 rounded-full bg-orange-500/10 blur-[80px]" />
+            <div className="grain animate-rise relative overflow-hidden rounded-[20px] border border-white/10 bg-[#0a0a0a] p-6 text-white shadow-lg lg:p-7">
+              <div className="pointer-events-none absolute -right-10 -top-14 h-40 w-40 rounded-full bg-white/[0.08] blur-[70px]" />
+              <div className="pointer-events-none absolute -bottom-20 -left-14 h-32 w-32 rounded-full bg-white/[0.04] blur-[80px]" />
 
               <div className="relative z-10">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                  <h2 className="section-head text-lg text-amber-100/90">Net worth</h2>
-                  <p className="text-[11px] font-medium text-amber-200/50">
+                  <h2 className="section-head text-lg text-white/90">Net worth</h2>
+                  <p className="text-xs font-medium text-white/45">
                     as of {format(new Date(), 'd MMMM')} · in {base}
                   </p>
                 </div>
@@ -195,14 +285,14 @@ export function DashboardPage() {
                   <AnimatedNumber value={netWorth.total} format={(v) => formatMoney(v, base)} />
                 </p>
                 {otherCurrencies.length > 0 && netWorth.missing.length === 0 && (
-                  <p className="mt-1.5 text-[10px] font-semibold text-amber-200/50">
+                  <p className="mt-1.5 text-xs font-semibold text-white/45">
                     ≈ estimated at latest rates
                   </p>
                 )}
                 {netWorth.missing.length > 0 && (
                   <Link
                     to="/settings"
-                    className="mt-1.5 inline-block text-[10px] font-semibold text-amber-300/80 underline-offset-2 hover:underline"
+                    className="mt-1.5 inline-block text-xs font-semibold text-white/75 underline-offset-2 hover:underline"
                   >
                     Add a rate for {netWorth.missing.join(', ')} to include it
                   </Link>
@@ -210,17 +300,17 @@ export function DashboardPage() {
 
                 {netWorth.debts > 0 && (
                   <div className="mt-5 max-w-sm space-y-1.5 text-xs">
-                    <div className="flex items-baseline gap-2.5 text-amber-100/80">
+                    <div className="flex items-baseline gap-2.5 text-white/70">
                       <span className="font-medium">What you own</span>
                       <span className="leaders" />
-                      <span className="font-numeric font-bold text-amber-50">
+                      <span className="font-numeric font-bold text-white">
                         {formatMoney(netWorth.assets, base, { signDisplay: 'never' })}
                       </span>
                     </div>
-                    <div className="flex items-baseline gap-2.5 text-amber-100/80">
+                    <div className="flex items-baseline gap-2.5 text-white/70">
                       <span className="font-medium">What you owe</span>
                       <span className="leaders" />
-                      <span className="font-numeric font-bold text-red-300">
+                      <span className="font-numeric font-bold text-[#ff8d8d]">
                         −{formatMoney(netWorth.debts, base, { signDisplay: 'never' })}
                       </span>
                     </div>
@@ -229,7 +319,7 @@ export function DashboardPage() {
 
                 {otherCurrencies.length > 0 && (
                   <div className="mt-6">
-                    <p className="mb-2 text-[9px] font-bold uppercase tracking-[0.2em] text-stone-400">
+                    <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-white/40">
                       Other currencies
                     </p>
                     <div className="flex flex-wrap gap-1.5">
@@ -238,11 +328,11 @@ export function DashboardPage() {
                         return (
                           <span
                             key={c}
-                            className="rounded-lg border border-stone-700/50 bg-stone-800/60 px-2.5 py-1 font-numeric text-xs font-semibold text-stone-300"
+                            className="rounded-lg border border-white/10 bg-white/[0.06] px-2.5 py-1 font-numeric text-xs font-semibold text-white/80"
                           >
                             {getCurrency(c).symbol} {formatMoney(total, c, { signDisplay: 'never' })}
                             {approx != null && (
-                              <span className="ml-1 text-stone-500">
+                              <span className="ml-1 text-white/40">
                                 ≈ {formatMoney(approx, base, { signDisplay: 'never' })}
                               </span>
                             )}
@@ -282,25 +372,181 @@ export function DashboardPage() {
               />
             </div>
 
-            {/* Spending chart */}
+            {/* At a glance — three quick figures for the month */}
+            <div className="animate-rise stagger-1 grid grid-cols-3 gap-3 sm:gap-4">
+              <Glance
+                label="Savings rate"
+                value={glance.savingsRate == null ? '—' : `${Math.round(glance.savingsRate)}%`}
+                hint="of income kept"
+              />
+              <Glance
+                label="Avg / day"
+                value={formatMoney(Math.round(glance.avgPerDay), base, { signDisplay: 'never' })}
+                hint="spent so far"
+              />
+              <Glance
+                label="Biggest"
+                value={formatMoney(glance.biggest, base, { signDisplay: 'never' })}
+                hint={glance.biggestLabel || 'no expenses yet'}
+              />
+            </div>
+
+            {/* Money in vs money out — ink bars (in) vs gray (out), over the chosen range */}
             <Card className="animate-rise stagger-2 p-5">
-              <div className="mb-4 flex items-baseline justify-between gap-3">
-                <h2 className="section-head text-[17px] text-foreground">Six months of spending</h2>
-                <Link
-                  to="/reports"
-                  className="shrink-0 text-xs font-semibold text-primary transition hover:underline"
-                >
-                  Reports →
-                </Link>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <h2 className="section-head text-[17px] text-foreground">Money in vs money out</h2>
+                <Segmented
+                  value={range}
+                  onChange={setRange}
+                  options={RANGE_OPTIONS}
+                  size="sm"
+                  aria-label="Chart range"
+                />
               </div>
               <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={chartData} margin={{ top: 8, right: 0, bottom: 0, left: 0 }}>
-                  <defs>
-                    <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--primary)" stopOpacity={1} />
-                      <stop offset="100%" stopColor="var(--primary)" stopOpacity={0.12} />
-                    </linearGradient>
-                  </defs>
+                <BarChart data={monthly} margin={{ top: 8, right: 0, bottom: 0, left: 0 }} barGap={3}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis
+                    dataKey="label"
+                    tickLine={false}
+                    axisLine={false}
+                    fontSize={11}
+                    stroke="var(--muted-foreground)"
+                  />
+                  <Tooltip
+                    cursor={chartCursor}
+                    contentStyle={chartTooltipStyle}
+                    formatter={(value, name) => [
+                      formatMoney(Number(value), base),
+                      name === 'income' ? 'In' : 'Out',
+                    ]}
+                  />
+                  <Bar dataKey="income" fill="var(--foreground)" radius={[3, 3, 0, 0]} maxBarSize={18} />
+                  <Bar
+                    dataKey="expense"
+                    fill="var(--muted-foreground)"
+                    radius={[3, 3, 0, 0]}
+                    maxBarSize={18}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="mt-3 flex items-center justify-center gap-5 text-xs font-semibold text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-[3px] bg-foreground" /> Money in
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-[3px] bg-muted-foreground" /> Money out
+                </span>
+              </div>
+            </Card>
+
+            {/* Net trend + category mix, side by side on wide screens */}
+            <div className="grid gap-5 lg:grid-cols-2">
+              {/* What you kept, month over month */}
+              <Card className="animate-rise stagger-3 p-5">
+                <h2 className="section-head mb-4 text-[17px] text-foreground">What you kept</h2>
+                <ResponsiveContainer width="100%" height={180}>
+                  <AreaChart data={monthly} margin={{ top: 8, right: 0, bottom: 0, left: 0 }}>
+                    <defs>
+                      <linearGradient id="netGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="var(--foreground)" stopOpacity={0.18} />
+                        <stop offset="100%" stopColor="var(--foreground)" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                    <XAxis
+                      dataKey="label"
+                      tickLine={false}
+                      axisLine={false}
+                      fontSize={11}
+                      stroke="var(--muted-foreground)"
+                    />
+                    <Tooltip
+                      contentStyle={chartTooltipStyle}
+                      formatter={(value) => [formatMoney(Number(value), base), 'Kept']}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="net"
+                      stroke="var(--foreground)"
+                      strokeWidth={2}
+                      fill="url(#netGradient)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </Card>
+
+              {/* Where it goes — this month's spending, tonal ink ramp */}
+              <Card className="animate-rise stagger-3 p-5">
+                <h2 className="section-head mb-2 text-[17px] text-foreground">Where it goes</h2>
+                {donut.length === 0 ? (
+                  <div className="flex h-[200px] items-center justify-center">
+                    <p className="text-sm text-muted-foreground">Nothing spent yet this month.</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
+                    <div className="relative h-[150px] w-[150px] shrink-0">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={donut}
+                            dataKey="total"
+                            nameKey="name"
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={48}
+                            outerRadius={70}
+                            paddingAngle={2}
+                            stroke="var(--surface)"
+                            strokeWidth={2}
+                          >
+                            {donut.map((s, i) => (
+                              <Cell key={s.id} fill="var(--foreground)" fillOpacity={shadeFor(i)} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            contentStyle={chartTooltipStyle}
+                            formatter={(value, name) => [
+                              formatMoney(Number(value), base),
+                              String(name),
+                            ]}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          Spent
+                        </span>
+                        <span className="font-numeric text-xs font-extrabold text-foreground">
+                          {formatMoney(month.spent, base, { signDisplay: 'never' })}
+                        </span>
+                      </div>
+                    </div>
+                    <ul className="min-w-0 flex-1 space-y-1.5">
+                      {donut.map((s, i) => (
+                        <li key={s.id} className="flex items-baseline gap-2 text-xs">
+                          <span
+                            className="h-2.5 w-2.5 shrink-0 self-center rounded-[3px] bg-foreground"
+                            style={{ opacity: shadeFor(i) }}
+                          />
+                          <span className="truncate font-medium text-foreground">{s.name}</span>
+                          <span className="leaders text-muted-foreground" />
+                          <span className="shrink-0 font-numeric font-semibold text-muted-foreground">
+                            {s.pct.toFixed(0)}%
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </Card>
+            </div>
+
+            {/* Spending by weekday — which days cost the most, over the chosen range */}
+            <Card className="animate-rise stagger-4 p-5">
+              <h2 className="section-head mb-4 text-[17px] text-foreground">Spending by weekday</h2>
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={weekday} margin={{ top: 8, right: 0, bottom: 0, left: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                   <XAxis
                     dataKey="label"
@@ -314,18 +560,13 @@ export function DashboardPage() {
                     contentStyle={chartTooltipStyle}
                     formatter={(value) => [formatMoney(Number(value), base), 'Spent']}
                   />
-                  {/* Current month leads; history recedes at lower opacity */}
-                  <Bar dataKey="total" fill="url(#barGradient)" radius={[3, 3, 0, 0]} maxBarSize={40}>
-                    {chartData.map((m, i) => (
-                      <Cell key={m.key} opacity={i === chartData.length - 1 ? 1 : 0.45} />
-                    ))}
-                  </Bar>
+                  <Bar dataKey="total" fill="var(--foreground)" radius={[3, 3, 0, 0]} maxBarSize={36} />
                 </BarChart>
               </ResponsiveContainer>
             </Card>
 
             {/* Recent activity — a ruled list straight on the page, like ledger paper */}
-            <div className="animate-rise stagger-3">
+            <div className="animate-rise stagger-5">
               <div className="mb-2 flex items-baseline justify-between px-1">
                 <h2 className="section-head text-[17px] text-foreground">Recent activity</h2>
                 <Link
@@ -372,10 +613,10 @@ export function DashboardPage() {
                 {allocation.length > 1 && (
                   <div className="mb-3 px-2 pt-1">
                     <div className="mb-2 flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                         Allocation
                       </span>
-                      <span className="text-[10px] font-semibold text-muted-foreground">{base}</span>
+                      <span className="text-xs font-semibold text-muted-foreground">{base}</span>
                     </div>
                     <div className="flex h-2.5 w-full gap-0.5 overflow-hidden rounded-full">
                       {allocation.map((x) => (
@@ -416,7 +657,7 @@ export function DashboardPage() {
                             {formatMoney(balances[a.id] ?? a.opening_balance, a.currency)}
                           </span>
                         </div>
-                        <p className="mt-0.5 pl-5 text-[11px] font-medium text-muted-foreground">
+                        <p className="mt-0.5 pl-5 text-xs font-medium text-muted-foreground">
                           {meta.label}
                           {pct !== undefined ? ` · ${pct.toFixed(0)}% of what you own` : ''}
                         </p>
@@ -463,7 +704,7 @@ function StatCell({
 }) {
   return (
     <div className="flex items-center justify-between gap-3 px-5 py-3.5 sm:block sm:py-4">
-      <p className="shrink-0 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+      <p className="shrink-0 text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">
         {label}
       </p>
       <div className="min-w-0 text-right sm:mt-1.5 sm:text-left">
@@ -476,7 +717,7 @@ function StatCell({
           <AnimatedNumber value={amount} format={fmt} />
         </p>
         {delta && (
-          <p className="mt-0.5 truncate text-[11px] font-semibold">
+          <p className="mt-0.5 truncate text-xs font-semibold">
             <span className={delta.good ? 'text-positive' : 'text-negative'}>
               {delta.pct >= 0 ? '▲' : '▼'} {Math.abs(delta.pct).toFixed(0)}%
             </span>{' '}
@@ -485,6 +726,19 @@ function StatCell({
         )}
       </div>
     </div>
+  )
+}
+
+/** A small at-a-glance figure: tiny-caps label, ink number, one-line context. */
+function Glance({ label, value, hint }: { label: string; value: string; hint: string }) {
+  return (
+    <Card className="p-4">
+      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="mt-1.5 truncate font-numeric text-lg font-extrabold text-foreground sm:text-xl">
+        {value}
+      </p>
+      <p className="mt-0.5 truncate text-xs font-medium text-muted-foreground">{hint}</p>
+    </Card>
   )
 }
 
@@ -504,6 +758,12 @@ function monthLine(month: { earned: number; spent: number; net: number }, base: 
     : `Day ${day} of ${name} — spending is ${formatMoney(-month.net, base, { signDisplay: 'never' })} ahead of income.`
 }
 
+/** Tonal ink ramp for the category donut: each rank a step lighter, floored so
+    the smallest slices stay visible. Keeps the chart strictly monochrome. */
+function shadeFor(i: number) {
+  return Math.max(0.28, 1 - i * 0.15)
+}
+
 /** Mirrors the dashboard grid so loading → loaded swaps without layout shift. */
 function DashboardSkeleton() {
   return (
@@ -517,7 +777,17 @@ function DashboardSkeleton() {
         <div className="space-y-5 xl:col-span-2">
           <Skeleton className="h-44 rounded-[20px]" />
           <Skeleton className="h-[180px] rounded-2xl sm:h-[96px]" />
+          <div className="grid grid-cols-3 gap-3 sm:gap-4">
+            <Skeleton className="h-24 rounded-2xl" />
+            <Skeleton className="h-24 rounded-2xl" />
+            <Skeleton className="h-24 rounded-2xl" />
+          </div>
           <Skeleton className="h-64 rounded-2xl" />
+          <div className="grid gap-5 lg:grid-cols-2">
+            <Skeleton className="h-60 rounded-2xl" />
+            <Skeleton className="h-60 rounded-2xl" />
+          </div>
+          <Skeleton className="h-60 rounded-2xl" />
           <Skeleton className="h-72 rounded-2xl" />
         </div>
         <aside className="hidden xl:block">

@@ -4,9 +4,11 @@ import { format } from 'date-fns'
 import { Archive, ArrowLeft, Check, PiggyBank, Plus, Pencil, Trash2 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { CenterSpinner, EmptyState } from '@/components/ui/States'
+import { CenterSpinner } from '@/components/ui/States'
+import { useConfirm } from '@/components/ui/confirm'
+import { StarterGuide } from '@/components/ui/StarterGuide'
 import { useGoals, useGoalContributions, useDeleteGoal, useUpdateGoal } from '@/features/goals/api'
-import { GoalForm } from '@/features/goals/GoalForm'
+import { GoalForm, type GoalPreset } from '@/features/goals/GoalForm'
 import { ContributeForm } from '@/features/goals/ContributeForm'
 import { daysToTarget, goalProgress } from '@/features/goals/progress'
 import { formatMoney } from '@/lib/money'
@@ -20,6 +22,13 @@ export function GoalsPage() {
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<SavingsGoal | null>(null)
   const [contributing, setContributing] = useState<SavingsGoal | null>(null)
+  const [preset, setPreset] = useState<GoalPreset | undefined>()
+
+  function startTemplate(p: GoalPreset) {
+    setPreset(p)
+    setEditing(null)
+    setCreating(true)
+  }
 
   const { active, archived } = useMemo(() => {
     const active = goals.filter((g) => !g.is_archived)
@@ -48,15 +57,32 @@ export function GoalsPage() {
       {isLoading ? (
         <CenterSpinner />
       ) : goals.length === 0 ? (
-        <EmptyState
-          icon={<PiggyBank className="h-8 w-8" />}
-          title="No goals yet"
-          description="Create a savings goal, then add money toward it and watch your progress."
-          action={
-            <Button size="sm" onClick={() => setCreating(true)}>
-              <Plus className="h-4 w-4" /> Create a goal
-            </Button>
-          }
+        <StarterGuide
+          icon={<PiggyBank className="h-6 w-6" />}
+          title="Save with a purpose"
+          intro="Set a target and watch your savings grow toward it."
+          points={[
+            {
+              title: 'Name your goal & set a target',
+              body: 'Pick what you’re saving for and how much you need.',
+            },
+            {
+              title: 'Add money as you go',
+              body: 'Each top-up is logged here — it never touches your real account balances.',
+            },
+            {
+              title: 'Watch the pace',
+              body: 'Tracr shows progress, what’s left, and roughly when you’ll get there.',
+            },
+          ]}
+          templates={[
+            { label: 'Emergency fund', hint: '3–6 months of expenses', onClick: () => startTemplate({ name: 'Emergency fund' }) },
+            { label: 'Vacation', hint: 'A trip to look forward to', onClick: () => startTemplate({ name: 'Vacation' }) },
+            { label: 'New phone', hint: 'Save up, skip the credit', onClick: () => startTemplate({ name: 'New phone' }) },
+            { label: 'New laptop', hint: 'For work or study', onClick: () => startTemplate({ name: 'New laptop' }) },
+            { label: 'Car', hint: 'Down payment or full price', onClick: () => startTemplate({ name: 'Car' }) },
+            { label: 'Home', hint: 'A down-payment fund', onClick: () => startTemplate({ name: 'Home' }) },
+          ]}
         />
       ) : (
         <div className="space-y-6">
@@ -94,8 +120,10 @@ export function GoalsPage() {
         onClose={() => {
           setCreating(false)
           setEditing(null)
+          setPreset(undefined)
         }}
         goal={editing}
+        preset={preset}
       />
       <ContributeForm open={Boolean(contributing)} onClose={() => setContributing(null)} goal={contributing} />
     </div>
@@ -115,14 +143,23 @@ function GoalCard({
 }) {
   const update = useUpdateGoal()
   const del = useDeleteGoal()
+  const confirm = useConfirm()
 
   const p = useMemo(() => goalProgress(goal.target_amount, contributions), [goal.target_amount, contributions])
   const accent = goal.color ?? 'var(--primary)'
   const days = daysToTarget(goal.target_date)
   const busy = update.isPending || del.isPending
 
-  function remove() {
-    if (confirm(`Delete "${goal.name}"? Its contribution history is removed too.`)) del.mutate(goal.id)
+  async function remove() {
+    if (
+      await confirm({
+        title: `Delete "${goal.name}"?`,
+        message: 'Its contribution history is removed too. This cannot be undone.',
+        tone: 'danger',
+        confirmLabel: 'Delete',
+      })
+    )
+      del.mutate(goal.id)
   }
 
   return (
@@ -138,12 +175,12 @@ function GoalCard({
           <p className="flex items-center gap-1.5 truncate text-sm font-bold text-foreground">
             {goal.name}
             {p.complete && (
-              <span className="inline-flex items-center gap-0.5 rounded-md bg-positive/10 px-1.5 py-0.5 text-[10px] font-bold uppercase text-positive">
+              <span className="inline-flex items-center gap-0.5 rounded-md bg-positive/10 px-1.5 py-0.5 text-xs font-bold uppercase text-positive">
                 <Check className="h-2.5 w-2.5" /> Reached
               </span>
             )}
           </p>
-          <p className="truncate text-[11px] font-semibold text-muted-foreground">
+          <p className="truncate text-xs font-semibold text-muted-foreground">
             {formatMoney(p.saved, goal.currency, { signDisplay: 'never' })} of{' '}
             {formatMoney(goal.target_amount, goal.currency, { signDisplay: 'never' })}
           </p>
@@ -160,7 +197,7 @@ function GoalCard({
         />
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[11px] font-medium text-muted-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs font-medium text-muted-foreground">
         <span>
           {p.complete
             ? 'Goal reached 🎉'

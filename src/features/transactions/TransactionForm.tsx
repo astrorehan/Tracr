@@ -371,7 +371,7 @@ function TransactionFormBody({
       >
         <p
           className={cn(
-            'mb-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors duration-300',
+            'mb-1.5 text-xs font-bold uppercase tracking-widest transition-colors duration-300',
             AMOUNT_TONE[type].label,
           )}
         >
@@ -397,12 +397,12 @@ function TransactionFormBody({
           )}
         </div>
         {splitting && (
-          <p className="mt-1 text-[11px] font-semibold text-muted-foreground">
+          <p className="mt-1 text-xs font-semibold text-muted-foreground">
             Total of {splits.filter((r) => amountToMinor(r.amount, currency) > 0).length} splits
           </p>
         )}
         {!splitting && amountPreview !== null && (
-          <p className="mt-1 text-[11px] font-semibold text-primary">
+          <p className="mt-1 text-xs font-semibold text-primary">
             = {formatMoney(amountPreview, currency, { signDisplay: 'never' })}
           </p>
         )}
@@ -451,7 +451,7 @@ function TransactionFormBody({
                   placeholder="0"
                 />
               </div>
-              <p className="mt-1.5 text-[11px] font-medium text-muted-foreground">
+              <p className="mt-1.5 text-xs font-medium text-muted-foreground">
                 {amountToMinor(counterValue, destCurrency) > 0 && amountToMinor(amount, currency) > 0
                   ? `≈ 1 ${currency} = ${new Intl.NumberFormat(undefined, {
                       maximumFractionDigits: 6,
@@ -549,7 +549,7 @@ function TransactionFormBody({
                 ))}
               </Select>
               {!categoryTouched && ruleOutcome.matched.length > 0 && (
-                <p className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-primary">
+                <p className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-primary">
                   <Zap className="h-3 w-3" /> Auto-filled by rule “{ruleOutcome.matched[0].name}”
                 </p>
               )}

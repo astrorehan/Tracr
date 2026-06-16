@@ -161,7 +161,7 @@ function AccountFormBody({ onClose, account }: { onClose: () => void; account: A
             <span className="block text-sm font-semibold text-foreground">
               This account is money I owe
             </span>
-            <span className="block text-[11px] font-medium text-muted-foreground">
+            <span className="block text-xs font-medium text-muted-foreground">
               {isLiability
                 ? 'Counted as debt — it lowers your net worth instead of adding to it.'
                 : 'Turn on if this is a debt you have to pay back (e.g. money you borrowed).'}
@@ -192,7 +192,7 @@ function AccountFormBody({ onClose, account }: { onClose: () => void; account: A
         </Field>
       </div>
       {isLiability && (
-        <p className="-mt-2 px-1 text-[11px] font-medium text-muted-foreground">
+        <p className="-mt-2 px-1 text-xs font-medium text-muted-foreground">
           How much you currently owe on this account (we store it as a negative balance).
         </p>
       )}
@@ -250,7 +250,7 @@ function AccountFormBody({ onClose, account }: { onClose: () => void; account: A
         </span>
         <span className="min-w-0">
           <span className="block text-sm font-semibold text-foreground">Exclude from net worth</span>
-          <span className="block text-[11px] font-medium text-muted-foreground">
+          <span className="block text-xs font-medium text-muted-foreground">
             {excludeFromStats
               ? 'Hidden from net worth, assets, debts &amp; allocation — still has its own history.'
               : 'Keep a tracking-only or shared account out of your totals.'}

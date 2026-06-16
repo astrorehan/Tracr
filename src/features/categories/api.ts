@@ -42,7 +42,7 @@ export function useEnsureAdjustmentCategory() {
           kind,
           parent_id: null,
           icon: 'scale',
-          color: '#8a7c66',
+          color: '#71717a',
         })
         .select('id')
         .single()

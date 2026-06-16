@@ -1,43 +1,22 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <!-- Warm charcoal backdrop (matches the app's dark hero card) -->
-    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#2a2118"/>
-      <stop offset="1" stop-color="#130f08"/>
+    <!-- Monochrome ink ramp: near-black (left) flowing to silver (right) -->
+    <linearGradient id="ink" x1="96" y1="256" x2="416" y2="256" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1b1e21"/>
+      <stop offset="0.52" stop-color="#5d636a"/>
+      <stop offset="1" stop-color="#9298a0"/>
     </linearGradient>
-    <!-- Amber to gold accent (brand primary) -->
-    <linearGradient id="amber" x1="112" y1="360" x2="392" y2="168" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#d97706"/>
-      <stop offset="1" stop-color="#fbbf24"/>
-    </linearGradient>
-    <!-- Area wash beneath the trend -->
-    <linearGradient id="area" x1="0" y1="168" x2="0" y2="392" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#f5a623" stop-opacity="0.34"/>
-      <stop offset="1" stop-color="#f5a623" stop-opacity="0"/>
-    </linearGradient>
-    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="9" result="b"/>
-      <feMerge>
-        <feMergeNode in="b"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
+    <!-- One hook ribbon; the mark is this hook plus its horizontal mirror -->
+    <path id="hook" d="M80 354 C70 296 96 232 152 206 C204 184 254 204 276 250 C294 286 296 316 262 322" />
   </defs>
 
-  <!-- Background tile -->
-  <rect width="512" height="512" rx="120" fill="url(#bg)"/>
-  <!-- Lit top edge for that refined, physically-lit material feel -->
-  <rect x="3" y="3" width="506" height="506" rx="117" stroke="#ffffff" stroke-opacity="0.06" stroke-width="2"/>
+  <!-- App-icon tile -->
+  <rect width="512" height="512" rx="116" fill="#ffffff"/>
+  <rect x="2.5" y="2.5" width="507" height="507" rx="113.5" stroke="#e6e6e6" stroke-width="3"/>
 
-  <!-- Area under the trend -->
-  <path d="M112 352 L200 296 L280 328 L392 168 L392 392 L112 392 Z" fill="url(#area)"/>
-  <!-- Baseline -->
-  <line x1="112" y1="392" x2="392" y2="392" stroke="#ffffff" stroke-opacity="0.08" stroke-width="4" stroke-linecap="round"/>
-
-  <!-- Rising trend line (Tracr = tracking money go up) -->
-  <path d="M112 352 L200 296 L280 328 L392 168" stroke="url(#amber)" stroke-width="30" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#glow)"/>
-
-  <!-- Glowing endpoint -->
-  <circle cx="392" cy="168" r="26" fill="#130f08"/>
-  <circle cx="392" cy="168" r="19" fill="#fde68a" filter="url(#glow)"/>
+  <!-- The mark: two mirrored hook ribbons that cross at center for the woven look -->
+  <g fill="none" stroke="url(#ink)" stroke-width="48" stroke-linecap="round" stroke-linejoin="round">
+    <use href="#hook"/>
+    <use href="#hook" transform="matrix(-1 0 0 1 512 0)"/>
+  </g>
 </svg>

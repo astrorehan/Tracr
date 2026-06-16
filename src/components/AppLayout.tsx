@@ -108,7 +108,7 @@ export function AppLayout() {
 
           {/* Right: sync · theme · profile */}
           <div className="flex items-center gap-2 sm:gap-3">
-            <span className="hidden items-center gap-1.5 text-[11px] font-medium text-muted-foreground md:inline-flex">
+            <span className="hidden items-center gap-1.5 text-xs font-medium text-muted-foreground md:inline-flex">
               <span className="h-1.5 w-1.5 rounded-full bg-positive" />
               Saved
             </span>
@@ -210,7 +210,7 @@ function MobileNavLink({ to, label, icon: Icon }: { to: string; label: string; i
       }
     >
       <Icon className="h-5 w-5 transition-transform duration-300 active:scale-90" />
-      <span className="text-[10px]">{label}</span>
+      <span className="text-xs">{label}</span>
     </NavLink>
   )
 }
