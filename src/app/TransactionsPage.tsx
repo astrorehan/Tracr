@@ -52,6 +52,17 @@ export function TransactionsPage() {
   const accountMap = useMemo(() => indexById(accounts), [accounts])
   const categoryMap = useMemo(() => indexById(categories), [categories])
   const tagMap = useMemo(() => indexById(tags), [tags])
+  const txMap = useMemo(() => indexById(transactions ?? []), [transactions])
+
+  // Short label for a refund/reimbursement's linked original (payee · amount).
+  function linkedLabelFor(tx: Transaction): string | undefined {
+    if (!tx.linked_transaction_id) return undefined
+    const orig = txMap[tx.linked_transaction_id]
+    const verb = tx.type === 'income' ? 'Refund of' : 'Reimburses'
+    if (!orig) return `${verb} a linked transaction`
+    const who = orig.payee || orig.note || (orig.type === 'income' ? 'income' : 'expense')
+    return `${verb} ${who} · ${formatMoney(orig.amount, orig.currency, { signDisplay: 'never' })}`
+  }
 
   // A selected category also matches its direct subcategories.
   const categoryMatchIds = useMemo(() => {
@@ -159,6 +170,7 @@ export function TransactionsPage() {
         tags={tagsFor(tx.id)}
         splitCount={splitsByTx[tx.id]?.length ?? 0}
         attachmentCount={attByTx[tx.id]?.length ?? 0}
+        linkedLabel={linkedLabelFor(tx)}
         onAttachments={setAttachmentsTxId}
         selectable={selectMode}
         selected={selectedIds.has(tx.id)}

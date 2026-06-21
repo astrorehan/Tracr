@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Pencil, Archive } from 'lucide-react'
+import { Plus, Pencil, Archive, GripVertical } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
@@ -8,7 +8,7 @@ import { useConfirm } from '@/components/ui/confirm-context'
 import { formatMoney } from '@/lib/money'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/features/auth/useAuth'
-import { useAccounts, useArchiveAccount, useBalances } from '@/features/accounts/api'
+import { useAccounts, useArchiveAccount, useBalances, useReorderAccounts } from '@/features/accounts/api'
 import { useFxRates } from '@/features/fx/api'
 import { buildRateTable, convertMinor, type RateTable } from '@/features/fx/fx'
 import { AccountForm } from '@/features/accounts/AccountForm'
@@ -22,21 +22,63 @@ export function AccountsPage() {
   const { data: balances = {} } = useBalances()
   const { data: fxRates = [] } = useFxRates()
   const archive = useArchiveAccount()
+  const reorder = useReorderAccounts()
   const confirm = useConfirm()
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Account | null>(null)
+  // Drag-to-reorder: scope keeps reordering within a side (assets vs liabilities);
+  // dragOrder is an in-flight override of the full ordered id list.
+  const [drag, setDrag] = useState<{ id: string; scope: 'asset' | 'liability' } | null>(null)
+  const [dragOrder, setDragOrder] = useState<string[] | null>(null)
 
   const rateTable = useMemo(() => buildRateTable(fxRates, base), [fxRates, base])
 
   const balanceOf = (a: Account) => balances[a.id] ?? a.opening_balance
   const toBase = (a: Account) => convertMinor(balanceOf(a), a.currency, base, rateTable) ?? 0
 
+  const scopeOf = (a: Account): 'asset' | 'liability' => (a.is_liability ? 'liability' : 'asset')
+  const byId = useMemo(() => {
+    const m = new Map<string, Account>()
+    for (const a of accounts ?? []) m.set(a.id, a)
+    return m
+  }, [accounts])
+  const baseIds = useMemo(() => (accounts ?? []).map((a) => a.id), [accounts])
+  const order = dragOrder ?? baseIds
+
   const { assets, liabilities } = useMemo(() => {
     const assets: Account[] = []
     const liabilities: Account[] = []
-    for (const a of accounts ?? []) (a.is_liability ? liabilities : assets).push(a)
+    for (const id of order) {
+      const a = byId.get(id)
+      if (a) (a.is_liability ? liabilities : assets).push(a)
+    }
     return { assets, liabilities }
-  }, [accounts])
+  }, [order, byId])
+
+  function handleDragStart(a: Account) {
+    setDrag({ id: a.id, scope: scopeOf(a) })
+  }
+  function handleDragOver(e: React.DragEvent, over: Account) {
+    if (!drag || drag.id === over.id) return
+    if (scopeOf(over) !== drag.scope) return // only reorder within the same side
+    e.preventDefault()
+    setDragOrder((cur) => {
+      const list = cur ?? baseIds
+      const from = list.indexOf(drag.id)
+      const to = list.indexOf(over.id)
+      if (from === -1 || to === -1 || from === to) return list
+      const next = [...list]
+      next.splice(to, 0, next.splice(from, 1)[0])
+      return next
+    })
+  }
+  function handleDrop() {
+    if (!drag) return
+    // Persist the full ordering; index becomes each account's sort_order.
+    if (dragOrder && dragOrder.join() !== baseIds.join()) reorder.mutate(dragOrder)
+    setDrag(null)
+    setDragOrder(null)
+  }
 
   // Net worth = assets − debts. Liability balances are already negative, so the
   // plain sum nets out; we also break out the two sides for the header. Accounts
@@ -119,6 +161,10 @@ export function AccountsPage() {
                   balance={balanceOf(account)}
                   base={base}
                   rateTable={rateTable}
+                  dragging={drag?.id === account.id}
+                  onDragStart={() => handleDragStart(account)}
+                  onDragOver={(e) => handleDragOver(e, account)}
+                  onDrop={handleDrop}
                   onEdit={() => openEdit(account)}
                   onArchive={() => handleArchive(account)}
                 />
@@ -137,6 +183,10 @@ export function AccountsPage() {
                     balance={balanceOf(account)}
                     base={base}
                     rateTable={rateTable}
+                    dragging={drag?.id === account.id}
+                    onDragStart={() => handleDragStart(account)}
+                    onDragOver={(e) => handleDragOver(e, account)}
+                    onDrop={handleDrop}
                     onEdit={() => openEdit(account)}
                     onArchive={() => handleArchive(account)}
                   />
@@ -168,6 +218,10 @@ function AccountCard({
   balance,
   base,
   rateTable,
+  dragging,
+  onDragStart,
+  onDragOver,
+  onDrop,
   onEdit,
   onArchive,
 }: {
@@ -175,6 +229,10 @@ function AccountCard({
   balance: number
   base: string
   rateTable: RateTable
+  dragging: boolean
+  onDragStart: () => void
+  onDragOver: (e: React.DragEvent) => void
+  onDrop: () => void
   onEdit: () => void
   onArchive: () => void
 }) {
@@ -194,8 +252,24 @@ function AccountCard({
   const utilColor = utilPct >= 90 ? 'var(--danger)' : utilPct >= 70 ? '#f59e0b' : color
 
   return (
-    <Card hoverable className="group p-0">
-      <Link to={`/accounts/${account.id}`} className="block p-5">
+    <Card
+      hoverable
+      className={cn('group relative p-0', dragging && 'opacity-50 ring-2 ring-primary/40')}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+    >
+      {/* Drag handle — only the grip starts a drag, so the card stays a link. */}
+      <span
+        draggable
+        onDragStart={onDragStart}
+        onDragEnd={onDrop}
+        className="absolute left-1.5 top-1.5 z-10 flex h-7 w-6 cursor-grab items-center justify-center rounded-md text-muted-foreground/30 opacity-0 transition-opacity hover:text-muted-foreground active:cursor-grabbing group-hover:opacity-100 max-sm:opacity-100"
+        aria-label={`Reorder ${account.name}`}
+        title="Drag to reorder"
+      >
+        <GripVertical className="h-4 w-4" />
+      </span>
+      <Link to={`/accounts/${account.id}`} draggable={false} className="block p-5">
         <div className="flex items-start justify-between">
           <div
             className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border transition-transform duration-300 group-hover:scale-105"

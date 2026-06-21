@@ -7,7 +7,11 @@ export function useAccounts(includeArchived = false) {
   return useQuery({
     queryKey: [...qk.accounts, { includeArchived }],
     queryFn: async (): Promise<Account[]> => {
-      let query = supabase.from('accounts').select('*').order('created_at')
+      let query = supabase
+        .from('accounts')
+        .select('*')
+        .order('sort_order')
+        .order('created_at')
       if (!includeArchived) query = query.eq('is_archived', false)
       const { data, error } = await query
       if (error) throw error
@@ -62,6 +66,27 @@ export function useUpdateAccount() {
       void qc.invalidateQueries({ queryKey: qk.accounts })
       void qc.invalidateQueries({ queryKey: qk.balances })
     },
+  })
+}
+
+/** Persist a new ordering: write sort_order = index for each id in turn. */
+export function useReorderAccounts() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (orderedIds: string[]) => {
+      await Promise.all(
+        orderedIds.map((id, i) =>
+          supabase
+            .from('accounts')
+            .update({ sort_order: i })
+            .eq('id', id)
+            .then(({ error }) => {
+              if (error) throw error
+            }),
+        ),
+      )
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.accounts }),
   })
 }
 
