@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell, BellOff, Check } from 'lucide-react'
+import { Bell, BellOff, BellRing, Check, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useNotifications, type ResolvedNotification } from './useNotifications'
+import { usePushReminders } from './push'
 
 export function NotificationBell() {
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications()
@@ -63,8 +64,51 @@ export function NotificationBell() {
                 ))}
               </div>
             )}
+
+            <PushFooter />
           </div>
         </>
+      )}
+    </div>
+  )
+}
+
+/** Per-device toggle for Web Push reminders (overdue bills, budget alerts). */
+function PushFooter() {
+  const { supported, enabled, busy, error, blocked, enable, disable } = usePushReminders()
+  if (!supported) return null
+
+  return (
+    <div className="border-t border-border px-4 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+          <BellRing className="h-3.5 w-3.5 text-muted-foreground" />
+          Push reminders
+        </div>
+        <button
+          onClick={() => (enabled ? disable() : enable())}
+          disabled={busy || blocked}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors disabled:opacity-50',
+            enabled
+              ? 'text-muted-foreground hover:bg-surface-muted hover:text-foreground'
+              : 'bg-primary/10 text-primary hover:bg-primary/15',
+          )}
+        >
+          {busy && <Loader2 className="h-3 w-3 animate-spin" />}
+          {enabled ? 'On · turn off' : 'Turn on'}
+        </button>
+      </div>
+      {blocked ? (
+        <p className="mt-1.5 text-xs font-medium text-muted-foreground">
+          Notifications are blocked for this site — re-enable them in your browser settings.
+        </p>
+      ) : error ? (
+        <p className="mt-1.5 text-xs font-medium text-danger">{error}</p>
+      ) : (
+        <p className="mt-1.5 text-xs font-medium text-muted-foreground">
+          Get bill &amp; budget alerts on this device, even when Tracr is closed.
+        </p>
       )}
     </div>
   )

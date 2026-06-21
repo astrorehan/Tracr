@@ -128,7 +128,7 @@ Dedicated **Reports** page (`/reports`, sidebar + Dashboard link) with a date-ra
 
 ## 12. Notifications & reminders (Tier 3)
 - ✅ **In-app notification center** — a bell in the header (`features/notifications/`) with an unread badge + popover. Notifications are derived **purely client-side** from cached data (no backend): overdue / due-soon (≤7d) **bills** and **near (≥80%) / over (≥100%) budgets**, each linking to its page. Read-state is per-id in localStorage (`tracr.notifications.read.v1`) with **stable ids** so it survives refreshes and only resets when the situation worsens (due date advances, budget rolls into a new period, or crosses a worse threshold). Pure builders (`notifications.ts`) are unit-tested; budget spend reuses `budgets/progress.ts` exactly. "Mark all read" supported.
-- ⬜ **Web push** (service worker + VAPID + a cron edge function to send) — the builders are designed to be reused server-side; needs VAPID keys, a `push_subscriptions` table, and a daily send job.
+- ✅ **Web push** — the same bill/budget builders run **server-side** in a `send-push` Edge Function, invoked daily by **pg_cron** (00:23 UTC) via `pg_net` with the `push_token` shared secret (mirrors recurring-autopost). `push_subscriptions` + `push_sent` tables (migration `0025`, RLS per-user); VAPID keypair lives in `app_secrets` (private key never in git), public key in `VITE_VAPID_PUBLIC_KEY`. The PWA service worker gains `push`/`notificationclick` handlers via `workbox.importScripts(['push-sw.js'])`; clients subscribe through a **per-device toggle in the notification popover** (`features/notifications/push.ts`, upsert by endpoint). De-dupe by the alert's **stable id** (`push_sent`) so each alert pushes once; dead endpoints (404/410) are pruned; capped at 10/user/run. *Testing needs a built/deployed PWA — the SW is disabled in `vite dev`.*
 - ⬜ Daily/weekly "log your spending" nudge
 
 ## 13. Power-user & sharing (Tier 3)
@@ -163,7 +163,7 @@ Dedicated **Reports** page (`/reports`, sidebar + Dashboard link) with a date-ra
 **Phase 2C — polish & power:**
 10. ✅ JSON backup/restore · ✅ bulk actions · ✅ calculator field · ✅ attachments/receipts — all shipped
 11. ✅ Multi-currency base conversion (FX table) — DONE: rates, per-txn snapshot, net worth & reports conversion, Settings rate card, cross-currency transfers, account estimates. (Optional later: live-rate API job.)
-12. ✅ Rules engine (auto-categorize/tag on create, import & existing) — shipped. Still open: shared wallets, notifications, app lock
+12. ✅ Rules engine (auto-categorize/tag on create, import & existing) — shipped. Still open: shared wallets, app lock
 
 ---
 
@@ -186,6 +186,7 @@ Dedicated **Reports** page (`/reports`, sidebar + Dashboard link) with a date-ra
 - ✅ `accounts.sort_order` (migration `0022`, drag-reorder accounts)
 - ✅ `transactions.linked_transaction_id` (migration `0023`, refund/reimbursement link)
 - ✅ `transaction_templates` (migration `0024`, quick templates / favorites)
+- ✅ `push_subscriptions` + `push_sent` + `send-push` Edge Function & pg_cron/pg_net daily job (migration `0025`, web push)
 - Optional: `saved_views`, `spaces` + membership (sharing), `account_groups`
 
 All additions stay RLS-scoped per user, consistent with the existing schema.

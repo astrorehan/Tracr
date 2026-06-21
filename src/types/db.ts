@@ -330,3 +330,14 @@ export interface FxRate {
 
 export type NewFxRate = Omit<FxRate, 'id' | 'user_id' | 'created_at' | 'source'> &
   Partial<Pick<FxRate, 'source'>>
+
+/** A browser/device Web Push subscription (one per PushManager endpoint). */
+export interface PushSubscription {
+  id: string
+  user_id: string
+  endpoint: string
+  p256dh: string
+  auth: string
+  created_at: string
+  last_seen_at: string
+}
