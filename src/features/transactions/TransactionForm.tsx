@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Paperclip, Plus, Split, X, Zap } from 'lucide-react'
+import { BookmarkPlus, Paperclip, Plus, Split, X, Zap } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Label, Select } from '@/components/ui/Input'
@@ -20,8 +20,18 @@ import { useSetTransactionSplits } from './splits'
 import { useUploadAttachments } from '@/features/attachments/api'
 import { useRules } from '@/features/rules/api'
 import { evaluateRules } from '@/features/rules/engine'
-import { useCreateTransaction, useUpdateTransaction, usePayees } from './api'
-import type { Transaction, TransactionSplit, TransactionType } from '@/types/db'
+import { useCreateTransaction, useUpdateTransaction, usePayees, useTransactions } from './api'
+import {
+  useTransactionTemplates,
+  useCreateTemplate,
+  useDeleteTemplate,
+} from './templates'
+import type {
+  Transaction,
+  TransactionSplit,
+  TransactionTemplate,
+  TransactionType,
+} from '@/types/db'
 
 interface Props {
   open: boolean
@@ -116,6 +126,10 @@ function TransactionFormBody({
   const { data: fxRates = [] } = useFxRates()
   const { data: payeeSuggestions = [] } = usePayees()
   const { data: rules = [] } = useRules()
+  const { data: recentTx = [] } = useTransactions({ limit: 100 })
+  const { data: templates = [] } = useTransactionTemplates()
+  const createTemplate = useCreateTemplate()
+  const deleteTemplate = useDeleteTemplate()
   const editing = !!transaction
   const create = useCreateTransaction()
   const update = useUpdateTransaction()
@@ -147,9 +161,12 @@ function TransactionFormBody({
       : [newRow(), newRow()],
   )
   const [counterAmount, setCounterAmount] = useState(initialCounterAmount)
+  const [linkedId, setLinkedId] = useState(transaction?.linked_transaction_id ?? '')
   const [counterEdited, setCounterEdited] = useState(editing && !!initialCounterAmount)
   const [categoryTouched, setCategoryTouched] = useState(editing)
   const [tagsTouched, setTagsTouched] = useState(editing)
+  const [savingTpl, setSavingTpl] = useState(false)
+  const [tplName, setTplName] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   // Fall back to the first account if state is still empty (e.g. accounts
@@ -191,6 +208,23 @@ function TransactionFormBody({
 
   const canSplit = type !== 'transfer'
   const splitting = canSplit && splitMode
+
+  // Refund / reimbursement link: an income offsets an earlier expense (and vice
+  // versa), so we offer the opposite-direction transactions as link targets.
+  const linkCandidates = useMemo(() => {
+    if (type === 'transfer') return []
+    const opp: TransactionType = type === 'income' ? 'expense' : 'income'
+    return recentTx.filter((t) => t.type === opp && t.id !== transaction?.id).slice(0, 50)
+  }, [recentTx, type, transaction?.id])
+  // Keep a currently-linked transaction selectable even if it's older than the
+  // recent window we fetched.
+  const linkedMissing =
+    !!linkedId && !linkCandidates.some((t) => t.id === linkedId)
+  function linkLabel(t: Transaction) {
+    const who = t.payee || t.note || (t.type === 'income' ? 'Income' : 'Expense')
+    const when = new Date(t.occurred_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+    return `${when} · ${who} · ${formatMoney(t.amount, t.currency, { signDisplay: 'never' })}`
+  }
 
   // Rules auto-fill category & tags as the user types, until they edit those
   // fields themselves (transfers and split mode opt out of category auto-fill).
@@ -235,6 +269,40 @@ function TransactionFormBody({
       if (next) setSplits_([newRow(effectiveCategoryId, amount), newRow()])
       return next
     })
+  }
+
+  // Apply a saved template: pre-fill the single-entry fields. The amount is
+  // valued in the template account's currency (or the current one as a fallback).
+  function applyTemplate(t: TransactionTemplate) {
+    setType(t.type)
+    const acc = t.account_id ? accounts.find((a) => a.id === t.account_id) : undefined
+    if (acc) setAccountId(acc.id)
+    const cur = acc?.currency ?? currency
+    if (t.category_id) {
+      setCategoryTouched(true)
+      setCategoryId(t.category_id)
+    }
+    if (t.amount > 0) setAmount(String(fromMinorUnits(t.amount, cur)))
+    setTagsTouched(true)
+    setPayee(t.payee ?? '')
+    setNote(t.note ?? '')
+    setSplitMode(false)
+  }
+
+  async function saveTemplate() {
+    const name = tplName.trim()
+    if (!name) return
+    await createTemplate.mutateAsync({
+      name,
+      type,
+      account_id: effectiveAccountId || null,
+      category_id: effectiveCategoryId || null,
+      amount: Math.max(0, amountToMinor(amount, currency)),
+      payee: payee.trim() || null,
+      note: note.trim() || null,
+    })
+    setTplName('')
+    setSavingTpl(false)
   }
 
   if (accounts.length === 0) {
@@ -311,6 +379,7 @@ function TransactionFormBody({
             occurred_at: occurredAt,
             payee: type === 'transfer' ? null : payee.trim() || null,
             note: note.trim() || null,
+            linked_transaction_id: type === 'transfer' ? null : linkedId || null,
           },
         })
         await setSplits.mutateAsync({ transactionId: transaction!.id, splits: splitRows })
@@ -329,6 +398,7 @@ function TransactionFormBody({
           occurred_at: occurredAt,
           payee: type === 'transfer' ? null : payee.trim() || null,
           note: note.trim() || null,
+          linked_transaction_id: type === 'transfer' ? null : linkedId || null,
         })
         if (splitting) await setSplits.mutateAsync({ transactionId: tx.id, splits: splitRows })
         if (effectiveTagIds.length > 0)
@@ -343,6 +413,36 @@ function TransactionFormBody({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {!editing && templates.length > 0 && (
+        <div className="space-y-1.5">
+          <Label className="mb-0">Quick templates</Label>
+          <div className="flex flex-wrap gap-1.5">
+            {templates.map((t) => (
+              <span
+                key={t.id}
+                className="inline-flex items-center rounded-full border border-border bg-surface-muted/60 text-xs font-semibold text-foreground"
+              >
+                <button
+                  type="button"
+                  onClick={() => applyTemplate(t)}
+                  className="rounded-l-full py-1 pl-3 pr-1.5 transition hover:text-primary"
+                >
+                  {t.name}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => deleteTemplate.mutate(t.id)}
+                  className="rounded-r-full py-1 pl-0.5 pr-2 text-muted-foreground transition hover:text-danger"
+                  aria-label={`Delete template ${t.name}`}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Type switch */}
       <div className="grid grid-cols-3 gap-1 rounded-xl bg-surface-muted p-1">
         {TYPES.map((t) => (
@@ -575,6 +675,27 @@ function TransactionFormBody({
         </Field>
       )}
 
+      {type !== 'transfer' && (linkCandidates.length > 0 || linkedId) && (
+        <Field
+          label={type === 'income' ? 'Refund for (optional)' : 'Reimbursed by (optional)'}
+        >
+          <Select value={linkedId} onChange={(e) => setLinkedId(e.target.value)}>
+            <option value="">Not linked</option>
+            {linkedMissing && <option value={linkedId}>Currently linked transaction</option>}
+            {linkCandidates.map((t) => (
+              <option key={t.id} value={t.id}>
+                {linkLabel(t)}
+              </option>
+            ))}
+          </Select>
+          <p className="mt-1.5 text-xs font-medium text-muted-foreground">
+            {type === 'income'
+              ? 'Tie this money back to the original expense it refunds.'
+              : 'Tie this to the income that paid you back for it.'}
+          </p>
+        </Field>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
         <Field label="Date">
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
@@ -634,6 +755,47 @@ function TransactionFormBody({
           </div>
         )}
       </Field>
+
+      {type !== 'transfer' &&
+        (savingTpl ? (
+          <div className="flex items-center gap-2">
+            <Input
+              value={tplName}
+              onChange={(e) => setTplName(e.target.value)}
+              placeholder="Template name"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  void saveTemplate()
+                }
+              }}
+            />
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void saveTemplate()}
+              loading={createTemplate.isPending}
+              disabled={!tplName.trim()}
+            >
+              Save
+            </Button>
+            <Button type="button" size="sm" variant="secondary" onClick={() => setSavingTpl(false)}>
+              Cancel
+            </Button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setTplName(payee.trim() || note.trim() || '')
+              setSavingTpl(true)
+            }}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition hover:text-primary"
+          >
+            <BookmarkPlus className="h-3.5 w-3.5" /> Save as template
+          </button>
+        ))}
 
       {error && <p className="text-sm text-danger">{error}</p>}
 

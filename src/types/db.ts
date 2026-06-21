@@ -41,6 +41,8 @@ export interface Account {
   credit_limit: number | null
   /** When true, the account is left out of net worth / assets / debts / allocation. */
   exclude_from_stats: boolean
+  /** Manual ordering within the user's accounts list; lower = first. */
+  sort_order: number
   created_at: string
 }
 
@@ -81,6 +83,8 @@ export interface Transaction {
   source: TransactionSource
   /** Reconciliation state; defaults to 'pending' on insert. */
   status: TransactionStatus
+  /** Links a refund/reimbursement to the original transaction it offsets; null = standalone. */
+  linked_transaction_id: string | null
   external_ref: string | null
   created_at: string
 }
@@ -203,6 +207,25 @@ export type NewRecurringTransaction = Omit<
 > &
   Partial<Pick<RecurringTransaction, 'is_active' | 'auto_post'>>
 
+export interface TransactionTemplate {
+  id: string
+  user_id: string
+  name: string
+  type: TransactionType
+  account_id: string | null
+  category_id: string | null
+  /** Default amount in minor units; 0 = leave blank when applied. */
+  amount: number
+  payee: string | null
+  note: string | null
+  created_at: string
+}
+
+export type NewTransactionTemplate = Omit<
+  TransactionTemplate,
+  'id' | 'user_id' | 'created_at'
+>
+
 export type NewTag = Omit<Tag, 'id' | 'user_id' | 'created_at'>
 
 export type NewCategory = Omit<
@@ -220,9 +243,13 @@ export type NewAccount = Omit<
   | 'is_liability'
   | 'credit_limit'
   | 'exclude_from_stats'
+  | 'sort_order'
 > &
   Partial<
-    Pick<Account, 'is_archived' | 'is_liability' | 'credit_limit' | 'exclude_from_stats'>
+    Pick<
+      Account,
+      'is_archived' | 'is_liability' | 'credit_limit' | 'exclude_from_stats' | 'sort_order'
+    >
   >
 
 export type NewTransaction = Omit<
@@ -233,6 +260,7 @@ export type NewTransaction = Omit<
   | 'source'
   | 'payee'
   | 'status'
+  | 'linked_transaction_id'
   | 'external_ref'
   | 'base_amount'
   | 'fx_rate'
@@ -242,7 +270,14 @@ export type NewTransaction = Omit<
   Partial<
     Pick<
       Transaction,
-      'source' | 'payee' | 'status' | 'base_amount' | 'fx_rate' | 'counter_amount' | 'counter_fx_rate'
+      | 'source'
+      | 'payee'
+      | 'status'
+      | 'linked_transaction_id'
+      | 'base_amount'
+      | 'fx_rate'
+      | 'counter_amount'
+      | 'counter_fx_rate'
     >
   >
 

@@ -18,6 +18,7 @@ const TABLES = [
   'savings_goals',
   'budgets',
   'recurring_transactions',
+  'transaction_templates',
   'transactions',
   'transaction_tags',
   'transaction_splits',
@@ -103,7 +104,27 @@ export async function restoreBackup(backup: Backup): Promise<number> {
   total += await upsertRows('savings_goals', d.savings_goals, userId, 'id')
   total += await upsertRows('budgets', d.budgets, userId, 'id')
   total += await upsertRows('recurring_transactions', d.recurring_transactions, userId, 'id')
-  total += await upsertRows('transactions', d.transactions, userId, 'id')
+  total += await upsertRows('transaction_templates', d.transaction_templates, userId, 'id')
+
+  // Transactions self-reference via linked_transaction_id (refund/reimbursement).
+  // Insert with the link cleared so a forward reference can't fail the FK, then
+  // patch the links once every row exists.
+  const txs = d.transactions ?? []
+  total += await upsertRows(
+    'transactions',
+    txs.map((t) => ({ ...t, linked_transaction_id: null })),
+    userId,
+    'id',
+  )
+  for (const t of txs) {
+    if (!t.linked_transaction_id) continue
+    const { error } = await supabase
+      .from('transactions')
+      .update({ linked_transaction_id: t.linked_transaction_id })
+      .eq('id', t.id as string)
+    if (error) throw error
+  }
+
   // Join table has a composite primary key, not an id column.
   total += await upsertRows('transaction_tags', d.transaction_tags, userId, 'transaction_id,tag_id')
   total += await upsertRows('transaction_splits', d.transaction_splits, userId, 'id')

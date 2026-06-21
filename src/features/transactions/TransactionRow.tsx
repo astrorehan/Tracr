@@ -1,4 +1,4 @@
-import { Check, Copy, Lock, Paperclip, Pencil, Split, Trash2 } from 'lucide-react'
+import { Check, Copy, Lock, Paperclip, Pencil, Split, Trash2, Undo2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { formatMoney } from '@/lib/money'
@@ -14,6 +14,8 @@ interface Props {
   splitCount?: number
   /** Number of attached receipts (0 = none). */
   attachmentCount?: number
+  /** Short label of the transaction this one refunds/reimburses, if linked. */
+  linkedLabel?: string
   onAttachments?: (id: string) => void
   /** When true, the row toggles selection instead of showing the delete button. */
   selectable?: boolean
@@ -31,6 +33,7 @@ export function TransactionRow({
   tags,
   splitCount = 0,
   attachmentCount = 0,
+  linkedLabel,
   onAttachments,
   selectable = false,
   selected = false,
@@ -96,6 +99,12 @@ export function TransactionRow({
         <p className="mt-0.5 truncate text-xs font-medium text-muted-foreground">
           {subtitle} · {format(new Date(tx.occurred_at), 'd MMM')}
         </p>
+        {linkedLabel && (
+          <p className="mt-0.5 inline-flex max-w-full items-center gap-1 text-xs font-medium text-muted-foreground">
+            <Undo2 className="h-3 w-3 shrink-0" />
+            <span className="truncate">{linkedLabel}</span>
+          </p>
+        )}
         {tags && tags.length > 0 && (
           <div className="mt-1.5 flex flex-wrap gap-1">
             {tags.map((t) => (
