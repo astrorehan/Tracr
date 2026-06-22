@@ -17,6 +17,7 @@ function tx(overrides: Partial<Transaction> = {}): Transaction {
   return {
     id: Math.random().toString(36).slice(2),
     user_id: 'u1',
+    book_id: 'b1',
     account_id: 'a1',
     category_id: null,
     counter_account_id: null,
@@ -43,6 +44,7 @@ function cat(id: string, name: string, parent_id: string | null = null): Categor
   return {
     id,
     user_id: 'u1',
+    book_id: 'b1',
     name,
     kind: 'expense',
     parent_id,

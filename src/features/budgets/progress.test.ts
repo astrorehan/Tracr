@@ -6,6 +6,7 @@ function tx(overrides: Partial<Transaction> = {}): Transaction {
   return {
     id: 'tx',
     user_id: 'u1',
+    book_id: 'b1',
     account_id: 'a1',
     category_id: 'food',
     counter_account_id: null,
@@ -96,8 +97,8 @@ describe('spentInPeriod', () => {
   it('counts only the matching parts of a split transaction', () => {
     const splits: Record<string, TransactionSplit[]> = {
       's1': [
-        { id: 'a', transaction_id: 's1', user_id: 'u1', category_id: 'food', amount: 4000, note: null, created_at: '' },
-        { id: 'b', transaction_id: 's1', user_id: 'u1', category_id: 'home', amount: 6000, note: null, created_at: '' },
+        { id: 'a', transaction_id: 's1', user_id: 'u1', book_id: 'b1', category_id: 'food', amount: 4000, note: null, created_at: '' },
+        { id: 'b', transaction_id: 's1', user_id: 'u1', book_id: 'b1', category_id: 'home', amount: 6000, note: null, created_at: '' },
       ],
     }
     const txns = [tx({ id: 's1', category_id: null, amount: 10000 })]

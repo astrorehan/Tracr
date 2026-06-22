@@ -3,7 +3,7 @@ import { goalProgress, daysToTarget } from './progress'
 import type { GoalContribution } from '@/types/db'
 
 function contrib(amount: number, occurred_at: string): GoalContribution {
-  return { id: `${amount}-${occurred_at}`, user_id: 'u1', goal_id: 'g1', amount, note: null, occurred_at, created_at: '' }
+  return { id: `${amount}-${occurred_at}`, user_id: 'u1', book_id: 'b1', goal_id: 'g1', amount, note: null, occurred_at, created_at: '' }
 }
 
 const NOW = new Date('2024-03-15T12:00:00')

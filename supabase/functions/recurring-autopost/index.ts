@@ -99,6 +99,7 @@ const json = (body: unknown, status = 200) =>
 interface Recurring {
   id: string
   user_id: string
+  book_id: string
   name: string
   type: 'income' | 'expense'
   account_id: string
@@ -128,7 +129,7 @@ Deno.serve(async (req) => {
 
   const { data: due, error } = await admin
     .from('recurring_transactions')
-    .select('id, user_id, name, type, account_id, category_id, amount, currency, frequency, interval, next_due, note')
+    .select('id, user_id, book_id, name, type, account_id, category_id, amount, currency, frequency, interval, next_due, note')
     .eq('is_active', true)
     .eq('auto_post', true)
     .lte('next_due', today)
@@ -172,6 +173,7 @@ Deno.serve(async (req) => {
         const snap = computeSnapshot(rec.amount, rec.currency, base, table)
         inserts.push({
           user_id: rec.user_id,
+          book_id: rec.book_id,
           account_id: rec.account_id,
           category_id: rec.category_id,
           counter_account_id: null,

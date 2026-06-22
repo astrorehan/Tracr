@@ -68,6 +68,7 @@ interface AppNotification {
 
 interface Recurring {
   id: string
+  book_id: string
   name: string
   amount: number
   currency: string
@@ -110,6 +111,7 @@ function billNotifications(recurring: Recurring[], today: Date): AppNotification
 
 interface Budget {
   id: string
+  book_id: string
   category_id: string | null
   period: Period
   amount: number
@@ -118,6 +120,7 @@ interface Budget {
 }
 interface Tx {
   id: string
+  book_id: string
   type: string
   amount: number
   currency: string
@@ -276,22 +279,43 @@ Deno.serve(async (req) => {
 
   for (const [uid, userSubs] of byUser) {
     try {
-      // --- bills ---
+      // --- the user's books (alerts span all of them; labeled when >1) ---
+      const { data: bookRows } = await admin
+        .from('books')
+        .select('id, name')
+        .eq('owner_id', uid)
+        .returns<{ id: string; name: string }[]>()
+      const bookName = new Map<string, string>()
+      for (const b of bookRows ?? []) bookName.set(b.id, b.name)
+      const multiBook = bookName.size > 1
+      // Prefix an alert with its book name so a user with several ledgers can
+      // tell which one fired (single-book users see no prefix).
+      const label = (note: AppNotification, bookId: string): AppNotification =>
+        multiBook && bookName.has(bookId)
+          ? { ...note, title: `${bookName.get(bookId)} · ${note.title}` }
+          : note
+
+      // --- bills (all books) ---
       const { data: recurring } = await admin
         .from('recurring_transactions')
-        .select('id, name, amount, currency, next_due, is_active')
+        .select('id, book_id, name, amount, currency, next_due, is_active')
         .eq('user_id', uid)
         .eq('is_active', true)
         .returns<Recurring[]>()
 
+      const billAlerts: AppNotification[] = []
+      for (const rec of recurring ?? []) {
+        for (const note of billNotifications([rec], now)) billAlerts.push(label(note, rec.book_id))
+      }
+
       // --- budgets + the data to value them ---
       const { data: budgets } = await admin
         .from('budgets')
-        .select('id, category_id, period, amount, currency, rollover')
+        .select('id, book_id, category_id, period, amount, currency, rollover')
         .eq('user_id', uid)
         .returns<Budget[]>()
 
-      let budgetAlerts: AppNotification[] = []
+      const budgetAlerts: AppNotification[] = []
       if (budgets && budgets.length > 0) {
         // Earliest period start we must value (rollover needs the previous one).
         let earliest = Infinity
@@ -303,7 +327,7 @@ Deno.serve(async (req) => {
 
         const { data: txns } = await admin
           .from('transactions')
-          .select('id, type, amount, currency, category_id, occurred_at')
+          .select('id, book_id, type, amount, currency, category_id, occurred_at')
           .eq('user_id', uid)
           .eq('type', 'expense')
           .gte('occurred_at', fromIso)
@@ -335,12 +359,26 @@ Deno.serve(async (req) => {
           childIdsByParent.set(c.parent_id, arr)
         }
 
-        budgetAlerts = budgetNotifications(budgets, txList, splitsByTx, categoryName, childIdsByParent, now)
+        // Value each book's budgets against only that book's transactions, so an
+        // overall ("all spending") budget never sums another book's expenses.
+        const bookIds = new Set<string>(budgets.map((b) => b.book_id))
+        for (const bookId of bookIds) {
+          const bookBudgets = budgets.filter((b) => b.book_id === bookId)
+          const bookTxns = txList.filter((t) => t.book_id === bookId)
+          for (const note of budgetNotifications(
+            bookBudgets,
+            bookTxns,
+            splitsByTx,
+            categoryName,
+            childIdsByParent,
+            now,
+          )) {
+            budgetAlerts.push(label(note, bookId))
+          }
+        }
       }
 
-      const candidates = [...billNotifications(recurring ?? [], now), ...budgetAlerts].sort(
-        (a, b) => b.priority - a.priority,
-      )
+      const candidates = [...billAlerts, ...budgetAlerts].sort((a, b) => b.priority - a.priority)
       if (candidates.length === 0) continue
 
       // --- de-dupe against already-pushed ids ---

@@ -10,6 +10,7 @@ function rule(overrides: Partial<Rule> = {}): Rule {
   return {
     id: 'r1',
     user_id: 'u1',
+    book_id: 'b1',
     name: 'rule',
     is_active: true,
     sort_order: 0,

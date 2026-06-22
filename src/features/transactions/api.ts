@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { qk } from '@/lib/queryClient'
 import type { NewTransaction, Transaction, TransactionStatus } from '@/types/db'
 import { computeFxSnapshot } from '@/features/fx/snapshot'
+import { useActiveBook } from '@/features/books/useActiveBook'
 
 /**
  * Freeze a base-currency snapshot on the transaction at create time so reports
@@ -26,12 +27,14 @@ export interface TransactionFilters {
 }
 
 export function useTransactions(filters: TransactionFilters = {}) {
+  const { activeBookId } = useActiveBook()
   return useQuery({
-    queryKey: qk.transactions(filters as Record<string, unknown>),
+    queryKey: qk.transactions({ ...filters, bookId: activeBookId } as Record<string, unknown>),
     queryFn: async (): Promise<Transaction[]> => {
       let query = supabase
         .from('transactions')
         .select('*')
+        .eq('book_id', activeBookId!)
         .order('occurred_at', { ascending: false })
         .limit(filters.limit ?? 200)
 
@@ -54,12 +57,14 @@ export function useTransactions(filters: TransactionFilters = {}) {
 
 /** Distinct payees from history, most-used first — for add-form / filter autocomplete. */
 export function usePayees() {
+  const { activeBookId } = useActiveBook()
   return useQuery({
-    queryKey: qk.payees,
+    queryKey: [...qk.payees, activeBookId],
     queryFn: async (): Promise<string[]> => {
       const { data, error } = await supabase
         .from('payee_stats')
         .select('payee')
+        .eq('book_id', activeBookId!)
         .order('txn_count', { ascending: false })
         .order('last_used', { ascending: false })
         .limit(500)
@@ -80,6 +85,7 @@ function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
 
 export function useCreateTransaction() {
   const qc = useQueryClient()
+  const { activeBookId } = useActiveBook()
   return useMutation({
     mutationFn: async (input: NewTransaction): Promise<Transaction> => {
       const { data: userData } = await supabase.auth.getUser()
@@ -88,7 +94,7 @@ export function useCreateTransaction() {
       const valued = await withFxSnapshot(input)
       const { data, error } = await supabase
         .from('transactions')
-        .insert({ ...valued, user_id: userId })
+        .insert({ ...valued, user_id: userId, book_id: activeBookId })
         .select()
         .single()
       if (error) throw error
@@ -105,6 +111,7 @@ export function useCreateTransaction() {
  */
 export function useDuplicateTransaction() {
   const qc = useQueryClient()
+  const { activeBookId } = useActiveBook()
   return useMutation({
     mutationFn: async ({
       tx,
@@ -124,6 +131,7 @@ export function useDuplicateTransaction() {
         .from('transactions')
         .insert({
           user_id: userId,
+          book_id: activeBookId,
           account_id: tx.account_id,
           counter_account_id: tx.counter_account_id,
           category_id: tx.category_id,
@@ -148,6 +156,7 @@ export function useDuplicateTransaction() {
           splits.map((s) => ({
             transaction_id: copy.id,
             user_id: userId,
+            book_id: activeBookId,
             category_id: s.category_id,
             amount: s.amount,
             note: s.note ?? null,
@@ -158,7 +167,14 @@ export function useDuplicateTransaction() {
       if (tagIds.length > 0) {
         const { error: tagErr } = await supabase
           .from('transaction_tags')
-          .insert(tagIds.map((tag_id) => ({ transaction_id: copy.id, tag_id, user_id: userId })))
+          .insert(
+            tagIds.map((tag_id) => ({
+              transaction_id: copy.id,
+              tag_id,
+              user_id: userId,
+              book_id: activeBookId,
+            })),
+          )
         if (tagErr) throw tagErr
       }
       return copy

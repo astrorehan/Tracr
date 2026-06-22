@@ -22,12 +22,29 @@ export interface Profile {
   avatar_url: string | null
   base_currency: string
   locale: string | null
+  /** The book the user currently has open; mirrored to localStorage for instant boot. */
+  active_book_id: string | null
   created_at: string
 }
+
+/** A ledger. One user owns several independent books (Personal, Business, …). */
+export interface Book {
+  id: string
+  owner_id: string
+  name: string
+  color: string | null
+  icon: string | null
+  is_archived: boolean
+  last_opened_at: string | null
+  created_at: string
+}
+
+export type NewBook = Pick<Book, 'name'> & Partial<Pick<Book, 'color' | 'icon'>>
 
 export interface Account {
   id: string
   user_id: string
+  book_id: string
   name: string
   type: AccountType
   currency: string
@@ -49,6 +66,7 @@ export interface Account {
 export interface Category {
   id: string
   user_id: string
+  book_id: string
   name: string
   kind: CategoryKind
   parent_id: string | null
@@ -63,6 +81,7 @@ export interface Category {
 export interface Transaction {
   id: string
   user_id: string
+  book_id: string
   account_id: string
   category_id: string | null
   counter_account_id: string | null
@@ -92,6 +111,7 @@ export interface Transaction {
 export interface Tag {
   id: string
   user_id: string
+  book_id: string
   name: string
   color: string | null
   created_at: string
@@ -101,6 +121,7 @@ export interface TransactionTag {
   transaction_id: string
   tag_id: string
   user_id: string
+  book_id: string
   created_at: string
 }
 
@@ -108,6 +129,7 @@ export interface TransactionSplit {
   id: string
   transaction_id: string
   user_id: string
+  book_id: string
   category_id: string | null
   amount: number
   note: string | null
@@ -117,6 +139,7 @@ export interface TransactionSplit {
 export interface SavingsGoal {
   id: string
   user_id: string
+  book_id: string
   name: string
   target_amount: number
   currency: string
@@ -131,6 +154,7 @@ export interface SavingsGoal {
 export interface GoalContribution {
   id: string
   user_id: string
+  book_id: string
   goal_id: string
   /** Signed minor units: positive = added, negative = withdrawn. */
   amount: number
@@ -144,6 +168,7 @@ export type RecurrenceFreq = 'weekly' | 'monthly' | 'yearly'
 export interface RecurringTransaction {
   id: string
   user_id: string
+  book_id: string
   name: string
   type: TransactionType
   account_id: string
@@ -167,6 +192,7 @@ export type BudgetPeriod = 'weekly' | 'monthly' | 'yearly'
 export interface Budget {
   id: string
   user_id: string
+  book_id: string
   /** null = an overall ("all spending") budget for the period. */
   category_id: string | null
   period: BudgetPeriod
@@ -179,6 +205,7 @@ export interface Budget {
 export interface Attachment {
   id: string
   user_id: string
+  book_id: string
   transaction_id: string
   path: string
   name: string
@@ -191,25 +218,33 @@ export interface Attachment {
 export interface AccountBalance {
   account_id: string
   user_id: string
+  book_id: string
   balance: number
 }
 
-export type NewBudget = Omit<Budget, 'id' | 'user_id' | 'created_at'>
+export type NewBudget = Omit<Budget, 'id' | 'user_id' | 'book_id' | 'created_at'>
 
-export type NewSavingsGoal = Omit<SavingsGoal, 'id' | 'user_id' | 'created_at' | 'is_archived'> &
+export type NewSavingsGoal = Omit<
+  SavingsGoal,
+  'id' | 'user_id' | 'book_id' | 'created_at' | 'is_archived'
+> &
   Partial<Pick<SavingsGoal, 'is_archived'>>
 
-export type NewGoalContribution = Omit<GoalContribution, 'id' | 'user_id' | 'created_at'>
+export type NewGoalContribution = Omit<
+  GoalContribution,
+  'id' | 'user_id' | 'book_id' | 'created_at'
+>
 
 export type NewRecurringTransaction = Omit<
   RecurringTransaction,
-  'id' | 'user_id' | 'created_at' | 'last_paid_at' | 'is_active' | 'auto_post'
+  'id' | 'user_id' | 'book_id' | 'created_at' | 'last_paid_at' | 'is_active' | 'auto_post'
 > &
   Partial<Pick<RecurringTransaction, 'is_active' | 'auto_post'>>
 
 export interface TransactionTemplate {
   id: string
   user_id: string
+  book_id: string
   name: string
   type: TransactionType
   account_id: string | null
@@ -223,14 +258,14 @@ export interface TransactionTemplate {
 
 export type NewTransactionTemplate = Omit<
   TransactionTemplate,
-  'id' | 'user_id' | 'created_at'
+  'id' | 'user_id' | 'book_id' | 'created_at'
 >
 
-export type NewTag = Omit<Tag, 'id' | 'user_id' | 'created_at'>
+export type NewTag = Omit<Tag, 'id' | 'user_id' | 'book_id' | 'created_at'>
 
 export type NewCategory = Omit<
   Category,
-  'id' | 'user_id' | 'created_at' | 'is_archived' | 'sort_order'
+  'id' | 'user_id' | 'book_id' | 'created_at' | 'is_archived' | 'sort_order'
 > &
   Partial<Pick<Category, 'is_archived' | 'sort_order'>>
 
@@ -238,6 +273,7 @@ export type NewAccount = Omit<
   Account,
   | 'id'
   | 'user_id'
+  | 'book_id'
   | 'created_at'
   | 'is_archived'
   | 'is_liability'
@@ -256,6 +292,7 @@ export type NewTransaction = Omit<
   Transaction,
   | 'id'
   | 'user_id'
+  | 'book_id'
   | 'created_at'
   | 'source'
   | 'payee'
@@ -301,6 +338,7 @@ export interface RuleActions {
 export interface Rule {
   id: string
   user_id: string
+  book_id: string
   name: string
   is_active: boolean
   sort_order: number
@@ -312,7 +350,7 @@ export interface Rule {
   created_at: string
 }
 
-export type NewRule = Omit<Rule, 'id' | 'user_id' | 'created_at' | 'sort_order'> &
+export type NewRule = Omit<Rule, 'id' | 'user_id' | 'book_id' | 'created_at' | 'sort_order'> &
   Partial<Pick<Rule, 'sort_order'>>
 
 export interface FxRate {

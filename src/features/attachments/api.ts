@@ -2,17 +2,20 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { qk } from '@/lib/queryClient'
 import type { Attachment } from '@/types/db'
+import { useActiveBook } from '@/features/books/useActiveBook'
 
 const BUCKET = 'attachments'
 
 /** Map of transaction_id → its attachment rows. */
 export function useTransactionAttachments() {
+  const { activeBookId } = useActiveBook()
   return useQuery({
-    queryKey: qk.attachments,
+    queryKey: [...qk.attachments, activeBookId],
     queryFn: async (): Promise<Record<string, Attachment[]>> => {
       const { data, error } = await supabase
         .from('attachments')
         .select('*')
+        .eq('book_id', activeBookId!)
         .order('created_at')
       if (error) throw error
       const map: Record<string, Attachment[]> = {}
@@ -32,6 +35,7 @@ function safeName(name: string): string {
 /** Upload files to Storage under <user>/<tx>/ and record them in `attachments`. */
 export function useUploadAttachments() {
   const qc = useQueryClient()
+  const { activeBookId } = useActiveBook()
   return useMutation({
     mutationFn: async ({ transactionId, files }: { transactionId: string; files: File[] }) => {
       if (files.length === 0) return 0
@@ -49,6 +53,7 @@ export function useUploadAttachments() {
         if (upErr) throw upErr
         rows.push({
           user_id: userId,
+          book_id: activeBookId!,
           transaction_id: transactionId,
           path,
           name: file.name,

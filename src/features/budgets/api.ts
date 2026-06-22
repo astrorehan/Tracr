@@ -2,14 +2,17 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { qk } from '@/lib/queryClient'
 import type { Budget, NewBudget } from '@/types/db'
+import { useActiveBook } from '@/features/books/useActiveBook'
 
 export function useBudgets() {
+  const { activeBookId } = useActiveBook()
   return useQuery({
-    queryKey: qk.budgets,
+    queryKey: [...qk.budgets, activeBookId],
     queryFn: async (): Promise<Budget[]> => {
       const { data, error } = await supabase
         .from('budgets')
         .select('*')
+        .eq('book_id', activeBookId!)
         .order('created_at')
       if (error) throw error
       return data as Budget[]
@@ -19,6 +22,7 @@ export function useBudgets() {
 
 export function useCreateBudget() {
   const qc = useQueryClient()
+  const { activeBookId } = useActiveBook()
   return useMutation({
     mutationFn: async (input: NewBudget): Promise<Budget> => {
       const { data: userData } = await supabase.auth.getUser()
@@ -26,7 +30,7 @@ export function useCreateBudget() {
       if (!userId) throw new Error('Not authenticated')
       const { data, error } = await supabase
         .from('budgets')
-        .insert({ ...input, user_id: userId })
+        .insert({ ...input, user_id: userId, book_id: activeBookId })
         .select()
         .single()
       if (error) throw error
