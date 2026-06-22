@@ -6,19 +6,14 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { supabase } from '@/lib/supabase'
-import { downloadTextFile } from '@/lib/csv'
+import { downloadTextFile, parseCsv } from '@/lib/csv'
 import { indexById } from '@/lib/collections'
 import { useAuth } from '@/features/auth/useAuth'
 import { useT } from '@/features/settings/language-context'
 import { useActiveBook } from '@/features/books/useActiveBook'
 import { useAccounts } from '@/features/accounts/api'
 import { useCategories } from '@/features/categories/api'
-import {
-  buildTransactionsCsv,
-  parseTransactionsCsv,
-  sampleCsv,
-  type ImportResult,
-} from './transactionsCsv'
+import { buildTransactionsCsv, sampleCsv } from './transactionsCsv'
 import {
   backupCounts,
   buildBackup,
@@ -26,7 +21,8 @@ import {
   restoreBackup,
   type Backup,
 } from './backup'
-import { useImportTransactions } from './api'
+import { CsvImportWizard } from './CsvImportWizard'
+import type { ParsedFile } from './csvImport'
 import { dateLocale } from '@/i18n'
 import type { Transaction } from '@/types/db'
 
@@ -37,13 +33,11 @@ export function DataCard() {
   const qc = useQueryClient()
   const { data: accounts = [] } = useAccounts(true)
   const { data: categories = [] } = useCategories()
-  const importMut = useImportTransactions()
   const fileRef = useRef<HTMLInputElement>(null)
   const backupRef = useRef<HTMLInputElement>(null)
 
   const [busy, setBusy] = useState<'export' | 'backup' | 'restore' | null>(null)
-  const [preview, setPreview] = useState<ImportResult | null>(null)
-  const [imported, setImported] = useState<number | null>(null)
+  const [importFile, setImportFile] = useState<ParsedFile | null>(null)
   const [restorePreview, setRestorePreview] = useState<Backup | null>(null)
   const [restored, setRestored] = useState<number | null>(null)
 
@@ -73,20 +67,12 @@ export function DataCard() {
     const file = e.target.files?.[0]
     e.target.value = '' // allow re-selecting the same file
     if (!file) return
-    const text = await file.text()
-    setImported(null)
-    setPreview(parseTransactionsCsv(text, accounts, categories))
-  }
-
-  async function confirmImport() {
-    if (!preview) return
-    try {
-      const n = await importMut.mutateAsync(preview.valid)
-      setImported(n)
-      setPreview(null)
-    } catch (err) {
-      alert(err instanceof Error ? err.message : t('data.errImport'))
+    const matrix = parseCsv(await file.text())
+    if (matrix.length < 2) {
+      alert('That file has no data rows.')
+      return
     }
+    setImportFile({ headers: matrix[0], rows: matrix.slice(1) })
   }
 
   function downloadTemplate() {
@@ -153,9 +139,9 @@ export function DataCard() {
         >
           <FileSpreadsheet className="h-3.5 w-3.5" /> {t('data.downloadTemplate')}
         </button>
-        {imported !== null && (
-          <p className="px-1 text-xs text-primary">{t('data.importedCount', { n: imported })}</p>
-        )}
+        <p className="px-1 text-xs text-muted-foreground">
+          Import any CSV — you’ll map its columns to Tracr’s fields before importing.
+        </p>
         <input
           ref={fileRef}
           type="file"
@@ -202,46 +188,13 @@ export function DataCard() {
         />
       </Card>
 
-      <Modal open={Boolean(preview)} onClose={() => setPreview(null)} title={t('data.importPreviewTitle')}>
-        {preview && (
-          <div className="space-y-4">
-            <div className="rounded-xl bg-surface-muted p-3 text-sm">
-              <p>
-                {t('data.validRowsReady', { n: preview.valid.length })}
-              </p>
-              {preview.errors.length > 0 && (
-                <p className="text-muted-foreground">
-                  {t('data.skippedRows', { n: preview.errors.length })}
-                </p>
-              )}
-            </div>
-
-            {preview.errors.length > 0 && (
-              <div className="max-h-40 overflow-y-auto rounded-xl border border-border p-3 text-xs">
-                {preview.errors.slice(0, 50).map((err, i) => (
-                  <p key={i} className="text-muted-foreground">
-                    {t('data.lineErr', { line: err.line, msg: err.message })}
-                  </p>
-                ))}
-              </div>
-            )}
-
-            <div className="flex gap-3">
-              <Button variant="secondary" className="flex-1" onClick={() => setPreview(null)}>
-                {t('common.cancel')}
-              </Button>
-              <Button
-                className="flex-1"
-                loading={importMut.isPending}
-                disabled={preview.valid.length === 0}
-                onClick={confirmImport}
-              >
-                {t('data.importBtn', { n: preview.valid.length })}
-              </Button>
-            </div>
-          </div>
-        )}
-      </Modal>
+      <CsvImportWizard
+        file={importFile}
+        onClose={() => setImportFile(null)}
+        accounts={accounts}
+        categories={categories}
+        defaultCurrency={profile?.base_currency ?? 'USD'}
+      />
 
       <Modal open={Boolean(restorePreview)} onClose={() => setRestorePreview(null)} title={t('data.restorePreviewTitle')}>
         {restorePreview && (
