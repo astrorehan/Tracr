@@ -1,5 +1,5 @@
-import { useState, type ComponentType } from 'react'
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { useMemo, useState, type ComponentType } from 'react'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   Wallet,
@@ -12,6 +12,13 @@ import {
   Plus,
   Moon,
   Sun,
+  Search,
+  FolderTree,
+  Tags,
+  Wand2,
+  Coins,
+  Database,
+  Keyboard,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/features/auth/useAuth'
@@ -19,6 +26,10 @@ import { useTheme } from '@/features/settings/theme-context'
 import { useLiveRatesSync } from '@/features/fx/useLiveRatesSync'
 import { TransactionForm } from '@/features/transactions/TransactionForm'
 import { NotificationBell } from '@/features/notifications/NotificationBell'
+import { CommandPalette } from '@/features/command-palette/CommandPalette'
+import { ShortcutsHelp } from '@/features/command-palette/ShortcutsHelp'
+import { useAppShortcuts } from '@/features/command-palette/useAppShortcuts'
+import type { Command } from '@/features/command-palette/types'
 
 type IconType = ComponentType<{ className?: string }>
 
@@ -50,13 +61,56 @@ const SECTION_TITLES: Record<string, string> = {
 
 export function AppLayout() {
   const [addOpen, setAddOpen] = useState(false)
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
   const { profile } = useAuth()
   const { theme, toggle } = useTheme()
   const { pathname } = useLocation()
+  const navigate = useNavigate()
   const section = SECTION_TITLES[pathname] ?? 'Workspace'
 
   // Refresh FX rates from the free live sources once per session.
   useLiveRatesSync()
+
+  useAppShortcuts({
+    openPalette: () => setPaletteOpen(true),
+    quickAdd: () => setAddOpen(true),
+    openHelp: () => setHelpOpen(true),
+    navigate,
+  })
+
+  // Everything reachable from the palette: jump to a page, or run an action.
+  const commands = useMemo<Command[]>(() => {
+    const go = (to: string) => () => navigate(to)
+    const navCommands: Command[] = [
+      { id: 'nav-dashboard', label: 'Dashboard', group: 'Go to', icon: LayoutDashboard, keywords: 'home overview', shortcut: ['G', 'D'], perform: go('/') },
+      { id: 'nav-accounts', label: 'Accounts', group: 'Go to', icon: Wallet, keywords: 'wallet balances', shortcut: ['G', 'A'], perform: go('/accounts') },
+      { id: 'nav-activity', label: 'Activity', group: 'Go to', icon: ArrowLeftRight, keywords: 'transactions history feed', shortcut: ['G', 'T'], perform: go('/transactions') },
+      { id: 'nav-reports', label: 'Reports', group: 'Go to', icon: BarChart3, keywords: 'analytics charts', shortcut: ['G', 'R'], perform: go('/reports') },
+      { id: 'nav-budgets', label: 'Budgets', group: 'Go to', icon: Target, keywords: 'limits spending', shortcut: ['G', 'B'], perform: go('/budgets') },
+      { id: 'nav-bills', label: 'Bills & subscriptions', group: 'Go to', icon: Receipt, keywords: 'recurring subscriptions', shortcut: ['G', 'I'], perform: go('/bills') },
+      { id: 'nav-goals', label: 'Savings goals', group: 'Go to', icon: PiggyBank, keywords: 'piggy bank saving', shortcut: ['G', 'G'], perform: go('/goals') },
+      { id: 'nav-categories', label: 'Categories', group: 'Go to', icon: FolderTree, keywords: 'organize', perform: go('/categories') },
+      { id: 'nav-tags', label: 'Tags', group: 'Go to', icon: Tags, keywords: 'labels', perform: go('/tags') },
+      { id: 'nav-rules', label: 'Rules', group: 'Go to', icon: Wand2, keywords: 'automation auto-categorize', perform: go('/rules') },
+      { id: 'nav-currencies', label: 'Currencies', group: 'Go to', icon: Coins, keywords: 'fx exchange rates', perform: go('/currencies') },
+      { id: 'nav-data', label: 'Data & backup', group: 'Go to', icon: Database, keywords: 'import export csv backup restore', perform: go('/data') },
+      { id: 'nav-settings', label: 'Settings', group: 'Go to', icon: Settings, keywords: 'preferences profile', shortcut: ['G', 'S'], perform: go('/settings') },
+    ]
+    const actionCommands: Command[] = [
+      { id: 'act-add', label: 'New transaction', group: 'Actions', icon: Plus, keywords: 'add log write expense income', shortcut: ['N'], perform: () => setAddOpen(true) },
+      {
+        id: 'act-theme',
+        label: theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode',
+        group: 'Actions',
+        icon: theme === 'dark' ? Sun : Moon,
+        keywords: 'theme dark light appearance',
+        perform: toggle,
+      },
+      { id: 'act-help', label: 'Keyboard shortcuts', group: 'Actions', icon: Keyboard, keywords: 'keys hotkeys help', shortcut: ['?'], perform: () => setHelpOpen(true) },
+    ]
+    return [...navCommands, ...actionCommands]
+  }, [navigate, theme, toggle])
 
   return (
     <div className="app-atmosphere relative flex min-h-screen w-full bg-background text-foreground">
@@ -113,6 +167,26 @@ export function AppLayout() {
               <span className="h-1.5 w-1.5 rounded-full bg-positive" />
               Saved
             </span>
+
+            <button
+              onClick={() => setPaletteOpen(true)}
+              className="pressable hidden h-9 items-center gap-2 rounded-xl border border-border bg-surface-muted/50 px-3 text-sm text-muted-foreground transition-colors hover:text-foreground md:inline-flex"
+              aria-label="Open command palette"
+            >
+              <Search className="h-4 w-4" />
+              <span className="hidden lg:inline">Search</span>
+              <kbd className="hidden rounded-md border border-border bg-surface px-1.5 py-0.5 text-[10px] font-semibold lg:inline">
+                Ctrl K
+              </kbd>
+            </button>
+
+            <button
+              onClick={() => setPaletteOpen(true)}
+              className="pressable flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface-muted/50 text-muted-foreground transition-colors hover:text-foreground md:hidden"
+              aria-label="Open command palette"
+            >
+              <Search className="h-4 w-4" />
+            </button>
 
             <NotificationBell />
 
@@ -174,6 +248,10 @@ export function AppLayout() {
       </nav>
 
       <TransactionForm open={addOpen} onClose={() => setAddOpen(false)} />
+      {paletteOpen && (
+        <CommandPalette onClose={() => setPaletteOpen(false)} commands={commands} />
+      )}
+      <ShortcutsHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   )
 }
