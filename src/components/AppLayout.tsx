@@ -16,6 +16,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/features/auth/useAuth'
 import { useActiveBook } from '@/features/books/useActiveBook'
+import { BookSwitcher } from '@/features/books/BookSwitcher'
 import { CenterSpinner } from '@/components/ui/States'
 import { useTheme } from '@/features/settings/theme-context'
 import { useLiveRatesSync } from '@/features/fx/useLiveRatesSync'
@@ -48,6 +49,7 @@ const SECTION_TITLES: Record<string, string> = {
   '/tags': 'Tags',
   '/currencies': 'Currencies',
   '/data': 'Data & backup',
+  '/books': 'Books',
 }
 
 export function AppLayout() {
@@ -80,6 +82,11 @@ export function AppLayout() {
             Tracr
           </span>
         </Link>
+
+        {/* Book switcher */}
+        <div className="mt-1">
+          <BookSwitcher />
+        </div>
 
         {/* Primary nav */}
         <nav className="mt-4 flex flex-1 flex-col gap-1.5">

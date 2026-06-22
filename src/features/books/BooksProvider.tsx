@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { qk } from '@/lib/queryClient'
@@ -18,7 +18,10 @@ const STORAGE_KEY = 'active-book-id'
 export function BooksProvider({ children }: { children: ReactNode }) {
   const { user, profile, refreshProfile } = useAuth()
   const qc = useQueryClient()
-  const [activeBookId, setActiveBookId] = useState<string | null>(
+  // The user's explicit pick (from localStorage on boot). It's only a hint —
+  // the effective active book is derived below and always resolves to a real
+  // book, so the rest of the app never queries with a stale/missing book_id.
+  const [selectedBookId, setSelectedBookId] = useState<string | null>(
     () => localStorage.getItem(STORAGE_KEY),
   )
 
@@ -36,28 +39,23 @@ export function BooksProvider({ children }: { children: ReactNode }) {
     },
   })
 
-  // Reconcile the cached id against reality: localStorage is just a hint, the
-  // profile is authoritative, and we always fall back to *some* real book so
-  // the rest of the app never runs a query with a stale/missing book_id.
-  useEffect(() => {
-    if (!user || books.length === 0) return
-    const exists = (id: string | null | undefined) => !!id && books.some((b) => b.id === id)
-    let next = activeBookId
-    if (!exists(next)) {
-      next = exists(profile?.active_book_id) ? profile!.active_book_id! : books[0].id
-    }
-    if (next && next !== activeBookId) {
-      setActiveBookId(next)
-      localStorage.setItem(STORAGE_KEY, next)
-    }
-  }, [user, books, profile?.active_book_id, activeBookId])
+  // Resolve the active book during render: explicit pick → profile (the
+  // cross-device source of truth) → first book. Null only while books load.
+  const profileBookId = profile?.active_book_id ?? null
+  const activeBookId = useMemo(() => {
+    if (books.length === 0) return null
+    const exists = (id: string | null) => !!id && books.some((b) => b.id === id)
+    if (exists(selectedBookId)) return selectedBookId
+    if (exists(profileBookId)) return profileBookId
+    return books[0].id
+  }, [books, selectedBookId, profileBookId])
 
   const setActiveBook = useCallback(
     (id: string) => {
       if (id === activeBookId) return
       // Update locally first for an instant switch; queries keyed on the book id
       // refetch automatically. Persistence is best-effort in the background.
-      setActiveBookId(id)
+      setSelectedBookId(id)
       localStorage.setItem(STORAGE_KEY, id)
       void (async () => {
         if (user) {

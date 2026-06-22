@@ -41,6 +41,7 @@ const CurrenciesPage = lazy(() =>
   import('./app/CurrenciesPage').then((m) => ({ default: m.CurrenciesPage })),
 )
 const DataPage = lazy(() => import('./app/DataPage').then((m) => ({ default: m.DataPage })))
+const BooksPage = lazy(() => import('./app/BooksPage').then((m) => ({ default: m.BooksPage })))
 const LegalPage = lazy(() => import('./app/LegalPage').then((m) => ({ default: m.LegalPage })))
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -182,6 +183,14 @@ export default function App() {
           element={
             <Suspense fallback={<CenterSpinner />}>
               <DataPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="books"
+          element={
+            <Suspense fallback={<CenterSpinner />}>
+              <BooksPage />
             </Suspense>
           }
         />
