@@ -16,9 +16,9 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
+      includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       pwaAssets: {
-        image: 'public/logo.svg',
+        image: 'public/logo-source.png',
       },
       manifest: {
         name: 'Tracr',
