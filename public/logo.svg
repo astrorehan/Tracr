@@ -6,17 +6,16 @@
       <stop offset="0.52" stop-color="#5d636a"/>
       <stop offset="1" stop-color="#9298a0"/>
     </linearGradient>
-    <!-- One hook ribbon; the mark is this hook plus its horizontal mirror -->
-    <path id="hook" d="M80 354 C70 296 96 232 152 206 C204 184 254 204 276 250 C294 286 296 316 262 322" />
   </defs>
 
   <!-- App-icon tile -->
   <rect width="512" height="512" rx="116" fill="#ffffff"/>
   <rect x="2.5" y="2.5" width="507" height="507" rx="113.5" stroke="#e6e6e6" stroke-width="3"/>
 
-  <!-- The mark: two mirrored hook ribbons that cross at center for the woven look -->
+  <!-- The mark: two hook ribbons (left + its hard-mirrored twin) crossing at center.
+       Both live in the same coordinate space so they share one continuous ink ramp. -->
   <g fill="none" stroke="url(#ink)" stroke-width="48" stroke-linecap="round" stroke-linejoin="round">
-    <use href="#hook"/>
-    <use href="#hook" transform="matrix(-1 0 0 1 512 0)"/>
+    <path d="M80 354 C70 296 96 232 152 206 C204 184 254 204 276 250 C294 286 296 316 262 322"/>
+    <path d="M432 354 C442 296 416 232 360 206 C308 184 258 204 236 250 C218 286 216 316 250 322"/>
   </g>
 </svg>
