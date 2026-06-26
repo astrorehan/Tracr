@@ -2,14 +2,17 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { qk } from '@/lib/queryClient'
 import type { Account, AccountBalance, NewAccount } from '@/types/db'
+import { useActiveBook } from '@/features/books/useActiveBook'
 
 export function useAccounts(includeArchived = false) {
+  const { activeBookId } = useActiveBook()
   return useQuery({
-    queryKey: [...qk.accounts, { includeArchived }],
+    queryKey: [...qk.accounts, activeBookId, { includeArchived }],
     queryFn: async (): Promise<Account[]> => {
       let query = supabase
         .from('accounts')
         .select('*')
+        .eq('book_id', activeBookId!)
         .order('sort_order')
         .order('created_at')
       if (!includeArchived) query = query.eq('is_archived', false)
@@ -21,10 +24,14 @@ export function useAccounts(includeArchived = false) {
 }
 
 export function useBalances() {
+  const { activeBookId } = useActiveBook()
   return useQuery({
-    queryKey: qk.balances,
+    queryKey: [...qk.balances, activeBookId],
     queryFn: async (): Promise<Record<string, number>> => {
-      const { data, error } = await supabase.from('account_balances').select('*')
+      const { data, error } = await supabase
+        .from('account_balances')
+        .select('*')
+        .eq('book_id', activeBookId!)
       if (error) throw error
       const map: Record<string, number> = {}
       for (const row of data as AccountBalance[]) map[row.account_id] = row.balance
@@ -35,6 +42,7 @@ export function useBalances() {
 
 export function useCreateAccount() {
   const qc = useQueryClient()
+  const { activeBookId } = useActiveBook()
   return useMutation({
     mutationFn: async (input: NewAccount): Promise<Account> => {
       const { data: userData } = await supabase.auth.getUser()
@@ -42,7 +50,7 @@ export function useCreateAccount() {
       if (!userId) throw new Error('Not authenticated')
       const { data, error } = await supabase
         .from('accounts')
-        .insert({ ...input, user_id: userId })
+        .insert({ ...input, user_id: userId, book_id: activeBookId })
         .select()
         .single()
       if (error) throw error

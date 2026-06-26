@@ -4,6 +4,7 @@ import { qk } from '@/lib/queryClient'
 import { evaluateRules } from '@/features/rules/engine'
 import type { Rule, Transaction } from '@/types/db'
 import type { ParsedTxRow } from './transactionsCsv'
+import { useActiveBook } from '@/features/books/useActiveBook'
 
 type InsertedRow = Pick<Transaction, 'id' | 'payee' | 'note' | 'amount' | 'currency' | 'type'>
 
@@ -15,6 +16,7 @@ type InsertedRow = Pick<Transaction, 'id' | 'payee' | 'note' | 'amount' | 'curre
  */
 export function useImportTransactions() {
   const qc = useQueryClient()
+  const { activeBookId } = useActiveBook()
   return useMutation({
     mutationFn: async (rows: ParsedTxRow[]): Promise<number> => {
       if (rows.length === 0) return 0
@@ -25,6 +27,7 @@ export function useImportTransactions() {
       const { data: ruleData, error: ruleErr } = await supabase
         .from('rules')
         .select('*')
+        .eq('book_id', activeBookId!)
         .eq('is_active', true)
       if (ruleErr) throw ruleErr
       const rules = (ruleData ?? []) as Rule[]
@@ -40,7 +43,7 @@ export function useImportTransactions() {
             type: r.type,
           }).categoryId
         }
-        return { ...r, category_id, user_id: userId, source: 'import' as const }
+        return { ...r, category_id, user_id: userId, book_id: activeBookId, source: 'import' as const }
       })
 
       const { data: inserted, error } = await supabase
@@ -59,7 +62,12 @@ export function useImportTransactions() {
             amount: tx.amount,
             currency: tx.currency,
             type: tx.type,
-          }).tagIds.map((tag_id) => ({ transaction_id: tx.id, tag_id, user_id: userId }))
+          }).tagIds.map((tag_id) => ({
+            transaction_id: tx.id,
+            tag_id,
+            user_id: userId,
+            book_id: activeBookId,
+          }))
         })
         if (tagRows.length) {
           const { error: tagErr } = await supabase

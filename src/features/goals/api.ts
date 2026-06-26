@@ -7,14 +7,17 @@ import type {
   NewSavingsGoal,
   SavingsGoal,
 } from '@/types/db'
+import { useActiveBook } from '@/features/books/useActiveBook'
 
 export function useGoals() {
+  const { activeBookId } = useActiveBook()
   return useQuery({
-    queryKey: qk.savingsGoals,
+    queryKey: [...qk.savingsGoals, activeBookId],
     queryFn: async (): Promise<SavingsGoal[]> => {
       const { data, error } = await supabase
         .from('savings_goals')
         .select('*')
+        .eq('book_id', activeBookId!)
         .order('created_at')
       if (error) throw error
       return data as SavingsGoal[]
@@ -24,12 +27,14 @@ export function useGoals() {
 
 /** All of the user's contributions, grouped by goal_id. */
 export function useGoalContributions() {
+  const { activeBookId } = useActiveBook()
   return useQuery({
-    queryKey: qk.goalContributions,
+    queryKey: [...qk.goalContributions, activeBookId],
     queryFn: async (): Promise<Record<string, GoalContribution[]>> => {
       const { data, error } = await supabase
         .from('goal_contributions')
         .select('*')
+        .eq('book_id', activeBookId!)
         .order('occurred_at', { ascending: false })
       if (error) throw error
       const map: Record<string, GoalContribution[]> = {}
@@ -43,6 +48,7 @@ export function useGoalContributions() {
 
 export function useCreateGoal() {
   const qc = useQueryClient()
+  const { activeBookId } = useActiveBook()
   return useMutation({
     mutationFn: async (input: NewSavingsGoal): Promise<SavingsGoal> => {
       const { data: userData } = await supabase.auth.getUser()
@@ -50,7 +56,7 @@ export function useCreateGoal() {
       if (!userId) throw new Error('Not authenticated')
       const { data, error } = await supabase
         .from('savings_goals')
-        .insert({ ...input, user_id: userId })
+        .insert({ ...input, user_id: userId, book_id: activeBookId })
         .select()
         .single()
       if (error) throw error
@@ -89,6 +95,7 @@ export function useDeleteGoal() {
 /** Add (positive) or withdraw (negative) money toward a goal. */
 export function useAddContribution() {
   const qc = useQueryClient()
+  const { activeBookId } = useActiveBook()
   return useMutation({
     mutationFn: async (input: NewGoalContribution) => {
       const { data: userData } = await supabase.auth.getUser()
@@ -96,7 +103,7 @@ export function useAddContribution() {
       if (!userId) throw new Error('Not authenticated')
       const { error } = await supabase
         .from('goal_contributions')
-        .insert({ ...input, user_id: userId })
+        .insert({ ...input, user_id: userId, book_id: activeBookId })
       if (error) throw error
     },
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.goalContributions }),

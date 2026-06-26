@@ -4,14 +4,17 @@ import { qk } from '@/lib/queryClient'
 import { advanceDue } from './schedule'
 import { computeFxSnapshot } from '@/features/fx/snapshot'
 import type { NewRecurringTransaction, RecurringTransaction } from '@/types/db'
+import { useActiveBook } from '@/features/books/useActiveBook'
 
 export function useRecurring() {
+  const { activeBookId } = useActiveBook()
   return useQuery({
-    queryKey: qk.recurring,
+    queryKey: [...qk.recurring, activeBookId],
     queryFn: async (): Promise<RecurringTransaction[]> => {
       const { data, error } = await supabase
         .from('recurring_transactions')
         .select('*')
+        .eq('book_id', activeBookId!)
         .order('next_due')
       if (error) throw error
       return data as RecurringTransaction[]
@@ -21,6 +24,7 @@ export function useRecurring() {
 
 export function useCreateRecurring() {
   const qc = useQueryClient()
+  const { activeBookId } = useActiveBook()
   return useMutation({
     mutationFn: async (input: NewRecurringTransaction): Promise<RecurringTransaction> => {
       const { data: userData } = await supabase.auth.getUser()
@@ -28,7 +32,7 @@ export function useCreateRecurring() {
       if (!userId) throw new Error('Not authenticated')
       const { data, error } = await supabase
         .from('recurring_transactions')
-        .insert({ ...input, user_id: userId })
+        .insert({ ...input, user_id: userId, book_id: activeBookId })
         .select()
         .single()
       if (error) throw error
@@ -76,6 +80,7 @@ export function useMarkRecurringPaid() {
       const snap = await computeFxSnapshot(rec.amount, rec.currency)
       const { error: txError } = await supabase.from('transactions').insert({
         user_id: userId,
+        book_id: rec.book_id,
         account_id: rec.account_id,
         category_id: rec.category_id,
         counter_account_id: null,

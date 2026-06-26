@@ -7,6 +7,7 @@ function rec(overrides: Partial<RecurringTransaction> = {}): RecurringTransactio
   return {
     id: 'r1',
     user_id: 'u1',
+    book_id: 'b1',
     name: 'Rent',
     type: 'expense',
     account_id: 'a1',
@@ -60,6 +61,7 @@ function budget(overrides: Partial<Budget> = {}): Budget {
   return {
     id: 'b1',
     user_id: 'u1',
+    book_id: 'bk1',
     category_id: null,
     period: 'monthly',
     amount: 100000,

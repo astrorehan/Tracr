@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { qk } from '@/lib/queryClient'
 import type { Category, CategoryKind, NewCategory } from '@/types/db'
+import { useActiveBook } from '@/features/books/useActiveBook'
 
 /**
  * Name of the auto-managed category that holds balance adjustments created by
@@ -18,6 +19,7 @@ export const ADJUSTMENT_CATEGORY_NAME = 'Balance Adjustment'
  */
 export function useEnsureAdjustmentCategory() {
   const qc = useQueryClient()
+  const { activeBookId } = useActiveBook()
   return useMutation({
     mutationFn: async (kind: CategoryKind): Promise<string> => {
       const { data: userData } = await supabase.auth.getUser()
@@ -27,6 +29,7 @@ export function useEnsureAdjustmentCategory() {
       const { data: existing, error: findErr } = await supabase
         .from('categories')
         .select('id')
+        .eq('book_id', activeBookId!)
         .eq('name', ADJUSTMENT_CATEGORY_NAME)
         .eq('kind', kind)
         .limit(1)
@@ -38,6 +41,7 @@ export function useEnsureAdjustmentCategory() {
         .from('categories')
         .insert({
           user_id: userId,
+          book_id: activeBookId,
           name: ADJUSTMENT_CATEGORY_NAME,
           kind,
           parent_id: null,
@@ -54,12 +58,14 @@ export function useEnsureAdjustmentCategory() {
 }
 
 export function useCategories() {
+  const { activeBookId } = useActiveBook()
   return useQuery({
-    queryKey: qk.categories,
+    queryKey: [...qk.categories, activeBookId],
     queryFn: async (): Promise<Category[]> => {
       const { data, error } = await supabase
         .from('categories')
         .select('*')
+        .eq('book_id', activeBookId!)
         .order('kind')
         .order('sort_order')
         .order('name')
@@ -71,6 +77,7 @@ export function useCategories() {
 
 export function useCreateCategory() {
   const qc = useQueryClient()
+  const { activeBookId } = useActiveBook()
   return useMutation({
     mutationFn: async (input: NewCategory): Promise<Category> => {
       const { data: userData } = await supabase.auth.getUser()
@@ -78,7 +85,7 @@ export function useCreateCategory() {
       if (!userId) throw new Error('Not authenticated')
       const { data, error } = await supabase
         .from('categories')
-        .insert({ ...input, user_id: userId })
+        .insert({ ...input, user_id: userId, book_id: activeBookId })
         .select()
         .single()
       if (error) throw error

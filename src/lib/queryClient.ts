@@ -13,6 +13,7 @@ export const queryClient = new QueryClient({
 /** Centralized query keys so cache invalidation stays consistent. */
 export const qk = {
   profile: ['profile'] as const,
+  books: ['books'] as const,
   accounts: ['accounts'] as const,
   balances: ['balances'] as const,
   categories: ['categories'] as const,

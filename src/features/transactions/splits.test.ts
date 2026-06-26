@@ -6,6 +6,7 @@ function tx(overrides: Partial<Transaction> = {}): Transaction {
   return {
     id: 'tx1',
     user_id: 'u1',
+    book_id: 'b1',
     account_id: 'a1',
     category_id: 'cat-food',
     counter_account_id: null,
@@ -32,6 +33,7 @@ function split(category_id: string | null, amount: number): TransactionSplit {
   return {
     id: `s-${category_id}-${amount}`,
     transaction_id: 'tx1',
+    book_id: 'b1',
     user_id: 'u1',
     category_id,
     amount,

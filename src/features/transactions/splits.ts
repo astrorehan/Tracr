@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { qk } from '@/lib/queryClient'
 import type { Transaction, TransactionSplit } from '@/types/db'
+import { useActiveBook } from '@/features/books/useActiveBook'
 
 /** A single category's share of a transaction. */
 export interface CategoryContribution {
@@ -27,12 +28,14 @@ export function categoryContributions(
 
 /** Map of transaction_id → its splits, covering all of the user's split rows. */
 export function useTransactionSplits() {
+  const { activeBookId } = useActiveBook()
   return useQuery({
-    queryKey: qk.transactionSplits,
+    queryKey: [...qk.transactionSplits, activeBookId],
     queryFn: async (): Promise<Record<string, TransactionSplit[]>> => {
       const { data, error } = await supabase
         .from('transaction_splits')
         .select('*')
+        .eq('book_id', activeBookId!)
         .order('created_at')
       if (error) throw error
       const map: Record<string, TransactionSplit[]> = {}
@@ -53,6 +56,7 @@ export interface SplitInput {
 /** Replace the full set of splits on one transaction (used on create + edit). */
 export function useSetTransactionSplits() {
   const qc = useQueryClient()
+  const { activeBookId } = useActiveBook()
   return useMutation({
     mutationFn: async ({
       transactionId,
@@ -74,6 +78,7 @@ export function useSetTransactionSplits() {
           splits.map((s) => ({
             transaction_id: transactionId,
             user_id: userId,
+            book_id: activeBookId,
             category_id: s.category_id,
             amount: s.amount,
             note: s.note ?? null,

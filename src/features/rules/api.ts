@@ -3,14 +3,17 @@ import { supabase } from '@/lib/supabase'
 import { qk } from '@/lib/queryClient'
 import type { NewRule, Rule, Transaction } from '@/types/db'
 import { evaluateRules } from './engine'
+import { useActiveBook } from '@/features/books/useActiveBook'
 
 export function useRules() {
+  const { activeBookId } = useActiveBook()
   return useQuery({
-    queryKey: qk.rules,
+    queryKey: [...qk.rules, activeBookId],
     queryFn: async (): Promise<Rule[]> => {
       const { data, error } = await supabase
         .from('rules')
         .select('*')
+        .eq('book_id', activeBookId!)
         .order('sort_order')
         .order('created_at')
       if (error) throw error
@@ -21,6 +24,7 @@ export function useRules() {
 
 export function useCreateRule() {
   const qc = useQueryClient()
+  const { activeBookId } = useActiveBook()
   return useMutation({
     mutationFn: async (input: NewRule): Promise<Rule> => {
       const { data: userData } = await supabase.auth.getUser()
@@ -28,7 +32,7 @@ export function useCreateRule() {
       if (!userId) throw new Error('Not authenticated')
       const { data, error } = await supabase
         .from('rules')
-        .insert({ ...input, user_id: userId })
+        .insert({ ...input, user_id: userId, book_id: activeBookId })
         .select()
         .single()
       if (error) throw error
@@ -94,6 +98,7 @@ export interface ApplyResult {
  */
 export function useApplyRulesToUncategorized() {
   const qc = useQueryClient()
+  const { activeBookId } = useActiveBook()
   return useMutation({
     mutationFn: async (rules: Rule[]): Promise<ApplyResult> => {
       const { data: userData } = await supabase.auth.getUser()
@@ -103,6 +108,7 @@ export function useApplyRulesToUncategorized() {
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
+        .eq('book_id', activeBookId!)
         .is('category_id', null)
         .in('type', ['income', 'expense'])
         .limit(2000)
@@ -111,7 +117,8 @@ export function useApplyRulesToUncategorized() {
 
       let categorized = 0
       let tagged = 0
-      const tagRows: { transaction_id: string; tag_id: string; user_id: string }[] = []
+      const tagRows: { transaction_id: string; tag_id: string; user_id: string; book_id: string }[] =
+        []
 
       for (const tx of txns) {
         const out = evaluateRules(rules, {
@@ -132,7 +139,7 @@ export function useApplyRulesToUncategorized() {
         if (out.tagIds.length) {
           tagged++
           for (const tag_id of out.tagIds)
-            tagRows.push({ transaction_id: tx.id, tag_id, user_id: userId })
+            tagRows.push({ transaction_id: tx.id, tag_id, user_id: userId, book_id: activeBookId! })
         }
       }
 

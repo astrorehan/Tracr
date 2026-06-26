@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase'
 import { downloadTextFile } from '@/lib/csv'
 import { indexById } from '@/lib/collections'
 import { useAuth } from '@/features/auth/useAuth'
+import { useActiveBook } from '@/features/books/useActiveBook'
 import { useAccounts } from '@/features/accounts/api'
 import { useCategories } from '@/features/categories/api'
 import {
@@ -29,6 +30,7 @@ import type { Transaction } from '@/types/db'
 
 export function DataCard() {
   const { profile } = useAuth()
+  const { activeBookId } = useActiveBook()
   const qc = useQueryClient()
   const { data: accounts = [] } = useAccounts(true)
   const { data: categories = [] } = useCategories()
@@ -48,6 +50,7 @@ export function DataCard() {
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
+        .eq('book_id', activeBookId!)
         .order('occurred_at', { ascending: false })
       if (error) throw error
       const csv = buildTransactionsCsv(
@@ -90,7 +93,7 @@ export function DataCard() {
   async function handleBackup() {
     setBusy('backup')
     try {
-      const backup = await buildBackup(profile?.base_currency ?? null)
+      const backup = await buildBackup(profile?.base_currency ?? null, activeBookId!)
       downloadTextFile(
         `tracr-backup-${format(new Date(), 'yyyy-MM-dd')}.json`,
         JSON.stringify(backup, null, 2),
@@ -119,7 +122,7 @@ export function DataCard() {
     if (!restorePreview) return
     setBusy('restore')
     try {
-      const n = await restoreBackup(restorePreview)
+      const n = await restoreBackup(restorePreview, activeBookId!)
       await qc.invalidateQueries()
       setRestored(n)
       setRestorePreview(null)
