@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { ArrowLeft, GripVertical, Pencil, Plus, Trash2, Wand2, Zap } from 'lucide-react'
+import { GripVertical, Pencil, Plus, Trash2, Wand2, Zap } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { PageHeader, Pill } from '@/components/ui/list'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
 import { useConfirm } from '@/components/ui/confirm-context'
 import { CategoryIcon } from '@/features/categories/CategoryIcon'
@@ -93,19 +93,14 @@ export function RulesPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <div className="flex items-center gap-3 py-1">
-        <Link
-          to="/settings"
-          className="rounded-xl p-2 text-muted-foreground hover:bg-surface-muted hover:text-foreground transition-all border border-transparent hover:border-border"
-          aria-label="Back to settings"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <h1 className="text-2xl font-extrabold tracking-tight lg:text-3xl">Rules</h1>
-        <Button size="sm" className="ml-auto rounded-xl" onClick={() => setCreating(true)}>
-          <Plus className="h-4 w-4" /> New rule
-        </Button>
-      </div>
+      <PageHeader
+        title="Rules"
+        action={
+          <Pill variant="tint" icon={Plus} onClick={() => setCreating(true)}>
+            New rule
+          </Pill>
+        }
+      />
 
       <p className="text-sm font-medium text-muted-foreground">
         Auto-categorize and tag transactions as you add or import them. Rules run top to bottom.
