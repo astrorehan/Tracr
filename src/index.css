@@ -181,6 +181,28 @@ h1,
   background-image: linear-gradient(135deg, var(--primary), var(--brand-bright));
 }
 
+/* Home balance hero — a richer vertical deep-blue (GoPay saldo card) with a
+   faint diagonal weave. Kept deep-blue in both themes (a branded surface, not
+   token-flipped) so white text stays legible. */
+.brand-hero {
+  background-image: linear-gradient(178deg, #1b97d4 0%, #0a80c6 34%, #0072bc 62%, #0063a4 100%);
+}
+.dark .brand-hero {
+  background-image: linear-gradient(178deg, #0e7cb2 0%, #0a6b9e 40%, #075987 72%, #044a71 100%);
+}
+.brand-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image: repeating-linear-gradient(
+    118deg,
+    rgba(255, 255, 255, 0.06) 0 2px,
+    transparent 2px 24px
+  );
+}
+
 /* Smooth active press effects */
 .pressable {
   transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease, box-shadow 0.2s ease;
