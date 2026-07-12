@@ -12,61 +12,61 @@ export function LoginPage() {
   if (session) return <Navigate to="/" replace />
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 bg-background">
-      {/* Decorative monochrome blurs */}
-      <div className="absolute top-1/4 -left-20 -z-10 h-72 w-72 rounded-full bg-foreground/[0.05] blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-1/4 -right-20 -z-10 h-80 w-80 rounded-full bg-foreground/[0.04] blur-[120px] pointer-events-none" />
-
-      <div className="w-full max-w-md rounded-[32px] border border-border/80 bg-surface/60 backdrop-blur-md p-8 shadow-xl text-center animate-fade-in relative">
-        <div className="relative mx-auto mb-6 h-20 w-20">
-          <div className="absolute inset-0 rounded-3xl bg-foreground blur-xl opacity-[0.12] dark:opacity-[0.15]" />
-          <img src="/logo.svg" alt="" className="relative h-20 w-20 rounded-3xl shadow-md border border-border" />
+    <div className="flex min-h-screen items-center justify-center bg-background px-6">
+      <div className="w-full max-w-sm overflow-hidden rounded-[28px] border border-border bg-surface shadow-lg animate-fade-in">
+        {/* Gradient hero — the one "wow" surface (no glass, no blur) */}
+        <div className="brand-gradient px-8 pb-9 pt-11 text-center text-white">
+          <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-3xl bg-white shadow-md">
+            <img src="/logo.svg" alt="" className="h-14 w-14" />
+          </div>
+          <h1 className="font-display text-4xl font-extrabold tracking-tight">Tracr</h1>
+          <p className="mt-2 text-sm font-medium leading-relaxed text-white/90">
+            See all your money in one place — cash, cards, e-wallets, and more.
+          </p>
         </div>
 
-        <h1 className="text-5xl font-black tracking-tight text-foreground">Tracr</h1>
-        
-        <p className="section-head mt-3 text-base leading-relaxed text-muted-foreground">
-          A quiet ledger for everything you own.
-        </p>
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground/80">
-          Cash, cards, e-wallets, crypto, stocks — written down in one place, in your own currency.
-        </p>
+        {/* Body */}
+        <div className="px-8 pb-8 pt-7 text-center">
+          <Button
+            size="lg"
+            variant="outline"
+            loading={busy}
+            onClick={async () => {
+              setBusy(true)
+              try {
+                await signInWithGoogle()
+              } finally {
+                setBusy(false)
+              }
+            }}
+            className="w-full"
+          >
+            <GoogleIcon />
+            Continue with Google
+          </Button>
 
-        <Button
-          size="lg"
-          variant="primary"
-          loading={busy}
-          onClick={async () => {
-            setBusy(true)
-            try {
-              await signInWithGoogle()
-            } finally {
-              setBusy(false)
-            }
-          }}
-          className="mt-8 w-full font-semibold shadow-md active:scale-[0.98]"
-        >
-          <GoogleIcon />
-          Continue with Google
-        </Button>
+          <p className="mt-6 text-sm font-medium leading-relaxed text-muted-foreground">
+            🔒 Only you can see your money notes.
+          </p>
 
-        <p className="mt-8 text-xs leading-relaxed text-muted-foreground">
-          Private by default — your numbers belong to your account
-          <br />
-          and nobody else sees them.
-        </p>
-
-        <p className="mt-6 text-xs text-muted-foreground/80">
-          By continuing you agree to our{' '}
-          <Link to="/legal/terms" className="font-semibold text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
-            Terms
-          </Link>{' '}
-          and{' '}
-          <Link to="/legal/privacy" className="font-semibold text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
-            Privacy Policy
-          </Link>
-          .
-        </p>
+          <p className="mt-5 text-xs leading-relaxed text-muted-foreground/80">
+            By continuing you agree to our{' '}
+            <Link
+              to="/legal/terms"
+              className="font-semibold text-foreground underline-offset-2 hover:underline"
+            >
+              Terms
+            </Link>{' '}
+            and{' '}
+            <Link
+              to="/legal/privacy"
+              className="font-semibold text-foreground underline-offset-2 hover:underline"
+            >
+              Privacy Policy
+            </Link>
+            .
+          </p>
+        </div>
       </div>
     </div>
   )
