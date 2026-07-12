@@ -24,6 +24,7 @@ import { chartTooltipStyle } from '@/lib/chartTheme'
 import { amountToMinor, formatMoney, fromMinorUnits } from '@/lib/money'
 import { cn } from '@/lib/utils'
 import type { Transaction } from '@/types/db'
+import { useT } from '@/features/settings/language-context'
 
 /** Signed effect of a transaction on one specific account's balance. */
 function deltaFor(tx: Transaction, accountId: string): number {
@@ -38,6 +39,7 @@ function deltaFor(tx: Transaction, accountId: string): number {
 export function AccountDetailPage() {
   const { id = '' } = useParams()
   const { profile } = useAuth()
+  const { t } = useT()
   const base = profile?.base_currency ?? 'IDR'
   const { data: accounts = [], isLoading: la } = useAccounts(true)
   const { data: balances = {} } = useBalances()
@@ -75,7 +77,7 @@ export function AccountDetailPage() {
       label: format(new Date(date), 'd MMM'),
       balance: bal,
     }))
-    return [{ label: 'Start', balance: account.opening_balance }, ...points]
+    return [{ label: t('acc.start'), balance: account.opening_balance }, ...points]
   }, [account, transactions])
 
   if (la) return <CenterSpinner />
@@ -138,7 +140,7 @@ export function AccountDetailPage() {
             <button
               onClick={() => setEditOpen(true)}
               className="rounded-lg border border-transparent p-2 text-muted-foreground transition-colors hover:border-border hover:bg-surface-muted hover:text-foreground"
-              aria-label="Edit account"
+              aria-label={t('acc.editAccount')}
             >
               <Pencil className="h-4 w-4" />
             </button>
@@ -147,15 +149,15 @@ export function AccountDetailPage() {
                 onClick={async () => {
                   if (
                     await confirm({
-                      title: `Archive "${account.name}"?`,
-                      message: 'It moves out of your active accounts but keeps its history.',
-                      confirmLabel: 'Archive',
+                      title: t('acc.archiveTitle', { name: account.name }),
+                      message: t('acc.archiveDesc'),
+                      confirmLabel: t('acc.archiveBtn'),
                     })
                   )
                     archive.mutate(account.id)
                 }}
                 className="rounded-lg border border-transparent p-2 text-muted-foreground transition-colors hover:border-danger/20 hover:bg-danger/10 hover:text-danger"
-                aria-label="Archive account"
+                aria-label={t('acc.archive')}
               >
                 <Archive className="h-4 w-4" />
               </button>
@@ -176,10 +178,10 @@ export function AccountDetailPage() {
             </span>
             <div>
               <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                {meta.label} · {account.currency}
-                {account.is_liability ? ' · Liability' : ''}
-                {account.exclude_from_stats ? ' · Excluded from net worth' : ''}
-                {account.is_archived ? ' · Archived' : ''}
+                {t(meta.label)} · {account.currency}
+                {account.is_liability ? ` · ${t('acc.liability')}` : ''}
+                {account.exclude_from_stats ? ` · ${t('acc.excludedNetWorth')}` : ''}
+                {account.is_archived ? ` · ${t('acc.archived')}` : ''}
               </p>
               <p
                 className={cn(
@@ -190,7 +192,7 @@ export function AccountDetailPage() {
                 {formatMoney(balance, account.currency)}
                 {account.is_liability && (
                   <span className="ml-1.5 text-xs font-bold uppercase tracking-wide text-danger/70">
-                    owed
+                    {t('acc.owed')}
                   </span>
                 )}
               </p>
@@ -217,11 +219,9 @@ export function AccountDetailPage() {
                         />
                       </div>
                       <p className="mt-1 text-xs font-semibold text-muted-foreground">
-                        {pct.toFixed(0)}% of{' '}
-                        {formatMoney(limit, account.currency, { signDisplay: 'never' })} ·{' '}
                         {available >= 0
-                          ? `${formatMoney(available, account.currency, { signDisplay: 'never' })} available`
-                          : `over by ${formatMoney(-available, account.currency, { signDisplay: 'never' })}`}
+                          ? t('acc.percentAvailable', { pct: pct.toFixed(0), limit: formatMoney(limit, account.currency, { signDisplay: 'never' }), available: formatMoney(available, account.currency, { signDisplay: 'never' }) })
+                          : t('acc.overBy', { over: formatMoney(-available, account.currency, { signDisplay: 'never' }) })}
                       </p>
                     </div>
                   )
@@ -233,7 +233,7 @@ export function AccountDetailPage() {
             variant="secondary"
             onClick={() => (reconcileOpen ? closeReconcile() : setReconcileOpen(true))}
           >
-            <Scale className="h-3.5 w-3.5" /> Reconcile
+            <Scale className="h-3.5 w-3.5" /> {t('acc.reconcile')}
           </Button>
         </div>
 
@@ -257,7 +257,7 @@ export function AccountDetailPage() {
               />
               <Tooltip
                 contentStyle={chartTooltipStyle}
-                formatter={(value) => [formatMoney(Number(value), account.currency), 'Balance']}
+                formatter={(value) => [formatMoney(Number(value), account.currency), t('acc.balance')]}
               />
               <Area
                 type="monotone"
@@ -274,11 +274,10 @@ export function AccountDetailPage() {
         {reconcileOpen && (
           <div className="space-y-3 border-t border-border bg-surface-muted/40 p-5">
             <p className="text-xs font-medium text-muted-foreground">
-              Enter the real balance from your bank/app. We’ll add an adjustment for the difference
-              — filed under a “Balance Adjustment” category — so Tracr matches it.
+              {t('acc.reconcileDesc')}
             </p>
             <div className="flex flex-wrap items-end gap-3">
-              <Field label="Actual balance">
+              <Field label={t('acc.actualBalance')}>
                 <Input
                   type="number"
                   inputMode="decimal"
@@ -291,12 +290,12 @@ export function AccountDetailPage() {
                 />
               </Field>
               <div className="min-w-[200px] flex-1">
-                <Field label="What changed? (optional)">
+                <Field label={t('acc.whatChanged')}>
                   <Input
                     type="text"
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
-                    placeholder="e.g. cash tips, ATM fee, forgot to log groceries"
+                    placeholder={t('acc.reconcilePlaceholder')}
                   />
                 </Field>
               </div>
@@ -304,12 +303,12 @@ export function AccountDetailPage() {
             {actual.trim() !== '' && (
               <p className="text-xs font-semibold">
                 {diffPreview === 0 ? (
-                  <span className="text-muted-foreground">Already matches — no adjustment needed.</span>
+                  <span className="text-muted-foreground">{t('acc.reconcileMatch')}</span>
                 ) : (
                   <span className={diffPreview > 0 ? 'text-positive' : 'text-negative'}>
-                    Adjustment: {diffPreview > 0 ? '+' : '−'}
+                    {t('acc.adjustment')} {diffPreview > 0 ? '+' : '−'}
                     {formatMoney(Math.abs(diffPreview), account.currency, { signDisplay: 'never' })}{' '}
-                    ({diffPreview > 0 ? 'income' : 'expense'})
+                    ({diffPreview > 0 ? t('acc.income') : t('acc.expense')})
                   </span>
                 )}
               </p>
@@ -319,7 +318,7 @@ export function AccountDetailPage() {
               loading={create.isPending || ensureAdjustmentCategory.isPending}
               disabled={!actual.trim()}
             >
-              Apply
+              {t('acc.apply')}
             </Button>
           </div>
         )}
@@ -328,7 +327,7 @@ export function AccountDetailPage() {
       {/* Ledger */}
       <div>
         <div className="mb-2 flex items-center justify-between px-1">
-          <h2 className="section-head text-[17px] text-foreground">Transactions</h2>
+          <h2 className="section-head text-[17px] text-foreground">{t('acc.transactions')}</h2>
           <span className="font-numeric text-xs font-semibold text-muted-foreground">
             {transactions.length}
           </span>
@@ -336,7 +335,7 @@ export function AccountDetailPage() {
         {lt ? (
           <CenterSpinner />
         ) : transactions.length === 0 ? (
-          <EmptyState title="No transactions yet" description="Activity for this account will show here." />
+          <EmptyState title={t('acc.noTxTitle')} description={t('acc.noTxDesc')} />
         ) : (
           <Card className={cn('divide-y divide-border px-4 py-1')}>
             {transactions.map((tx) => (
@@ -347,7 +346,7 @@ export function AccountDetailPage() {
                 categories={categoryMap}
                 splitCount={splitsByTx[tx.id]?.length ?? 0}
                 onDelete={async (txId) => {
-                  if (await confirm({ title: 'Delete this transaction?', tone: 'danger', confirmLabel: 'Delete' }))
+                  if (await confirm({ title: t('acc.deleteTxTitle'), tone: 'danger', confirmLabel: t('common.delete') }))
                     del.mutate(txId)
                 }}
               />
