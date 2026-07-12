@@ -1,5 +1,5 @@
 import { useState, type ComponentType } from 'react'
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   Wallet,
@@ -12,6 +12,7 @@ import {
   Plus,
   Moon,
   Sun,
+  ChevronLeft,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/features/auth/useAuth'
@@ -26,7 +27,7 @@ import { NotificationBell } from '@/features/notifications/NotificationBell'
 type IconType = ComponentType<{ className?: string }>
 
 const NAV: { to: string; label: string; icon: IconType }[] = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/', label: 'Home', icon: LayoutDashboard },
   { to: '/accounts', label: 'Accounts', icon: Wallet },
   { to: '/transactions', label: 'Activity', icon: ArrowLeftRight },
   { to: '/reports', label: 'Reports', icon: BarChart3 },
@@ -37,7 +38,7 @@ const NAV: { to: string; label: string; icon: IconType }[] = [
 ]
 
 const SECTION_TITLES: Record<string, string> = {
-  '/': 'Overview',
+  '/': 'Home',
   '/accounts': 'Accounts',
   '/transactions': 'Activity',
   '/reports': 'Reports',
@@ -58,7 +59,10 @@ export function AppLayout() {
   const { activeBookId, loading: booksLoading } = useActiveBook()
   const { theme, toggle } = useTheme()
   const { pathname } = useLocation()
+  const navigate = useNavigate()
+  const isHome = pathname === '/'
   const section = SECTION_TITLES[pathname] ?? 'Workspace'
+  const firstName = profile?.display_name?.split(' ')[0]
 
   // Refresh FX rates from the free live sources once per session.
   useLiveRatesSync()
@@ -70,7 +74,7 @@ export function AppLayout() {
   return (
     <div className="app-atmosphere relative flex min-h-screen w-full bg-background text-foreground">
       {/* ───────────────────────── Desktop / tablet sidebar ───────────────────────── */}
-      <aside className="sticky top-0 z-30 hidden h-screen w-[84px] shrink-0 flex-col border-r border-border bg-surface/70 px-4 py-5 backdrop-blur-xl sm:flex lg:w-[260px] print:hidden">
+      <aside className="sticky top-0 z-30 hidden h-screen w-[84px] shrink-0 flex-col border-r border-border bg-surface px-4 py-5 sm:flex lg:w-[260px] print:hidden">
         {/* Brand */}
         <Link to="/" className="group mb-2 flex items-center gap-3 px-1.5 py-2">
           <img
@@ -78,7 +82,7 @@ export function AppLayout() {
             alt="Tracr"
             className="h-9 w-9 rounded-xl border border-border shadow-sm transition-transform duration-300 group-hover:scale-105 group-active:scale-95"
           />
-          <span className="font-display hidden text-2xl font-black tracking-tight text-foreground lg:block">
+          <span className="font-display hidden text-2xl font-extrabold tracking-tight text-foreground lg:block">
             Tracr
           </span>
         </Link>
@@ -99,7 +103,7 @@ export function AppLayout() {
         <button
           onClick={() => setAddOpen(true)}
           className="pressable btn-sheen group mt-2 flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-3 font-semibold text-primary-foreground transition-all duration-300 hover:brightness-[1.06]"
-          aria-label="Log transaction"
+          aria-label="Record a transaction"
         >
           <Plus className="h-5 w-5 stroke-[2.5] transition-transform duration-300 group-hover:rotate-90" />
           <span className="hidden text-sm lg:inline">Write it down</span>
@@ -108,20 +112,35 @@ export function AppLayout() {
 
       {/* ───────────────────────── Main column ───────────────────────── */}
       <div className="relative z-10 flex min-w-0 flex-1 flex-col">
-        {/* Top utility header */}
-        <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between border-b border-border bg-surface/70 px-4 backdrop-blur-xl sm:px-6 lg:px-8 print:hidden">
-          {/* Left: mobile brand · desktop breadcrumb */}
-          <div className="flex items-center gap-2.5">
-            <img
-              src="/logo.svg"
-              alt="Tracr"
-              className="h-8 w-8 rounded-lg border border-border shadow-sm sm:hidden"
-            />
-            <span className="section-head hidden text-lg text-foreground sm:block">{section}</span>
-            <span className="section-head text-base sm:hidden">{section}</span>
-          </div>
+        {/* Top header: greeting on home, back + title on subpages. Solid, no blur. */}
+        <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between border-b border-border bg-surface px-4 sm:px-6 lg:px-8 print:hidden">
+          {/* Left: greeting (home) · back + title (subpages) */}
+          {isHome ? (
+            <div className="flex items-center gap-2.5">
+              <img
+                src="/logo.svg"
+                alt="Tracr"
+                className="h-8 w-8 rounded-lg border border-border shadow-sm sm:hidden"
+              />
+              <p className="text-base font-bold text-foreground sm:text-lg">
+                {greeting()}
+                {firstName ? `, ${firstName}` : ''} 👋
+              </p>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => navigate(-1)}
+                className="pressable -ml-1.5 flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
+                aria-label="Go back"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <span className="text-base font-bold text-foreground sm:text-lg">{section}</span>
+            </div>
+          )}
 
-          {/* Right: sync · theme · profile */}
+          {/* Right: sync · notifications · theme · profile */}
           <div className="flex items-center gap-2 sm:gap-3">
             <span className="hidden items-center gap-1.5 text-xs font-medium text-muted-foreground md:inline-flex">
               <span className="h-1.5 w-1.5 rounded-full bg-positive" />
@@ -132,7 +151,7 @@ export function AppLayout() {
 
             <button
               onClick={toggle}
-              className="pressable flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface-muted/50 text-muted-foreground transition-colors hover:text-foreground"
+              className="pressable flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface-muted text-muted-foreground transition-colors hover:text-foreground"
               aria-label="Toggle theme"
             >
               {theme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
@@ -150,7 +169,7 @@ export function AppLayout() {
                   className="h-9 w-9 rounded-xl border border-border object-cover shadow-sm transition-colors hover:border-primary/50"
                 />
               ) : (
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-primary/10 text-sm font-bold text-primary transition-colors hover:border-primary/50">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-primary-soft text-sm font-bold text-primary transition-colors hover:border-primary/50">
                   {(profile?.display_name ?? 'U').charAt(0).toUpperCase()}
                 </div>
               )}
@@ -166,17 +185,19 @@ export function AppLayout() {
         </main>
       </div>
 
-      {/* ───────────────────────── Mobile floating tab bar ───────────────────────── */}
-      <nav className="glass-nav fixed bottom-5 left-1/2 z-40 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-2xl border border-border/80 p-1.5 shadow-lg sm:hidden print:hidden">
-        <div className="grid grid-cols-5 items-center justify-items-center">
+      {/* ───────────────────────── Mobile bottom tab bar ─────────────────────────
+          Solid full-width bar (GoPay style): 5 slots, labels always on, active in
+          brand color, raised gradient Record button. No backdrop-blur. */}
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] sm:hidden print:hidden">
+        <div className="grid grid-cols-5 items-end px-1 pt-1.5">
           <MobileNavLink to="/" label="Home" icon={LayoutDashboard} />
           <MobileNavLink to="/accounts" label="Accounts" icon={Wallet} />
 
-          <div className="relative -mt-7">
+          <div className="flex justify-center">
             <button
               onClick={() => setAddOpen(true)}
-              className="flex h-13 w-13 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg transition-all duration-300 hover:scale-105 hover:brightness-[1.06] active:scale-95"
-              aria-label="Add transaction"
+              className="brand-gradient pressable -mt-6 flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-md transition-transform hover:scale-105"
+              aria-label="Record a transaction"
             >
               <Plus className="h-6 w-6 stroke-[2.5]" />
             </button>
@@ -198,13 +219,12 @@ function SidebarLink({ to, label, icon: Icon }: { to: string; label: string; ico
       {({ isActive }) => (
         <span
           className={cn(
-            'nav-rail group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200',
+            'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200',
             'justify-center lg:justify-start',
             isActive
-              ? 'bg-primary/10 text-primary shadow-sm'
+              ? 'bg-primary-soft text-primary'
               : 'text-muted-foreground hover:bg-surface-muted hover:text-foreground',
           )}
-          data-active={isActive}
         >
           <Icon className="h-5 w-5 shrink-0 transition-transform duration-300 group-hover:scale-110" />
           <span className="hidden lg:inline">{label}</span>
@@ -221,13 +241,20 @@ function MobileNavLink({ to, label, icon: Icon }: { to: string; label: string; i
       end={to === '/'}
       className={({ isActive }) =>
         cn(
-          'flex w-full flex-col items-center gap-1.5 rounded-xl py-2 text-xs font-semibold tracking-wide transition-all duration-300',
+          'flex w-full flex-col items-center gap-1 rounded-xl py-2 text-[11px] font-semibold transition-colors duration-200',
           isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
         )
       }
     >
-      <Icon className="h-5 w-5 transition-transform duration-300 active:scale-90" />
-      <span className="text-xs">{label}</span>
+      <Icon className="h-[22px] w-[22px] transition-transform duration-200 active:scale-90" />
+      <span>{label}</span>
     </NavLink>
   )
+}
+
+function greeting() {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 18) return 'Good afternoon'
+  return 'Good evening'
 }
