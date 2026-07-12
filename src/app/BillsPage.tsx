@@ -221,7 +221,7 @@ function BillCard({
     <Card className="space-y-3 p-4">
       <div className="flex items-center gap-3">
         <span
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
           style={{ backgroundColor: `${accent}1f`, color: accent }}
         >
           {category ? <CategoryIcon name={category.icon} className="h-5 w-5" /> : <Receipt className="h-5 w-5" />}
