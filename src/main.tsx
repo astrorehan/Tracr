@@ -13,11 +13,9 @@ import { AuthProvider } from './features/auth/AuthProvider'
 import { BooksProvider } from './features/books/BooksProvider'
 import { ThemeProvider } from './features/settings/theme'
 import { TextSizeProvider } from './features/settings/text-size'
-import { LanguageProvider } from './features/settings/language'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <LanguageProvider>
     <ThemeProvider>
       <TextSizeProvider>
         <QueryClientProvider client={queryClient}>
@@ -31,6 +29,5 @@ createRoot(document.getElementById('root')!).render(
         </QueryClientProvider>
       </TextSizeProvider>
     </ThemeProvider>
-    </LanguageProvider>
   </StrictMode>,
 )
