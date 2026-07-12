@@ -15,8 +15,6 @@ import {
   ChevronLeft,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { MsgKey } from '@/i18n'
-import { useT } from '@/features/settings/language-context'
 import { useAuth } from '@/features/auth/useAuth'
 import { useActiveBook } from '@/features/books/useActiveBook'
 import { BookSwitcher } from '@/features/books/BookSwitcher'
@@ -28,31 +26,31 @@ import { NotificationBell } from '@/features/notifications/NotificationBell'
 
 type IconType = ComponentType<{ className?: string }>
 
-const NAV: { to: string; label: MsgKey; icon: IconType }[] = [
-  { to: '/', label: 'nav.home', icon: LayoutDashboard },
-  { to: '/accounts', label: 'nav.accounts', icon: Wallet },
-  { to: '/transactions', label: 'nav.activity', icon: ArrowLeftRight },
-  { to: '/reports', label: 'nav.reports', icon: BarChart3 },
-  { to: '/budgets', label: 'nav.budgets', icon: Target },
-  { to: '/bills', label: 'nav.bills', icon: Receipt },
-  { to: '/goals', label: 'nav.goals', icon: PiggyBank },
-  { to: '/settings', label: 'nav.settings', icon: Settings },
+const NAV: { to: string; label: string; icon: IconType }[] = [
+  { to: '/', label: 'Home', icon: LayoutDashboard },
+  { to: '/accounts', label: 'Accounts', icon: Wallet },
+  { to: '/transactions', label: 'Activity', icon: ArrowLeftRight },
+  { to: '/reports', label: 'Reports', icon: BarChart3 },
+  { to: '/budgets', label: 'Budgets', icon: Target },
+  { to: '/bills', label: 'Bills', icon: Receipt },
+  { to: '/goals', label: 'Goals', icon: PiggyBank },
+  { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
-const SECTION_TITLES: Record<string, MsgKey> = {
-  '/': 'nav.home',
-  '/accounts': 'nav.accounts',
-  '/transactions': 'nav.activity',
-  '/reports': 'nav.reports',
-  '/budgets': 'nav.budgets',
-  '/bills': 'section.billsSubs',
-  '/goals': 'section.savingsGoals',
-  '/settings': 'nav.settings',
-  '/categories': 'section.categories',
-  '/tags': 'section.tags',
-  '/currencies': 'section.currencies',
-  '/data': 'section.dataBackup',
-  '/books': 'section.books',
+const SECTION_TITLES: Record<string, string> = {
+  '/': 'Home',
+  '/accounts': 'Accounts',
+  '/transactions': 'Activity',
+  '/reports': 'Reports',
+  '/budgets': 'Budgets',
+  '/bills': 'Bills & subscriptions',
+  '/goals': 'Savings goals',
+  '/settings': 'Settings',
+  '/categories': 'Categories',
+  '/tags': 'Tags',
+  '/currencies': 'Currencies',
+  '/data': 'Data & backup',
+  '/books': 'Books',
 }
 
 export function AppLayout() {
@@ -60,11 +58,10 @@ export function AppLayout() {
   const { profile } = useAuth()
   const { activeBookId, loading: booksLoading } = useActiveBook()
   const { theme, toggle } = useTheme()
-  const { t } = useT()
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const isHome = pathname === '/'
-  const section = t(SECTION_TITLES[pathname] ?? 'section.workspace')
+  const section = SECTION_TITLES[pathname] ?? 'Workspace'
   const firstName = profile?.display_name?.split(' ')[0]
 
   // Refresh FX rates from the free live sources once per session.
@@ -81,7 +78,7 @@ export function AppLayout() {
         {/* Brand */}
         <Link to="/" className="group mb-2 flex items-center gap-3 px-1.5 py-2">
           <img
-            src="/Tracr.svg"
+            src="/logo.svg"
             alt="Tracr"
             className="h-9 w-9 rounded-xl border border-border shadow-sm transition-transform duration-300 group-hover:scale-105 group-active:scale-95"
           />
@@ -106,10 +103,10 @@ export function AppLayout() {
         <button
           onClick={() => setAddOpen(true)}
           className="pressable btn-sheen group mt-2 flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-3 font-semibold text-primary-foreground transition-all duration-300 hover:brightness-[1.06]"
-          aria-label={t('layout.recordTransaction')}
+          aria-label="Record a transaction"
         >
           <Plus className="h-5 w-5 stroke-[2.5] transition-transform duration-300 group-hover:rotate-90" />
-          <span className="hidden text-sm lg:inline">{t('layout.writeItDown')}</span>
+          <span className="hidden text-sm lg:inline">Write it down</span>
         </button>
       </aside>
 
@@ -128,12 +125,12 @@ export function AppLayout() {
           {isHome ? (
             <div className="flex items-center gap-2.5">
               <img
-                src="/Tracr.svg"
+                src="/logo.svg"
                 alt="Tracr"
                 className="h-8 w-8 rounded-lg border border-border shadow-sm sm:hidden"
               />
               <p className="text-base font-bold text-foreground sm:text-lg">
-                {t(greetingKey())}
+                {greeting()}
                 {firstName ? `, ${firstName}` : ''} 👋
               </p>
             </div>
@@ -142,7 +139,7 @@ export function AppLayout() {
               <button
                 onClick={() => navigate(-1)}
                 className="pressable -ml-1.5 flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
-                aria-label={t('layout.goBack')}
+                aria-label="Go back"
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
@@ -154,7 +151,7 @@ export function AppLayout() {
           <div className="flex items-center gap-2 sm:gap-3">
             <span className="hidden items-center gap-1.5 text-xs font-medium text-muted-foreground md:inline-flex">
               <span className="h-1.5 w-1.5 rounded-full bg-positive" />
-              {t('layout.saved')}
+              Saved
             </span>
 
             <NotificationBell />
@@ -162,7 +159,7 @@ export function AppLayout() {
             <button
               onClick={toggle}
               className="pressable flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface-muted text-muted-foreground transition-colors hover:text-foreground"
-              aria-label={t('layout.toggleTheme')}
+              aria-label="Toggle theme"
             >
               {theme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
             </button>
@@ -170,7 +167,7 @@ export function AppLayout() {
             <Link
               to="/settings"
               className="pressable transition-transform"
-              aria-label={t('layout.profileSettings')}
+              aria-label="Profile & settings"
             >
               {profile?.avatar_url ? (
                 <img
@@ -206,24 +203,22 @@ export function AppLayout() {
           brand color, raised gradient Record button. No backdrop-blur. */}
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] sm:hidden print:hidden">
         <div className="grid grid-cols-5 items-end px-1 pt-1.5">
-          <MobileNavLink to="/" label="nav.home" icon={LayoutDashboard} />
-          <MobileNavLink to="/accounts" label="nav.accounts" icon={Wallet} />
+          <MobileNavLink to="/" label="Home" icon={LayoutDashboard} />
+          <MobileNavLink to="/accounts" label="Accounts" icon={Wallet} />
 
-          {/* Spacer column — the Record button is absolutely centered on the bar's
-              top edge below, so it straddles the border (half out, half in). */}
-          <div aria-hidden />
+          <div className="flex justify-center">
+            <button
+              onClick={() => setAddOpen(true)}
+              className="brand-gradient pressable -mt-6 flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-md transition-transform hover:scale-105"
+              aria-label="Record a transaction"
+            >
+              <Plus className="h-6 w-6 stroke-[2.5]" />
+            </button>
+          </div>
 
-          <MobileNavLink to="/transactions" label="nav.activity" icon={ArrowLeftRight} />
-          <MobileNavLink to="/settings" label="nav.settings" icon={Settings} />
+          <MobileNavLink to="/transactions" label="Activity" icon={ArrowLeftRight} />
+          <MobileNavLink to="/settings" label="Settings" icon={Settings} />
         </div>
-
-        <button
-          onClick={() => setAddOpen(true)}
-          className="brand-gradient pressable absolute left-1/2 top-0 flex h-[72px] w-[72px] -translate-x-1/2 -translate-y-[18px] items-center justify-center rounded-[22px] text-white shadow-lg shadow-primary/40 transition-transform hover:scale-105 active:scale-95"
-          aria-label={t('layout.recordTransaction')}
-        >
-          <Plus className="h-8 w-8 stroke-[2.5]" />
-        </button>
       </nav>
 
       <TransactionForm open={addOpen} onClose={() => setAddOpen(false)} />
@@ -231,8 +226,7 @@ export function AppLayout() {
   )
 }
 
-function SidebarLink({ to, label, icon: Icon }: { to: string; label: MsgKey; icon: IconType }) {
-  const { t } = useT()
+function SidebarLink({ to, label, icon: Icon }: { to: string; label: string; icon: IconType }) {
   return (
     <NavLink to={to} end={to === '/'}>
       {({ isActive }) => (
@@ -246,15 +240,14 @@ function SidebarLink({ to, label, icon: Icon }: { to: string; label: MsgKey; ico
           )}
         >
           <Icon className="h-5 w-5 shrink-0 transition-transform duration-300 group-hover:scale-110" />
-          <span className="hidden lg:inline">{t(label)}</span>
+          <span className="hidden lg:inline">{label}</span>
         </span>
       )}
     </NavLink>
   )
 }
 
-function MobileNavLink({ to, label, icon: Icon }: { to: string; label: MsgKey; icon: IconType }) {
-  const { t } = useT()
+function MobileNavLink({ to, label, icon: Icon }: { to: string; label: string; icon: IconType }) {
   return (
     <NavLink to={to} end={to === '/'} className="flex w-full flex-col items-center gap-1 py-2">
       {({ isActive }) => (
@@ -273,7 +266,7 @@ function MobileNavLink({ to, label, icon: Icon }: { to: string; label: MsgKey; i
               isActive ? 'text-primary' : 'text-muted-foreground',
             )}
           >
-            {t(label)}
+            {label}
           </span>
         </>
       )}
@@ -281,9 +274,9 @@ function MobileNavLink({ to, label, icon: Icon }: { to: string; label: MsgKey; i
   )
 }
 
-function greetingKey(): MsgKey {
+function greeting() {
   const h = new Date().getHours()
-  if (h < 12) return 'greeting.morning'
-  if (h < 18) return 'greeting.afternoon'
-  return 'greeting.evening'
+  if (h < 12) return 'Good morning'
+  if (h < 18) return 'Good afternoon'
+  return 'Good evening'
 }

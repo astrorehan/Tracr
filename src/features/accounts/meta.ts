@@ -11,18 +11,16 @@ import {
 } from 'lucide-react'
 import type { AccountType } from '@/types/db'
 
-import type { MsgKey } from '@/i18n'
-
-export const ACCOUNT_TYPES: { value: AccountType; label: MsgKey; icon: typeof Wallet }[] = [
-  { value: 'cash', label: 'accType.cash', icon: Wallet },
-  { value: 'bank_card', label: 'accType.bank_card', icon: Landmark },
-  { value: 'credit_card', label: 'accType.credit_card', icon: CreditCard },
-  { value: 'e_wallet', label: 'accType.e_wallet', icon: Smartphone },
-  { value: 'crypto', label: 'accType.crypto', icon: Bitcoin },
-  { value: 'stocks', label: 'accType.stocks', icon: LineChart },
-  { value: 'loan', label: 'accType.loan', icon: HandCoins },
-  { value: 'receivable', label: 'accType.receivable', icon: Receipt },
-  { value: 'other', label: 'accType.other', icon: Coins },
+export const ACCOUNT_TYPES: { value: AccountType; label: string; icon: typeof Wallet }[] = [
+  { value: 'cash', label: 'Cash', icon: Wallet },
+  { value: 'bank_card', label: 'Bank / Card', icon: Landmark },
+  { value: 'credit_card', label: 'Credit Card', icon: CreditCard },
+  { value: 'e_wallet', label: 'E-Wallet', icon: Smartphone },
+  { value: 'crypto', label: 'Crypto', icon: Bitcoin },
+  { value: 'stocks', label: 'Stocks', icon: LineChart },
+  { value: 'loan', label: 'Loan', icon: HandCoins },
+  { value: 'receivable', label: 'Receivable', icon: Receipt },
+  { value: 'other', label: 'Other', icon: Coins },
 ]
 
 /** Account types that are debts by nature — used to default the liability flag. */
