@@ -1,8 +1,10 @@
 import { forwardRef, type InputHTMLAttributes, type SelectHTMLAttributes } from 'react'
 import { cn } from '@/lib/utils'
 
+// 48px tall, 16px text (text-base) so mobile Safari never zooms on focus, with a
+// clear brand focus ring — touch-friendly per the e-wallet redesign.
 const fieldBase =
-  'w-full h-12 rounded-xl border border-border bg-surface px-4 text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:border-primary/70 transition-all duration-200 disabled:opacity-50 text-sm shadow-sm'
+  'w-full h-12 rounded-xl border border-border bg-surface px-4 text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary/70 transition-all duration-200 disabled:opacity-50 text-base shadow-sm'
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
   function Input({ className, ...props }, ref) {

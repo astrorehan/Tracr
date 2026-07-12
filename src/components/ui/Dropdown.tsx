@@ -86,14 +86,14 @@ export function Dropdown<T extends string>({
                   setOpen(false)
                 }}
                 className={cn(
-                  'flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors',
+                  'flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors',
                   selected
-                    ? 'bg-surface-muted font-semibold text-foreground'
+                    ? 'bg-primary-soft font-semibold text-primary'
                     : 'font-medium text-muted-foreground hover:bg-surface-muted hover:text-foreground',
                 )}
               >
                 <span className="truncate">{opt.label}</span>
-                {selected && <Check className="h-4 w-4 shrink-0 text-foreground" />}
+                {selected && <Check className="h-4 w-4 shrink-0 text-primary" />}
               </button>
             )
           })}
