@@ -26,6 +26,8 @@ import { formatMoney } from '@/lib/money'
 import { getCurrency } from '@/lib/currencies'
 import { useAuth } from '@/features/auth/useAuth'
 import { useTheme } from '@/features/settings/theme-context'
+import { useT } from '@/features/settings/language-context'
+import { dateLocale, type MsgKey } from '@/i18n'
 import { NotificationBell } from '@/features/notifications/NotificationBell'
 import { useAccounts, useBalances } from '@/features/accounts/api'
 import { useCategories } from '@/features/categories/api'
@@ -41,15 +43,16 @@ type IconType = ComponentType<LucideProps>
 
 /** Quick-action tiles. Chip accents are the only place color lives on the home. */
 const CHIP: Record<string, string> = {
-  blue: 'bg-chip-blue-bg text-chip-blue-fg',
-  green: 'bg-chip-green-bg text-chip-green-fg',
-  orange: 'bg-chip-orange-bg text-chip-orange-fg',
-  violet: 'bg-chip-violet-bg text-chip-violet-fg',
+  blue: 'border border-border bg-surface text-chip-blue-fg',
+  green: 'border border-border bg-surface text-chip-green-fg',
+  orange: 'border border-border bg-surface text-chip-orange-fg',
+  violet: 'border border-border bg-surface text-chip-violet-fg',
 }
 
 export function DashboardPage() {
   const { profile } = useAuth()
   const { theme, toggle } = useTheme()
+  const { t } = useT()
   const base = profile?.base_currency ?? 'IDR'
   const firstName = profile?.display_name?.split(' ')[0]
 
@@ -134,14 +137,14 @@ export function DashboardPage() {
       <div className="mx-auto max-w-2xl px-4 pt-6 sm:px-0">
         <EmptyState
           icon={<Wallet className="h-7 w-7" />}
-          title="Let's set up your money"
-          description="Add the first place your money lives — a bank, an e-wallet, cash. We'll keep the running total for you."
+          title={t('dash.emptyTitle')}
+          description={t('dash.emptyDesc')}
           action={
             <Link
               to="/accounts"
               className="btn-sheen inline-flex h-12 items-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground transition hover:brightness-[1.06]"
             >
-              Add where your money lives
+              {t('dash.emptyAction')}
             </Link>
           }
         />
@@ -152,13 +155,17 @@ export function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
+      {/* Mobile: the blue is a FIXED background layer. The hero text below scrolls
+          in normal flow over it, then slides under the white sheet. */}
+      <div aria-hidden className="brand-hero pointer-events-none fixed inset-x-0 top-0 h-[45vh] z-0 sm:hidden" />
+
       {/* ───────── Balance hero — full-bleed gradient (GoPay saldo card) ───────── */}
-      <section className="brand-hero relative overflow-hidden px-4 pb-7 pt-4 text-white sm:mt-6 sm:rounded-[24px] sm:px-6 sm:pb-6 sm:pt-5">
+      <section className="brand-hero relative z-10 overflow-hidden px-4 pb-7 pt-4 text-white max-sm:bg-none sm:mt-6 sm:rounded-[24px] sm:px-6 sm:pb-6 sm:pt-5">
         <div className="relative z-10">
           {/* Mobile top bar — the shared header is hidden on home/mobile */}
           <div className="mb-4 flex items-center justify-between gap-3 sm:hidden">
             <p className="truncate text-base font-bold">
-              {greeting()}
+              {t(greetingKey())}
               {firstName ? `, ${firstName}` : ''} 👋
             </p>
             <div className="flex shrink-0 items-center gap-2">
@@ -166,11 +173,11 @@ export function DashboardPage() {
               <button
                 onClick={toggle}
                 className="pressable flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 text-white transition hover:bg-white/25"
-                aria-label="Toggle theme"
+                aria-label={t('layout.toggleTheme')}
               >
                 {theme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
               </button>
-              <Link to="/settings" aria-label="Profile & settings" className="pressable">
+              <Link to="/settings" aria-label={t('layout.profileSettings')} className="pressable">
                 {profile?.avatar_url ? (
                   <img
                     src={profile.avatar_url}
@@ -189,7 +196,7 @@ export function DashboardPage() {
           {/* Balance + primary actions */}
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-white/85">Your money</p>
+              <p className="text-sm font-semibold text-white/85">{t('dash.yourMoney')}</p>
               <div className="mt-1 flex items-center gap-2.5">
                 <p className="font-numeric text-[32px] font-extrabold leading-none tracking-tight sm:text-[38px]">
                   {hidden ? (
@@ -201,7 +208,7 @@ export function DashboardPage() {
                 <button
                   onClick={() => setHidden((h) => !h)}
                   className="pressable flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/18 text-white transition hover:bg-white/28"
-                  aria-label={hidden ? 'Show amount' : 'Hide amount'}
+                  aria-label={hidden ? t('dash.showAmount') : t('dash.hideAmount')}
                   aria-pressed={hidden}
                 >
                   {hidden ? <EyeOff className="h-[17px] w-[17px]" /> : <Eye className="h-[17px] w-[17px]" />}
@@ -210,9 +217,9 @@ export function DashboardPage() {
 
               {!hidden && money.debts > 0 && (
                 <p className="mt-2 text-xs font-medium text-white/80">
-                  You own {formatMoney(money.assets, base, { signDisplay: 'never' })}
+                  {t('dash.own', { amount: formatMoney(money.assets, base, { signDisplay: 'never' }) })}
                   <span className="px-1 text-white/40">·</span>
-                  owe {formatMoney(money.debts, base, { signDisplay: 'never' })}
+                  {t('dash.owe', { amount: formatMoney(money.debts, base, { signDisplay: 'never' }) })}
                 </p>
               )}
 
@@ -221,8 +228,10 @@ export function DashboardPage() {
                 className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-white/90 transition hover:text-white"
               >
                 <BarChart3 className="h-4 w-4" />
-                {formatMoney(month.spent, base, { signDisplay: 'never' })} spent in{' '}
-                {format(new Date(), 'MMMM')}
+                {t('dash.spentIn', {
+                  amount: formatMoney(month.spent, base, { signDisplay: 'never' }),
+                  month: format(new Date(), 'MMMM', { locale: dateLocale() }),
+                })}
                 <ChevronRight className="h-3.5 w-3.5" />
               </Link>
             </div>
@@ -232,13 +241,13 @@ export function DashboardPage() {
                 onClick={() => setAddOpen(true)}
                 className="pressable flex items-center gap-1.5 rounded-xl bg-white px-3.5 py-2 text-xs font-bold text-primary"
               >
-                <Plus className="h-4 w-4 stroke-[2.6]" /> Record
+                <Plus className="h-4 w-4 stroke-[2.6]" /> {t('dash.record')}
               </button>
               <Link
                 to="/transactions"
                 className="pressable flex items-center gap-1.5 rounded-xl border border-white/30 bg-white/12 px-3.5 py-2 text-xs font-bold text-white"
               >
-                <ListOrdered className="h-4 w-4" /> History
+                <ListOrdered className="h-4 w-4" /> {t('dash.history')}
               </Link>
             </div>
           </div>
@@ -248,7 +257,7 @@ export function DashboardPage() {
               to="/currencies"
               className="mt-3 inline-block text-xs font-semibold text-white underline-offset-2 hover:underline"
             >
-              Add a rate for {money.missing.join(', ')} to include it
+              {t('dash.addRate', { codes: money.missing.join(', ') })}
             </Link>
           )}
 
@@ -268,7 +277,9 @@ export function DashboardPage() {
               className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/12 px-2.5 py-1 text-xs font-semibold text-white transition hover:bg-white/20"
             >
               <Wallet className="h-3.5 w-3.5" />
-              {accounts.length} {accounts.length === 1 ? 'account' : 'accounts'}
+              {t(accounts.length === 1 ? 'dash.accountCount.one' : 'dash.accountCount.many', {
+                n: accounts.length,
+              })}
             </Link>
           </div>
         </div>
@@ -278,32 +289,32 @@ export function DashboardPage() {
       <div className="relative z-10 -mt-5 space-y-5 rounded-t-[26px] bg-background px-4 pb-2 pt-5 sm:mt-6 sm:rounded-none sm:bg-transparent sm:px-0 sm:pt-0">
         {/* Quick actions */}
         <Card className="grid grid-cols-4 gap-x-1 gap-y-4 p-4">
-          <QuickTile label="Record" icon={Plus} chip="blue" onClick={() => setAddOpen(true)} />
-          <QuickTile label="Accounts" icon={Wallet} chip="green" to="/accounts" />
-          <QuickTile label="Budgets" icon={Target} chip="orange" to="/budgets" />
-          <QuickTile label="Goals" icon={PiggyBank} chip="violet" to="/goals" />
-          <QuickTile label="Bills" icon={Receipt} chip="blue" to="/bills" />
-          <QuickTile label="Reports" icon={BarChart3} chip="green" to="/reports" />
-          <QuickTile label="Categories" icon={LayoutGrid} chip="orange" to="/categories" />
-          <QuickTile label="Tags" icon={Tag} chip="violet" to="/tags" />
+          <QuickTile label={t('dash.record')} icon={Plus} chip="blue" onClick={() => setAddOpen(true)} />
+          <QuickTile label={t('nav.accounts')} icon={Wallet} chip="green" to="/accounts" />
+          <QuickTile label={t('nav.budgets')} icon={Target} chip="orange" to="/budgets" />
+          <QuickTile label={t('nav.goals')} icon={PiggyBank} chip="violet" to="/goals" />
+          <QuickTile label={t('nav.bills')} icon={Receipt} chip="blue" to="/bills" />
+          <QuickTile label={t('nav.reports')} icon={BarChart3} chip="green" to="/reports" />
+          <QuickTile label={t('section.categories')} icon={LayoutGrid} chip="orange" to="/categories" />
+          <QuickTile label={t('section.tags')} icon={Tag} chip="violet" to="/tags" />
         </Card>
 
         {/* This month — In / Out / Kept */}
         <section className="card-surface grid grid-cols-3 divide-x divide-border overflow-hidden rounded-[20px]">
           <MonthCell
-            label="Money in"
+            label={t('dash.moneyIn')}
             amount={month.earned}
             format={(v) => formatMoney(v, base, { signDisplay: 'never' })}
             delta={deltaOf(month.earned, month.prevEarned, true)}
           />
           <MonthCell
-            label="Money out"
+            label={t('dash.moneyOut')}
             amount={month.spent}
             format={(v) => formatMoney(v, base, { signDisplay: 'never' })}
             delta={deltaOf(month.spent, month.prevSpent, false)}
           />
           <MonthCell
-            label="Kept"
+            label={t('dash.kept')}
             amount={month.net}
             format={(v) => formatMoney(v, base, { signDisplay: 'always' })}
             valueClass={month.net >= 0 ? 'text-positive' : 'text-negative'}
@@ -314,19 +325,16 @@ export function DashboardPage() {
         {/* Recent activity */}
         <section>
           <div className="mb-1 flex items-baseline justify-between px-1">
-            <h2 className="text-base font-bold text-foreground">Recent activity</h2>
+            <h2 className="text-base font-bold text-foreground">{t('dash.recentActivity')}</h2>
             <Link
               to="/transactions"
               className="text-sm font-semibold text-primary transition hover:underline"
             >
-              See all
+              {t('dash.seeAll')}
             </Link>
           </div>
           {recent.length === 0 ? (
-            <EmptyState
-              title="Nothing here yet"
-              description="Tap Record to write down your first one."
-            />
+            <EmptyState title={t('dash.nothingYet')} description={t('dash.tapRecord')} />
           ) : (
             <Card className="divide-y divide-border px-4 py-1">
               {recent.map((tx) => (
@@ -334,6 +342,47 @@ export function DashboardPage() {
               ))}
             </Card>
           )}
+        </section>
+
+        {/* Light / dark switch — big, playful, GoPay-style */}
+        <section className="pb-4 pt-4 text-center">
+          <h2 className="text-xl font-extrabold tracking-tight text-foreground">
+            {t('dash.lightOrDark')}
+          </h2>
+          <p className="mt-1 text-sm font-medium text-muted-foreground">{t('dash.flipSwitch')}</p>
+
+          <button
+            type="button"
+            role="switch"
+            aria-checked={theme === 'dark'}
+            onClick={toggle}
+            aria-label={t('dash.switchTheme')}
+            className="pressable mx-auto mt-7 flex h-[128px] w-[128px] items-center justify-center rounded-[30px] bg-surface-muted"
+          >
+            <span
+              className={cn(
+                'flex h-[60px] w-[92px] items-center rounded-full p-1.5 shadow-inner transition-colors duration-300',
+                theme === 'dark' ? 'bg-primary/80' : 'bg-border',
+              )}
+            >
+              <span
+                className={cn(
+                  'flex h-12 w-12 items-center justify-center rounded-full bg-surface shadow-md transition-transform duration-300',
+                  theme === 'dark' ? 'translate-x-[32px]' : 'translate-x-0',
+                )}
+              >
+                {theme === 'dark' ? (
+                  <Moon className="h-5 w-5 text-primary" />
+                ) : (
+                  <Sun className="h-5 w-5 text-warning" />
+                )}
+              </span>
+            </span>
+          </button>
+
+          <p className="mx-auto mt-7 max-w-[280px] text-sm font-medium text-muted-foreground">
+            {t('dash.onePlace')}
+          </p>
         </section>
       </div>
 
@@ -423,6 +472,7 @@ function MonthCell({
   valueClass?: string
   delta?: Delta
 }) {
+  const { t } = useT()
   return (
     <div className="px-3 py-3.5 sm:px-4">
       <p className="text-xs font-semibold text-muted-foreground">{label}</p>
@@ -439,7 +489,7 @@ function MonthCell({
           <span className={delta.good ? 'text-positive' : 'text-negative'}>
             {delta.pct >= 0 ? '▲' : '▼'} {Math.abs(delta.pct).toFixed(0)}%
           </span>{' '}
-          <span className="font-medium text-muted-foreground">vs {prevMonthName()}</span>
+          <span className="font-medium text-muted-foreground">{t('dash.vs', { month: prevMonthName() })}</span>
         </p>
       )}
     </div>
@@ -448,20 +498,21 @@ function MonthCell({
 
 /** "May", "April" — deltas name the month they compare against. */
 function prevMonthName() {
-  return format(subMonths(new Date(), 1), 'MMM')
+  return format(subMonths(new Date(), 1), 'MMM', { locale: dateLocale() })
 }
 
-function greeting() {
+function greetingKey(): MsgKey {
   const h = new Date().getHours()
-  if (h < 12) return 'Good morning'
-  if (h < 18) return 'Good afternoon'
-  return 'Good evening'
+  if (h < 12) return 'greeting.morning'
+  if (h < 18) return 'greeting.afternoon'
+  return 'greeting.evening'
 }
 
 /** Mirrors the home layout so loading → loaded swaps without layout shift. */
 function DashboardSkeleton() {
+  const { t } = useT()
   return (
-    <div className="mx-auto max-w-2xl" aria-busy="true" aria-label="Loading home">
+    <div className="mx-auto max-w-2xl" aria-busy="true" aria-label={t('dash.loadingHome')}>
       <Skeleton className="h-52 rounded-none sm:mt-6 sm:h-44 sm:rounded-[24px]" />
       <div className="-mt-5 space-y-5 rounded-t-[26px] bg-background px-4 pb-2 pt-5 sm:mt-6 sm:rounded-none sm:bg-transparent sm:px-0 sm:pt-0">
         <div className="grid grid-cols-4 gap-x-1 gap-y-4 rounded-[20px] border border-border bg-surface p-4">
