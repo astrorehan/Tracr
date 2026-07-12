@@ -308,7 +308,7 @@ export function AccountDetailPage() {
                   <span className={diffPreview > 0 ? 'text-positive' : 'text-negative'}>
                     {t('acc.adjustment')} {diffPreview > 0 ? '+' : '−'}
                     {formatMoney(Math.abs(diffPreview), account.currency, { signDisplay: 'never' })}{' '}
-                    ({diffPreview > 0 ? t('acc.income') : t('acc.expense')})
+                    ({diffPreview > 0 ? t('common.income') : t('common.expense')})
                   </span>
                 )}
               </p>
