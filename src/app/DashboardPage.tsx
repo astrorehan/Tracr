@@ -10,6 +10,12 @@ import {
   BarChart3,
   Eye,
   EyeOff,
+  LayoutGrid,
+  Tag,
+  Moon,
+  Sun,
+  ChevronRight,
+  ListOrdered,
   type LucideProps,
 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
@@ -19,6 +25,8 @@ import { pctChange } from '@/features/reports/reports'
 import { formatMoney } from '@/lib/money'
 import { getCurrency } from '@/lib/currencies'
 import { useAuth } from '@/features/auth/useAuth'
+import { useTheme } from '@/features/settings/theme-context'
+import { NotificationBell } from '@/features/notifications/NotificationBell'
 import { useAccounts, useBalances } from '@/features/accounts/api'
 import { useCategories } from '@/features/categories/api'
 import { useTransactions } from '@/features/transactions/api'
@@ -41,7 +49,9 @@ const CHIP: Record<string, string> = {
 
 export function DashboardPage() {
   const { profile } = useAuth()
+  const { theme, toggle } = useTheme()
   const base = profile?.base_currency ?? 'IDR'
+  const firstName = profile?.display_name?.split(' ')[0]
 
   const [addOpen, setAddOpen] = useState(false)
   const [hidden, setHidden] = useHiddenBalance()
@@ -121,7 +131,7 @@ export function DashboardPage() {
 
   if (accounts.length === 0) {
     return (
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto max-w-2xl px-4 pt-6 sm:px-0">
         <EmptyState
           icon={<Wallet className="h-7 w-7" />}
           title="Let's set up your money"
@@ -141,130 +151,191 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5">
-      {/* ───────── Balance card — the one gradient "wow" surface ───────── */}
-      <section className="brand-gradient animate-rise relative overflow-hidden rounded-[24px] p-6 text-white shadow-md">
-        <div className="pointer-events-none absolute -right-8 -top-10 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
-        <div className="relative">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold text-white/85">Your money</p>
-            <button
-              onClick={() => setHidden((h) => !h)}
-              className="pressable flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white transition hover:bg-white/25"
-              aria-label={hidden ? 'Show amount' : 'Hide amount'}
-              aria-pressed={hidden}
-            >
-              {hidden ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
-            </button>
+    <div className="mx-auto max-w-2xl">
+      {/* ───────── Balance hero — full-bleed gradient (GoPay saldo card) ───────── */}
+      <section className="brand-hero relative overflow-hidden px-4 pb-7 pt-4 text-white sm:mt-6 sm:rounded-[24px] sm:px-6 sm:pb-6 sm:pt-5">
+        <div className="relative z-10">
+          {/* Mobile top bar — the shared header is hidden on home/mobile */}
+          <div className="mb-4 flex items-center justify-between gap-3 sm:hidden">
+            <p className="truncate text-base font-bold">
+              {greeting()}
+              {firstName ? `, ${firstName}` : ''} 👋
+            </p>
+            <div className="flex shrink-0 items-center gap-2">
+              <NotificationBell variant="onDark" />
+              <button
+                onClick={toggle}
+                className="pressable flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 text-white transition hover:bg-white/25"
+                aria-label="Toggle theme"
+              >
+                {theme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+              </button>
+              <Link to="/settings" aria-label="Profile & settings" className="pressable">
+                {profile?.avatar_url ? (
+                  <img
+                    src={profile.avatar_url}
+                    alt=""
+                    className="h-9 w-9 rounded-xl border border-white/30 object-cover"
+                  />
+                ) : (
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 text-sm font-bold text-white">
+                    {(profile?.display_name ?? 'U').charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </Link>
+            </div>
           </div>
 
-          <p className="mt-2 font-numeric text-[34px] font-extrabold leading-none tracking-tight lg:text-[40px]">
-            {hidden ? (
-              `${symbol} ••••••`
-            ) : (
-              <AnimatedNumber value={money.total} format={(v) => formatMoney(v, base)} />
-            )}
-          </p>
+          {/* Balance + primary actions */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-white/85">Your money</p>
+              <div className="mt-1 flex items-center gap-2.5">
+                <p className="font-numeric text-[32px] font-extrabold leading-none tracking-tight sm:text-[38px]">
+                  {hidden ? (
+                    `${symbol} ••••••`
+                  ) : (
+                    <AnimatedNumber value={money.total} format={(v) => formatMoney(v, base)} />
+                  )}
+                </p>
+                <button
+                  onClick={() => setHidden((h) => !h)}
+                  className="pressable flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/18 text-white transition hover:bg-white/28"
+                  aria-label={hidden ? 'Show amount' : 'Hide amount'}
+                  aria-pressed={hidden}
+                >
+                  {hidden ? <EyeOff className="h-[17px] w-[17px]" /> : <Eye className="h-[17px] w-[17px]" />}
+                </button>
+              </div>
 
-          <p className="mt-2 text-xs font-medium text-white/70">
-            as of {format(new Date(), 'd MMMM')} · in {base}
-          </p>
+              {!hidden && money.debts > 0 && (
+                <p className="mt-2 text-xs font-medium text-white/80">
+                  You own {formatMoney(money.assets, base, { signDisplay: 'never' })}
+                  <span className="px-1 text-white/40">·</span>
+                  owe {formatMoney(money.debts, base, { signDisplay: 'never' })}
+                </p>
+              )}
+
+              <Link
+                to="/reports"
+                className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-white/90 transition hover:text-white"
+              >
+                <BarChart3 className="h-4 w-4" />
+                {formatMoney(month.spent, base, { signDisplay: 'never' })} spent in{' '}
+                {format(new Date(), 'MMMM')}
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+
+            <div className="flex shrink-0 flex-col gap-2">
+              <button
+                onClick={() => setAddOpen(true)}
+                className="pressable flex items-center gap-1.5 rounded-xl bg-white px-3.5 py-2 text-xs font-bold text-primary"
+              >
+                <Plus className="h-4 w-4 stroke-[2.6]" /> Record
+              </button>
+              <Link
+                to="/transactions"
+                className="pressable flex items-center gap-1.5 rounded-xl border border-white/30 bg-white/12 px-3.5 py-2 text-xs font-bold text-white"
+              >
+                <ListOrdered className="h-4 w-4" /> History
+              </Link>
+            </div>
+          </div>
 
           {money.missing.length > 0 && (
             <Link
               to="/currencies"
-              className="mt-1 inline-block text-xs font-semibold text-white underline-offset-2 hover:underline"
+              className="mt-3 inline-block text-xs font-semibold text-white underline-offset-2 hover:underline"
             >
               Add a rate for {money.missing.join(', ')} to include it
             </Link>
           )}
 
-          {!hidden && money.debts > 0 && (
-            <p className="mt-4 text-sm font-medium text-white/85">
-              You own{' '}
-              <span className="font-numeric font-bold text-white">
-                {formatMoney(money.assets, base, { signDisplay: 'never' })}
-              </span>
-              <span className="px-1.5 text-white/45">·</span>
-              You owe{' '}
-              <span className="font-numeric font-bold text-white">
-                {formatMoney(money.debts, base, { signDisplay: 'never' })}
-              </span>
-            </p>
-          )}
-
-          {!hidden && otherCurrencies.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-1.5">
-              {otherCurrencies.map(([c, total]) => (
+          {/* Currency + account chips */}
+          <div className="mt-4 flex flex-wrap gap-1.5">
+            {!hidden &&
+              otherCurrencies.map(([c, total]) => (
                 <span
                   key={c}
-                  className="rounded-full bg-white/15 px-2.5 py-1 font-numeric text-xs font-semibold text-white"
+                  className="rounded-full border border-white/25 bg-white/12 px-2.5 py-1 font-numeric text-xs font-semibold text-white"
                 >
                   {getCurrency(c).symbol} {formatMoney(total, c, { signDisplay: 'never' })}
                 </span>
               ))}
-            </div>
-          )}
+            <Link
+              to="/accounts"
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/12 px-2.5 py-1 text-xs font-semibold text-white transition hover:bg-white/20"
+            >
+              <Wallet className="h-3.5 w-3.5" />
+              {accounts.length} {accounts.length === 1 ? 'account' : 'accounts'}
+            </Link>
+          </div>
         </div>
       </section>
 
-      {/* ───────── Quick actions ───────── */}
-      <section className="animate-rise stagger-1 grid grid-cols-3 gap-2 sm:grid-cols-6">
-        <QuickTile label="Record" icon={Plus} chip="blue" onClick={() => setAddOpen(true)} />
-        <QuickTile label="Accounts" icon={Wallet} chip="green" to="/accounts" />
-        <QuickTile label="Budgets" icon={Target} chip="orange" to="/budgets" />
-        <QuickTile label="Goals" icon={PiggyBank} chip="violet" to="/goals" />
-        <QuickTile label="Bills" icon={Receipt} chip="blue" to="/bills" />
-        <QuickTile label="Reports" icon={BarChart3} chip="green" to="/reports" />
-      </section>
+      {/* ───────── Content sheet — slides up over the hero ───────── */}
+      <div className="relative z-10 -mt-5 space-y-5 rounded-t-[26px] bg-background px-4 pb-2 pt-5 sm:mt-6 sm:rounded-none sm:bg-transparent sm:px-0 sm:pt-0">
+        {/* Quick actions */}
+        <Card className="grid grid-cols-4 gap-x-1 gap-y-4 p-4">
+          <QuickTile label="Record" icon={Plus} chip="blue" onClick={() => setAddOpen(true)} />
+          <QuickTile label="Accounts" icon={Wallet} chip="green" to="/accounts" />
+          <QuickTile label="Budgets" icon={Target} chip="orange" to="/budgets" />
+          <QuickTile label="Goals" icon={PiggyBank} chip="violet" to="/goals" />
+          <QuickTile label="Bills" icon={Receipt} chip="blue" to="/bills" />
+          <QuickTile label="Reports" icon={BarChart3} chip="green" to="/reports" />
+          <QuickTile label="Categories" icon={LayoutGrid} chip="orange" to="/categories" />
+          <QuickTile label="Tags" icon={Tag} chip="violet" to="/tags" />
+        </Card>
 
-      {/* ───────── This month — In / Out / Kept ───────── */}
-      <section className="animate-rise stagger-2 card-surface grid grid-cols-3 divide-x divide-border overflow-hidden rounded-[20px]">
-        <MonthCell
-          label="Money in"
-          amount={month.earned}
-          format={(v) => formatMoney(v, base, { signDisplay: 'never' })}
-          delta={deltaOf(month.earned, month.prevEarned, true)}
-        />
-        <MonthCell
-          label="Money out"
-          amount={month.spent}
-          format={(v) => formatMoney(v, base, { signDisplay: 'never' })}
-          delta={deltaOf(month.spent, month.prevSpent, false)}
-        />
-        <MonthCell
-          label="Kept"
-          amount={month.net}
-          format={(v) => formatMoney(v, base, { signDisplay: 'always' })}
-          valueClass={month.net >= 0 ? 'text-positive' : 'text-negative'}
-          delta={deltaOf(month.net, month.prevEarned - month.prevSpent, true)}
-        />
-      </section>
-
-      {/* ───────── Recent activity ───────── */}
-      <section className="animate-rise stagger-3">
-        <div className="mb-1 flex items-baseline justify-between px-1">
-          <h2 className="text-base font-bold text-foreground">Recent activity</h2>
-          <Link
-            to="/transactions"
-            className="text-sm font-semibold text-primary transition hover:underline"
-          >
-            See all
-          </Link>
-        </div>
-        {recent.length === 0 ? (
-          <EmptyState
-            title="Nothing here yet"
-            description="Tap Record to write down your first one."
+        {/* This month — In / Out / Kept */}
+        <section className="card-surface grid grid-cols-3 divide-x divide-border overflow-hidden rounded-[20px]">
+          <MonthCell
+            label="Money in"
+            amount={month.earned}
+            format={(v) => formatMoney(v, base, { signDisplay: 'never' })}
+            delta={deltaOf(month.earned, month.prevEarned, true)}
           />
-        ) : (
-          <Card className="divide-y divide-border px-4 py-1">
-            {recent.map((tx) => (
-              <TransactionRow key={tx.id} tx={tx} accounts={accountMap} categories={categoryMap} />
-            ))}
-          </Card>
-        )}
-      </section>
+          <MonthCell
+            label="Money out"
+            amount={month.spent}
+            format={(v) => formatMoney(v, base, { signDisplay: 'never' })}
+            delta={deltaOf(month.spent, month.prevSpent, false)}
+          />
+          <MonthCell
+            label="Kept"
+            amount={month.net}
+            format={(v) => formatMoney(v, base, { signDisplay: 'always' })}
+            valueClass={month.net >= 0 ? 'text-positive' : 'text-negative'}
+            delta={deltaOf(month.net, month.prevEarned - month.prevSpent, true)}
+          />
+        </section>
+
+        {/* Recent activity */}
+        <section>
+          <div className="mb-1 flex items-baseline justify-between px-1">
+            <h2 className="text-base font-bold text-foreground">Recent activity</h2>
+            <Link
+              to="/transactions"
+              className="text-sm font-semibold text-primary transition hover:underline"
+            >
+              See all
+            </Link>
+          </div>
+          {recent.length === 0 ? (
+            <EmptyState
+              title="Nothing here yet"
+              description="Tap Record to write down your first one."
+            />
+          ) : (
+            <Card className="divide-y divide-border px-4 py-1">
+              {recent.map((tx) => (
+                <TransactionRow key={tx.id} tx={tx} accounts={accountMap} categories={categoryMap} />
+              ))}
+            </Card>
+          )}
+        </section>
+      </div>
 
       <TransactionForm open={addOpen} onClose={() => setAddOpen(false)} />
     </div>
@@ -307,14 +378,14 @@ function QuickTile({
 }) {
   const inner = (
     <>
-      <span className={cn('flex h-14 w-14 items-center justify-center rounded-2xl', CHIP[chip])}>
-        <Icon className="h-6 w-6 stroke-[2.2]" />
+      <span className={cn('flex h-13 w-13 items-center justify-center rounded-2xl', CHIP[chip])}>
+        <Icon className="h-6 w-6 stroke-[2.1]" />
       </span>
-      <span className="text-xs font-semibold text-foreground">{label}</span>
+      <span className="text-[11.5px] font-semibold text-foreground">{label}</span>
     </>
   )
   const cls =
-    'pressable flex flex-col items-center gap-2 rounded-2xl py-2 transition-colors hover:bg-surface-muted'
+    'pressable flex flex-col items-center gap-2 rounded-2xl py-1 transition-colors hover:bg-surface-muted'
   return to ? (
     <Link to={to} className={cls}>
       {inner}
@@ -380,23 +451,32 @@ function prevMonthName() {
   return format(subMonths(new Date(), 1), 'MMM')
 }
 
+function greeting() {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 18) return 'Good afternoon'
+  return 'Good evening'
+}
+
 /** Mirrors the home layout so loading → loaded swaps without layout shift. */
 function DashboardSkeleton() {
   return (
-    <div className="mx-auto max-w-2xl space-y-5" aria-busy="true" aria-label="Loading home">
-      <Skeleton className="h-44 rounded-[24px]" />
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="flex flex-col items-center gap-2 py-2">
-            <Skeleton className="h-14 w-14 rounded-2xl" />
-            <Skeleton className="h-3 w-12" />
-          </div>
-        ))}
-      </div>
-      <Skeleton className="h-24 rounded-[20px]" />
-      <div className="space-y-2">
-        <Skeleton className="h-4 w-32" />
-        <Skeleton className="h-64 rounded-[20px]" />
+    <div className="mx-auto max-w-2xl" aria-busy="true" aria-label="Loading home">
+      <Skeleton className="h-52 rounded-none sm:mt-6 sm:h-44 sm:rounded-[24px]" />
+      <div className="-mt-5 space-y-5 rounded-t-[26px] bg-background px-4 pb-2 pt-5 sm:mt-6 sm:rounded-none sm:bg-transparent sm:px-0 sm:pt-0">
+        <div className="grid grid-cols-4 gap-x-1 gap-y-4 rounded-[20px] border border-border bg-surface p-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="flex flex-col items-center gap-2 py-1">
+              <Skeleton className="h-13 w-13 rounded-2xl" />
+              <Skeleton className="h-3 w-12" />
+            </div>
+          ))}
+        </div>
+        <Skeleton className="h-24 rounded-[20px]" />
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-64 rounded-[20px]" />
+        </div>
       </div>
     </div>
   )

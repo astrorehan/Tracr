@@ -112,8 +112,15 @@ export function AppLayout() {
 
       {/* ───────────────────────── Main column ───────────────────────── */}
       <div className="relative z-10 flex min-w-0 flex-1 flex-col">
-        {/* Top header: greeting on home, back + title on subpages. Solid, no blur. */}
-        <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between border-b border-border bg-surface px-4 sm:px-6 lg:px-8 print:hidden">
+        {/* Top header: greeting on home, back + title on subpages. Solid, no blur.
+            On the home route it hides on mobile — the balance hero owns the top
+            of the screen there (GoPay style) — and stays on tablet/desktop. */}
+        <header
+          className={cn(
+            'sticky top-0 z-20 h-16 shrink-0 items-center justify-between border-b border-border bg-surface px-4 sm:px-6 lg:px-8 print:hidden',
+            isHome ? 'hidden sm:flex' : 'flex',
+          )}
+        >
           {/* Left: greeting (home) · back + title (subpages) */}
           {isHome ? (
             <div className="flex items-center gap-2.5">
@@ -177,8 +184,14 @@ export function AppLayout() {
           </div>
         </header>
 
-        {/* Scrolling body */}
-        <main className="flex-1 px-4 pb-28 pt-6 sm:px-6 sm:pb-10 lg:px-8">
+        {/* Scrolling body. The home route drops padding so its gradient hero can
+            bleed edge-to-edge; the page manages its own spacing there. */}
+        <main
+          className={cn(
+            'flex-1 pb-28 sm:pb-10',
+            !isHome && 'px-4 pt-6 sm:px-6 lg:px-8',
+          )}
+        >
           <div key={pathname} className="mx-auto w-full max-w-[1500px] animate-fade-in">
             <Outlet />
           </div>
@@ -236,18 +249,27 @@ function SidebarLink({ to, label, icon: Icon }: { to: string; label: string; ico
 
 function MobileNavLink({ to, label, icon: Icon }: { to: string; label: string; icon: IconType }) {
   return (
-    <NavLink
-      to={to}
-      end={to === '/'}
-      className={({ isActive }) =>
-        cn(
-          'flex w-full flex-col items-center gap-1 rounded-xl py-2 text-[11px] font-semibold transition-colors duration-200',
-          isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
-        )
-      }
-    >
-      <Icon className="h-[22px] w-[22px] transition-transform duration-200 active:scale-90" />
-      <span>{label}</span>
+    <NavLink to={to} end={to === '/'} className="flex w-full flex-col items-center gap-1 py-2">
+      {({ isActive }) => (
+        <>
+          <span
+            className={cn(
+              'flex items-center justify-center rounded-full px-5 py-1 transition-colors duration-200',
+              isActive ? 'bg-primary-soft text-primary' : 'text-muted-foreground',
+            )}
+          >
+            <Icon className="h-[22px] w-[22px] transition-transform duration-200 active:scale-90" />
+          </span>
+          <span
+            className={cn(
+              'text-[11px] font-semibold transition-colors duration-200',
+              isActive ? 'text-primary' : 'text-muted-foreground',
+            )}
+          >
+            {label}
+          </span>
+        </>
+      )}
     </NavLink>
   )
 }

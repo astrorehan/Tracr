@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 import { useNotifications, type ResolvedNotification } from './useNotifications'
 import { usePushReminders } from './push'
 
-export function NotificationBell() {
+export function NotificationBell({ variant = 'default' }: { variant?: 'default' | 'onDark' }) {
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications()
   const [open, setOpen] = useState(false)
 
@@ -14,8 +14,13 @@ export function NotificationBell() {
       <button
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          'pressable relative flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface-muted/50 text-muted-foreground transition-colors hover:text-foreground',
-          open && 'text-foreground',
+          'pressable relative flex h-9 w-9 items-center justify-center rounded-xl transition-colors',
+          variant === 'onDark'
+            ? 'bg-white/15 text-white hover:bg-white/25'
+            : cn(
+                'border border-border bg-surface-muted/50 text-muted-foreground hover:text-foreground',
+                open && 'text-foreground',
+              ),
         )}
         aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}
         aria-expanded={open}
