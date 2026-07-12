@@ -2,6 +2,10 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter } from 'react-router-dom'
+// Self-hosted Plus Jakarta Sans (variable, weights 200–800). Bundled and
+// content-hashed by Vite, precached by the PWA, and subset by unicode-range so
+// only the latin file downloads for id/en text — no external font servers.
+import '@fontsource-variable/plus-jakarta-sans/wght.css'
 import './index.css'
 import App from './App.tsx'
 import { queryClient } from './lib/queryClient'

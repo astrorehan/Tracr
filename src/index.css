@@ -3,42 +3,70 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  /* Monochrome (Light) — paper-white canvas, ink-black brand. Vercel/Geist-style:
-     borders carry elevation, color is reserved strictly for money direction. */
-  --background: #fafafa;
+  /* Tracr e-wallet blue (Light) — cool-mist canvas, deep-blue brand.
+     Blue = interactive; green/red = money direction only; chip accents live
+     strictly inside icon chips. See docs/GOPAY_UI_REDESIGN_PLAN.md. */
+  --background: #f2f6fa; /* cool mist */
   --surface: #ffffff;
-  --surface-muted: #f4f4f5;
-  --border: #e6e6e6;
-  --foreground: #0a0a0a;
-  --muted-foreground: #6b6b6b;
-  --primary: #0a0a0a; /* Ink — buttons, links, focus, active nav */
+  --surface-muted: #eaf0f6;
+  --border: #dfe7ef;
+  --foreground: #17222e; /* soft navy ink, not pure black */
+  --muted-foreground: #5b6b7c;
+  --primary: #0072bc; /* deep blue — buttons, links, active nav */
   --primary-foreground: #ffffff;
-  --danger: #d93636;
-  --positive: #15915b;
-  --negative: #d93636;
-  /* Soft neutral elevation — two stacked shadows read more refined than one */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.05), 0 8px 24px rgba(0, 0, 0, 0.07);
-  --shadow-lg: 0 6px 16px rgba(0, 0, 0, 0.07), 0 24px 50px rgba(0, 0, 0, 0.12);
-  /* Lit top edge baked into every card surface */
+  --primary-soft: #e3f3fc; /* tinted chip / nav-pill backgrounds */
+  --brand-bright: #00aed6; /* gradient companion only — never text */
+  --positive: #0e9f5b; /* money in */
+  --negative: #e5484d; /* money out */
+  --danger: #e5484d; /* destructive */
+  --warning: #d97706; /* due soon / near budget limit */
+
+  /* Chip accents — quick-action tiles & category icon chips ONLY.
+     Each is a tinted background + a saturated icon color. */
+  --chip-blue-bg: #e3f3fc;
+  --chip-blue-fg: #0072bc;
+  --chip-green-bg: #dbf5e7;
+  --chip-green-fg: #0e9f5b;
+  --chip-orange-bg: #fdecd8;
+  --chip-orange-fg: #d97706;
+  --chip-violet-bg: #ece7fb;
+  --chip-violet-fg: #7a5af0;
+
+  /* Soft, cheap elevation — one gentle shadow reads clean on low-end phones. */
+  --shadow-sm: 0 1px 2px rgba(23, 34, 46, 0.06), 0 1px 3px rgba(23, 34, 46, 0.05);
+  --shadow-md: 0 2px 8px rgba(23, 34, 46, 0.06), 0 8px 24px rgba(23, 34, 46, 0.08);
+  --shadow-lg: 0 6px 16px rgba(23, 34, 46, 0.08), 0 24px 50px rgba(23, 34, 46, 0.12);
   --surface-highlight: rgba(255, 255, 255, 0.9);
-  --radius-card: 24px;
+  --radius-card: 20px;
 }
 
 .dark {
-  /* Monochrome (Dark) — true-black canvas, near-white ink. The brand flips to
-     white in the dark, so buttons are white with black text. */
-  --background: #000000;
-  --surface: #0a0a0a;
-  --surface-muted: #1a1a1a;
-  --border: #2a2a2a;
-  --foreground: #ededed;
-  --muted-foreground: #a1a1a1;
-  --primary: #ffffff; /* Ink flips to white in the dark */
-  --primary-foreground: #0a0a0a;
-  --danger: #ff6166;
-  --positive: #3ecf8e;
-  --negative: #ff6166;
+  /* Tracr e-wallet blue (Dark) — deep-navy canvas (never pure black: cheap
+     AMOLED smears), bright-cyan brand. */
+  --background: #0c1219; /* deep navy */
+  --surface: #151c25;
+  --surface-muted: #1d2733;
+  --border: #28343f;
+  --foreground: #e8eef4;
+  --muted-foreground: #94a3b4;
+  --primary: #3ec6f0; /* bright cyan */
+  --primary-foreground: #062733;
+  --primary-soft: #123243;
+  --brand-bright: #00aed6;
+  --positive: #42d392;
+  --negative: #ff7a7e;
+  --danger: #ff7a7e;
+  --warning: #f5a524;
+
+  --chip-blue-bg: #123243;
+  --chip-blue-fg: #3ec6f0;
+  --chip-green-bg: #123528;
+  --chip-green-fg: #42d392;
+  --chip-orange-bg: #3a2a12;
+  --chip-orange-fg: #f5a524;
+  --chip-violet-bg: #241e3d;
+  --chip-violet-fg: #a78bfa;
+
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5), 0 14px 32px rgba(0, 0, 0, 0.55);
   --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.6), 0 28px 60px rgba(0, 0, 0, 0.65);
@@ -54,9 +82,20 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+  --color-brand-bright: var(--brand-bright);
   --color-danger: var(--danger);
   --color-positive: var(--positive);
   --color-negative: var(--negative);
+  --color-warning: var(--warning);
+  --color-chip-blue-bg: var(--chip-blue-bg);
+  --color-chip-blue-fg: var(--chip-blue-fg);
+  --color-chip-green-bg: var(--chip-green-bg);
+  --color-chip-green-fg: var(--chip-green-fg);
+  --color-chip-orange-bg: var(--chip-orange-bg);
+  --color-chip-orange-fg: var(--chip-orange-fg);
+  --color-chip-violet-bg: var(--chip-violet-bg);
+  --color-chip-violet-fg: var(--chip-violet-fg);
   --shadow-sm: var(--shadow-sm);
   --shadow-md: var(--shadow-md);
   --shadow-lg: var(--shadow-lg);
@@ -72,26 +111,25 @@ body {
   margin: 0;
   background-color: var(--background);
   color: var(--foreground);
-  font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
-    sans-serif;
+  /* One friendly, self-hosted sans for everything — bundled with the app, no
+     external font servers, works offline. */
+  font-family: 'Plus Jakarta Sans Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Editorial serif for titles. Applied to h1 globally + opt-in .font-display.
-   opsz tuned for display sizes; a little SOFT rounds the terminals for a
-   refined, expensive feel. wght is left to utility classes (font-black etc). */
+/* Display headings — same friendly sans, set bold and tight. (Was an editorial
+   serif; the GoPay voice is a warm heavy sans, not a ledger.) */
 h1,
 .font-display {
-  font-family: 'Fraunces', 'Satoshi', Georgia, 'Times New Roman', serif;
-  font-optical-sizing: auto;
-  font-variation-settings: 'opsz' 110, 'SOFT' 28, 'WONK' 0;
+  font-family: 'Plus Jakarta Sans Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   letter-spacing: -0.02em;
 }
 
 /* Numeric styling — tabular figures stop money jitter on update */
 .font-numeric {
-  font-family: 'Satoshi', sans-serif;
+  font-family: 'Plus Jakarta Sans Variable', sans-serif;
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' 1;
   letter-spacing: -0.01em;
@@ -113,14 +151,15 @@ h1,
   background: var(--muted-foreground);
 }
 
-/* Glassmorphism utility classes */
+/* Glassmorphism utility classes (legacy — being retired for solid surfaces in
+   the app shell; kept for any remaining callers). */
 .glass-nav {
-  background: rgba(250, 250, 250, 0.8);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
 .dark .glass-nav {
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(12, 18, 25, 0.85);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
@@ -131,9 +170,15 @@ h1,
   -webkit-backdrop-filter: blur(12px);
 }
 .dark .glass-card {
-  background: rgba(10, 10, 10, 0.6);
+  background: rgba(21, 28, 37, 0.6);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+}
+
+/* The one "wow" surface: the balance card (and login hero). Everything else
+   stays flat and cheap to paint. */
+.brand-gradient {
+  background-image: linear-gradient(135deg, var(--primary), var(--brand-bright));
 }
 
 /* Smooth active press effects */
@@ -251,7 +296,8 @@ input[type='number'] {
   }
 }
 
-/* Ambient workspace backdrop: faint grid + theme-tinted corner glows.
+/* Ambient workspace backdrop: a whisper of brand-tinted corner glow, no grid.
+   (The old 44px grid + film grain were dropped for paint cost on low-end GPUs.)
    Sits on a fixed pseudo-layer so it never scrolls or intercepts clicks. */
 .app-atmosphere::before {
   content: '';
@@ -260,29 +306,24 @@ input[type='number'] {
   z-index: 0;
   pointer-events: none;
   background-image:
-    radial-gradient(120% 80% at 100% 0%, var(--primary-glow, rgba(0, 0, 0, 0.04)) 0%, transparent 45%),
-    radial-gradient(100% 70% at 0% 100%, var(--primary-glow, rgba(0, 0, 0, 0.03)) 0%, transparent 50%),
-    linear-gradient(to right, var(--grid-line, rgba(0, 0, 0, 0.02)) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--grid-line, rgba(0, 0, 0, 0.02)) 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 44px 44px, 44px 44px;
+    radial-gradient(120% 80% at 100% 0%, var(--primary-glow) 0%, transparent 55%),
+    radial-gradient(100% 70% at 0% 100%, var(--primary-glow) 0%, transparent 60%);
 }
 
 :root {
-  --primary-glow: rgba(0, 0, 0, 0.035);
-  --grid-line: rgba(0, 0, 0, 0.022);
+  --primary-glow: rgba(0, 114, 188, 0.05);
 }
 .dark {
-  --primary-glow: rgba(255, 255, 255, 0.045);
-  --grid-line: rgba(255, 255, 255, 0.02);
+  --primary-glow: rgba(62, 198, 240, 0.06);
 }
 
-/* ── Refined material system ─────────────────────────────────────────────
-   Cards carry a hairline border, soft layered shadow, and a 1px lit top edge
-   (inset highlight) so they feel physically lit rather than flat-filled. */
+/* ── Material system ──────────────────────────────────────────────────────
+   Cards carry a hairline border and one soft, cheap shadow — no inset lit
+   edge, no stacked shadows (those cost extra paints on Mali/Adreno GPUs). */
 .card-surface {
   background-color: var(--surface);
   border: 1px solid var(--border);
-  box-shadow: var(--shadow-sm), inset 0 1px 0 0 var(--surface-highlight);
+  box-shadow: var(--shadow-sm);
 }
 .card-hover {
   transition:
@@ -293,26 +334,15 @@ input[type='number'] {
 .card-hover:hover {
   transform: translateY(-2px);
   border-color: color-mix(in oklab, var(--primary) 28%, var(--border));
-  box-shadow: var(--shadow-md), inset 0 1px 0 0 var(--surface-highlight);
+  box-shadow: var(--shadow-md);
 }
 
-/* Solid buttons get a faint top sheen + grounding shadow for tactility */
+/* Solid buttons get a faint top sheen for tactility */
 .btn-sheen {
   box-shadow: var(--shadow-sm), inset 0 1px 0 0 rgba(255, 255, 255, 0.22);
 }
 .dark .btn-sheen {
   box-shadow: var(--shadow-sm), inset 0 1px 0 0 rgba(255, 255, 255, 0.14);
-}
-
-/* Fine film grain — adds material depth to dark feature panels (hero card) */
-.grain::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.4;
-  mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 /* ── Print / "Save as PDF" ───────────────────────────────────────────────
@@ -336,31 +366,25 @@ input[type='number'] {
   }
 }
 
-/* ── Ledger devices ──────────────────────────────────────────────────────
-   Typographic furniture borrowed from paper finance: dotted leader lines
-   running from a label to its amount (receipts, passbooks, tables of
-   contents). Use inside `flex items-baseline`:
+/* ── Leader lines ────────────────────────────────────────────────────────
+   A flexible spacer between a label and its amount. The old receipt-dotted
+   line is softened to a plain gap for the friendlier e-wallet look. Use inside
+   `flex items-baseline`:
      <span>Label</span> <span class="leaders" /> <span>Rp 120.000</span> */
 .leaders {
   flex: 1;
   min-width: 1.25rem;
-  align-self: flex-end;
-  margin-bottom: 0.345em;
-  border-bottom: 2px dotted color-mix(in oklab, currentColor 26%, transparent);
 }
 
-/* Section heads are set in the display serif, italic — the voice of the
-   ledger. Small caps stay reserved for tiny data labels only. */
+/* Section heads — friendly bold sans (was display-serif italic). */
 .section-head {
-  font-family: 'Fraunces', Georgia, serif;
-  font-style: italic;
-  font-optical-sizing: auto;
-  font-variation-settings: 'opsz' 40, 'SOFT' 40, 'WONK' 0;
+  font-family: 'Plus Jakarta Sans Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   letter-spacing: -0.01em;
-  font-weight: 600;
+  font-weight: 700;
 }
 
-/* Sidebar active-link rail indicator */
+/* Sidebar active-link rail indicator (legacy — the app shell now uses a
+   --primary-soft pill; kept for any remaining callers). */
 .nav-rail {
   position: relative;
 }

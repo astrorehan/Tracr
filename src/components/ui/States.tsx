@@ -31,13 +31,17 @@ export function EmptyState({
   action?: ReactNode
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border px-6 py-14 text-center">
-      {icon && <div className="mb-3 text-muted-foreground/60">{icon}</div>}
-      <h3 className="section-head text-xl text-foreground">{title}</h3>
-      {description && (
-        <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">{description}</p>
+    <div className="flex flex-col items-center justify-center rounded-[20px] border border-dashed border-border px-6 py-14 text-center">
+      {icon && (
+        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-soft text-primary">
+          {icon}
+        </div>
       )}
-      {action && <div className="mt-5">{action}</div>}
+      <h3 className="text-xl font-bold text-foreground">{title}</h3>
+      {description && (
+        <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">{description}</p>
+      )}
+      {action && <div className="mt-6">{action}</div>}
     </div>
   )
 }

@@ -125,7 +125,7 @@ function NotificationItem({ note, onClick }: { note: ResolvedNotification; onCli
         aria-hidden
         className={cn(
           'mt-1.5 h-2 w-2 shrink-0 rounded-full',
-          note.severity === 'danger' ? 'bg-danger' : 'bg-amber-500',
+          note.severity === 'danger' ? 'bg-danger' : 'bg-warning',
           note.read && 'opacity-30',
         )}
       />

@@ -9,7 +9,7 @@ export function Card({ className, hoverable = false, ...props }: CardProps) {
   return (
     <div
       className={cn(
-        'card-surface rounded-2xl p-5',
+        'card-surface rounded-[20px] p-5',
         hoverable && 'card-hover active:scale-[0.99]',
         className,
       )}

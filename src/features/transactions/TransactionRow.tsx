@@ -1,7 +1,20 @@
-import { Check, Copy, Lock, Paperclip, Pencil, Split, Trash2, Undo2 } from 'lucide-react'
+import {
+  ArrowDownLeft,
+  ArrowLeftRight,
+  ArrowUpRight,
+  Check,
+  Copy,
+  Lock,
+  Paperclip,
+  Pencil,
+  Split,
+  Trash2,
+  Undo2,
+} from 'lucide-react'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { formatMoney } from '@/lib/money'
+import { CategoryIcon } from '@/features/categories/CategoryIcon'
 import { TagChip } from '@/features/tags/TagChip'
 import type { Account, Category, Tag, Transaction } from '@/types/db'
 
@@ -60,15 +73,12 @@ export function TransactionRow({
           .filter(Boolean)
           .join(' · ')
 
-  // A slim ledger tick marks the row's direction; the amount color carries
-  // the rest. (Income gets the strong mark — in a ledger, money in is the event.)
-  const tick =
-    tx.type === 'income'
-      ? 'bg-positive'
-      : tx.type === 'transfer'
-        ? 'bg-border'
-        : 'bg-negative/45'
   const sign = tx.type === 'income' ? '+' : tx.type === 'expense' ? '−' : ''
+
+  // A tinted category icon chip leads the row — the e-wallet look. The accent is
+  // deterministic: the category's own color when there is one, otherwise a
+  // sensible default per transaction type.
+  const chip = renderChip({ type: tx.type, category, splitCount })
 
   return (
     <div
@@ -89,7 +99,7 @@ export function TransactionRow({
           <Check className="h-3.5 w-3.5 stroke-[3.5]" />
         </div>
       ) : (
-        <span aria-hidden className={cn('h-8 w-[3px] shrink-0 rounded-full', tick)} />
+        chip
       )}
       <div className="min-w-0 flex-1">
         <p className="flex items-center gap-1.5 text-sm font-semibold leading-snug text-foreground">
@@ -183,5 +193,57 @@ export function TransactionRow({
         )}
       </div>
     </div>
+  )
+}
+
+/** The leading icon chip: tinted with the category's own color when present,
+ *  otherwise a default per transaction type. */
+function renderChip({
+  type,
+  category,
+  splitCount,
+}: {
+  type: Transaction['type']
+  category?: Category
+  splitCount: number
+}) {
+  const base = 'flex h-10 w-10 shrink-0 items-center justify-center rounded-full'
+
+  if (splitCount > 0) {
+    return (
+      <span className={cn(base, 'bg-chip-violet-bg text-chip-violet-fg')}>
+        <Split className="h-[18px] w-[18px]" />
+      </span>
+    )
+  }
+
+  if (type === 'transfer') {
+    return (
+      <span className={cn(base, 'bg-surface-muted text-muted-foreground')}>
+        <ArrowLeftRight className="h-[18px] w-[18px]" />
+      </span>
+    )
+  }
+
+  if (category?.color) {
+    return (
+      <span
+        className={base}
+        style={{ backgroundColor: `${category.color}22`, color: category.color }}
+      >
+        <CategoryIcon name={category.icon} className="h-[18px] w-[18px]" />
+      </span>
+    )
+  }
+
+  // No category — colour by direction (money in green, money out neutral).
+  return type === 'income' ? (
+    <span className={cn(base, 'bg-chip-green-bg text-chip-green-fg')}>
+      <ArrowDownLeft className="h-[18px] w-[18px]" />
+    </span>
+  ) : (
+    <span className={cn(base, 'bg-surface-muted text-muted-foreground')}>
+      <ArrowUpRight className="h-[18px] w-[18px]" />
+    </span>
   )
 }

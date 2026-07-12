@@ -208,7 +208,7 @@ function BillCard({
       : status === 'overdue'
         ? 'text-danger'
         : status === 'due_soon'
-          ? 'text-amber-500'
+          ? 'text-warning'
           : 'text-muted-foreground'
 
   const busy = markPaid.isPending || skip.isPending || update.isPending || del.isPending
