@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import { ArrowLeftRight, ListChecks } from 'lucide-react'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
+import { PageHeader, Pill, ListCard } from '@/components/ui/list'
 import { useConfirm } from '@/components/ui/confirm-context'
 import { useAccounts } from '@/features/accounts/api'
 import { useCategories } from '@/features/categories/api'
@@ -224,33 +225,32 @@ export function TransactionsPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
-      <header className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-extrabold tracking-tight lg:text-3xl">Activity</h1>
-        {selectMode ? (
-          <div className="flex items-center gap-3 text-xs font-semibold">
-            <button onClick={toggleSelectAll} className="text-primary hover:underline">
-              {allVisibleSelected ? 'Clear all' : 'Select all'}
-            </button>
-            <button onClick={exitSelect} className="text-muted-foreground hover:text-foreground">
-              Done
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-3">
-            <span className="font-numeric text-sm font-semibold text-muted-foreground">
-              {visible.length} transaction{visible.length === 1 ? '' : 's'}
-            </span>
-            {visible.length > 0 && (
-              <button
-                onClick={() => setSelectMode(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs font-semibold text-foreground shadow-sm transition hover:bg-surface-muted"
-              >
-                <ListChecks className="h-3.5 w-3.5" /> Select
+      <PageHeader
+        title="Activity"
+        action={
+          selectMode ? (
+            <div className="flex items-center gap-3 text-xs font-semibold">
+              <button onClick={toggleSelectAll} className="text-primary hover:underline">
+                {allVisibleSelected ? 'Clear all' : 'Select all'}
               </button>
-            )}
-          </div>
-        )}
-      </header>
+              <button onClick={exitSelect} className="text-muted-foreground hover:text-foreground">
+                Done
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <span className="font-numeric text-sm font-semibold text-muted-foreground">
+                {visible.length} transaction{visible.length === 1 ? '' : 's'}
+              </span>
+              {visible.length > 0 && (
+                <Pill variant="line" icon={ListChecks} onClick={() => setSelectMode(true)}>
+                  Select
+                </Pill>
+              )}
+            </div>
+          )
+        }
+      />
 
       <FilterPanel
         filter={filter}
@@ -273,9 +273,7 @@ export function TransactionsPage() {
           }
         />
       ) : flat ? (
-        <div className="animate-fade-in divide-y divide-border rounded-2xl border border-border bg-surface px-4 py-1 shadow-sm">
-          {visible.map(renderRow)}
-        </div>
+        <ListCard className="animate-fade-in py-1">{visible.map(renderRow)}</ListCard>
       ) : (
         <div className="animate-fade-in space-y-5">
           {groups.map(([day, txs]) => {
@@ -291,15 +289,13 @@ export function TransactionsPage() {
             return (
               <div key={day} className="space-y-2">
                 <div className="flex items-center justify-between px-1">
-                  <h3 className="section-head text-[15px] text-foreground">{day}</h3>
+                  <h3 className="text-[15px] font-bold text-foreground">{day}</h3>
                   <span className={cnTone(dayTotal)}>
                     {dayTotal > 0 ? '+' : ''}
                     {dayTotal !== 0 ? formatDayTotal(dayTotal, txs[0].currency) : ''}
                   </span>
                 </div>
-                <div className="divide-y divide-border rounded-2xl border border-border bg-surface px-4 py-1 shadow-sm">
-                  {txs.map(renderRow)}
-                </div>
+                <ListCard className="py-1">{txs.map(renderRow)}</ListCard>
               </div>
             )
           })}
