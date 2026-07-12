@@ -23,9 +23,9 @@ export default defineConfig({
       manifest: {
         name: 'Tracr',
         short_name: 'Tracr',
-        description: 'Lightweight multi-account personal finance tracker',
-        theme_color: '#000000',
-        background_color: '#000000',
+        description: 'A friendly, simple way to see all your money in one place.',
+        theme_color: '#0072bc',
+        background_color: '#0c1219',
         display: 'standalone',
         orientation: 'portrait',
         scope: '/',

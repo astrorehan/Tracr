@@ -1,12 +1,21 @@
-# Tracr UI/UX Theme Specification — "The Well-Kept Ledger"
-**Version**: 2.0
+# Tracr UI/UX Theme Specification
+**Version**: 3.0 (in transition)
 **Project**: Tracr (Personal Finance Tracker)
 **Stack**: React, Vite, Tailwind CSS v4, Lucide Icons, Recharts
 **Source of truth**: `src/index.css` (tokens & devices) — this document explains the system; the CSS defines it.
 
-> v1.0 of this document described an emerald/neon-mint "trading terminal" theme that was
-> never shipped. The committed brand is **warm amber** (see the logo/favicon). Do not
-> restyle the app toward the old spec.
+> ## ⚠️ SUPERSEDED — do NOT restyle toward monochrome / the "ledger" voice
+> As of **12 Jul 2026**, Tracr is transitioning to a **friendly GoPay-style e-wallet
+> theme** (e-wallet blue, tinted icon chips, plain words, big rounded cards). The
+> authoritative direction is **`docs/GOPAY_UI_REDESIGN_PLAN.md`** — read that first.
+>
+> Phase 1 of that plan has shipped: the token layer in `src/index.css` is now
+> **e-wallet blue** (deep blue `#0072BC` light / cyan `#3EC6F0` dark), the typeface is
+> self-hosted **Plus Jakarta Sans** (no serif), and the ledger devices (dotted leaders,
+> ambient grid, film grain) are softened/removed. The monochrome/ink/serif system
+> described below is **retired** and kept only as historical reference for the
+> page-by-page sweep (plan Phase 5). When guidance here conflicts with the plan, the
+> plan wins.
 
 ---
 
