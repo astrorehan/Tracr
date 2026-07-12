@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Dropdown } from '@/components/ui/Dropdown'
+import { PageHeader } from '@/components/ui/list'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
 import { CategoryIcon } from '@/features/categories/CategoryIcon'
 import { useAuth } from '@/features/auth/useAuth'
@@ -286,14 +287,11 @@ export function ReportsPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-extrabold tracking-tight lg:text-3xl">Reports</h1>
-          <p className="mt-1 text-sm font-medium text-muted-foreground">
-            {format(from, 'd MMM yyyy')} – {format(to, 'd MMM yyyy')} · {base}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 print:hidden">
+      <PageHeader
+        title="Reports"
+        subtitle={`${format(from, 'd MMM yyyy')} – ${format(to, 'd MMM yyyy')} · ${base}`}
+        action={
+          <div className="flex items-center gap-2 print:hidden">
           <button
             type="button"
             onClick={() => window.print()}
@@ -312,11 +310,12 @@ export function ReportsPage() {
             <Download className="h-4 w-4" />
             <span className="hidden sm:inline">Export CSV</span>
           </button>
-        </div>
-      </header>
+          </div>
+        }
+      />
 
       {/* Range selector */}
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-surface/95 p-4 shadow-sm print:hidden">
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-surface p-4 shadow-sm print:hidden">
         <Dropdown
           value={preset}
           onChange={setPreset}
