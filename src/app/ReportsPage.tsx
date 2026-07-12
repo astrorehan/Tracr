@@ -223,6 +223,19 @@ export function ReportsPage() {
   // Daily spend grid (always spending — the most useful calendar view).
   const heatmap = useMemo(() => dailyTotals(baseTxns, 'expense'), [baseTxns])
 
+  // Spending by weekday over the range — which days cost the most (moved here
+  // from the home screen, which is now chart-free).
+  const weekday = useMemo(() => {
+    const sums = [0, 0, 0, 0, 0, 0, 0] // JS getDay(): 0=Sun … 6=Sat
+    for (const tx of baseTxns) {
+      if (tx.type !== 'expense') continue
+      sums[new Date(tx.occurred_at).getDay()] += tx.amount
+    }
+    const order = [1, 2, 3, 4, 5, 6, 0]
+    const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    return order.map((d, i) => ({ label: labels[i], total: sums[d] }))
+  }, [baseTxns])
+
   const biggest = useMemo(
     () => [...baseTxns].sort((a, b) => b.amount - a.amount).slice(0, 8),
     [baseTxns],
@@ -463,6 +476,29 @@ export function ReportsPage() {
           <Card className="p-5">
             <h2 className="section-head mb-4 text-[17px] text-foreground">Spending calendar</h2>
             <CalendarHeatmap data={heatmap} from={from} to={to} base={base} />
+          </Card>
+
+          {/* Spending by weekday */}
+          <Card className="p-5">
+            <h2 className="section-head mb-4 text-[17px] text-foreground">Spending by weekday</h2>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={weekday} margin={{ top: 8, right: 0, bottom: 0, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis
+                  dataKey="label"
+                  tickLine={false}
+                  axisLine={false}
+                  fontSize={11}
+                  stroke="var(--muted-foreground)"
+                />
+                <Tooltip
+                  cursor={chartCursor}
+                  contentStyle={tooltipStyle}
+                  formatter={(value) => [formatMoney(Number(value), base), 'Spent']}
+                />
+                <Bar dataKey="total" fill="var(--primary)" radius={[4, 4, 0, 0]} maxBarSize={40} />
+              </BarChart>
+            </ResponsiveContainer>
           </Card>
 
           {/* Category breakdown */}
