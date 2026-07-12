@@ -4,6 +4,8 @@ import { ArrowLeftRight, ListChecks } from 'lucide-react'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
 import { PageHeader, Pill, ListCard } from '@/components/ui/list'
 import { useConfirm } from '@/components/ui/confirm-context'
+import { useT } from '@/features/settings/language-context'
+import { dateLocale } from '@/i18n'
 import { useAccounts } from '@/features/accounts/api'
 import { useCategories } from '@/features/categories/api'
 import {
@@ -26,6 +28,7 @@ import { cn } from '@/lib/utils'
 import type { Tag, Transaction } from '@/types/db'
 
 export function TransactionsPage() {
+  const { t } = useT()
   const [filter, setFilter] = useState(defaultFilter)
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -59,10 +62,12 @@ export function TransactionsPage() {
   function linkedLabelFor(tx: Transaction): string | undefined {
     if (!tx.linked_transaction_id) return undefined
     const orig = txMap[tx.linked_transaction_id]
-    const verb = tx.type === 'income' ? 'Refund of' : 'Reimburses'
-    if (!orig) return `${verb} a linked transaction`
-    const who = orig.payee || orig.note || (orig.type === 'income' ? 'income' : 'expense')
-    return `${verb} ${who} · ${formatMoney(orig.amount, orig.currency, { signDisplay: 'never' })}`
+    const isRefund = tx.type === 'income'
+    if (!orig) return t(isRefund ? 'tx.refundLinked' : 'tx.reimbursesLinked')
+    const who =
+      orig.payee || orig.note || t(orig.type === 'income' ? 'common.income' : 'common.expense')
+    const label = t(isRefund ? 'tx.refundOf' : 'tx.reimburses', { who })
+    return `${label} · ${formatMoney(orig.amount, orig.currency, { signDisplay: 'never' })}`
   }
 
   // A selected category also matches its direct subcategories.
@@ -179,7 +184,13 @@ export function TransactionsPage() {
         onEdit={(id) => setEditTx(visible.find((t) => t.id === id) ?? null)}
         onDuplicate={() => handleDuplicate(tx)}
         onDelete={async (id) => {
-          if (await confirm({ title: 'Delete this transaction?', tone: 'danger', confirmLabel: 'Delete' }))
+          if (
+            await confirm({
+              title: t('tx.deleteTitle'),
+              tone: 'danger',
+              confirmLabel: t('common.delete'),
+            })
+          )
             del.mutate(id)
         }}
       />
@@ -191,7 +202,7 @@ export function TransactionsPage() {
   const groups = useMemo(() => {
     const byDay = new Map<string, Transaction[]>()
     for (const tx of visible) {
-      const key = format(new Date(tx.occurred_at), 'EEEE, d MMM yyyy')
+      const key = format(new Date(tx.occurred_at), 'EEEE, d MMM yyyy', { locale: dateLocale() })
       const arr = byDay.get(key) ?? []
       arr.push(tx)
       byDay.set(key, arr)
@@ -226,25 +237,25 @@ export function TransactionsPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-5">
       <PageHeader
-        title="Activity"
+        title={t('nav.activity')}
         action={
           selectMode ? (
             <div className="flex items-center gap-3 text-xs font-semibold">
               <button onClick={toggleSelectAll} className="text-primary hover:underline">
-                {allVisibleSelected ? 'Clear all' : 'Select all'}
+                {allVisibleSelected ? t('tx.clearAll') : t('tx.selectAll')}
               </button>
               <button onClick={exitSelect} className="text-muted-foreground hover:text-foreground">
-                Done
+                {t('tx.done')}
               </button>
             </div>
           ) : (
             <div className="flex items-center gap-3">
               <span className="font-numeric text-sm font-semibold text-muted-foreground">
-                {visible.length} transaction{visible.length === 1 ? '' : 's'}
+                {t(visible.length === 1 ? 'tx.count.one' : 'tx.count.many', { n: visible.length })}
               </span>
               {visible.length > 0 && (
                 <Pill variant="line" icon={ListChecks} onClick={() => setSelectMode(true)}>
-                  Select
+                  {t('tx.select')}
                 </Pill>
               )}
             </div>
@@ -265,12 +276,8 @@ export function TransactionsPage() {
       ) : visible.length === 0 ? (
         <EmptyState
           icon={<ArrowLeftRight className="h-7 w-7" />}
-          title="No transactions"
-          description={
-            isFilterEmpty(filter)
-              ? 'Tap the + button to log your first one.'
-              : 'No transactions match these filters.'
-          }
+          title={t('tx.emptyTitle')}
+          description={isFilterEmpty(filter) ? t('tx.emptyFirst') : t('tx.emptyFiltered')}
         />
       ) : flat ? (
         <ListCard className="animate-fade-in py-1">{visible.map(renderRow)}</ListCard>
