@@ -71,6 +71,39 @@ baseline.
 
 ---
 
+## Status log
+
+**Branch `feat/gopay-ui` (off `main`). Phases 1–4 shipped + Phase 5 started, 12 Jul 2026:**
+
+- ✅ **Phase 1 — Foundation** (`bedf1c7`): e-wallet blue tokens + ➕ tokens
+  (`--primary-soft`, `--brand-bright`, `--warning`, 4 chip-accent pairs) in
+  `src/index.css`; self-hosted Plus Jakarta Sans via `@fontsource-variable`
+  (main.tsx import, PWA-precached); Fraunces/Fontshare removed; ledger devices
+  softened (leaders→gap, grid+grain removed, section-head→bold sans); theme-color
+  + PWA manifest recolored; `UI_UX_THEME.md`→v3 stub. Logo/favicon untouched.
+- ✅ **Phase 2 — Primitives** (`959de7d`): Input 16px (no iOS zoom); Button focus
+  ring; Card 20px radius/single shadow; Segmented + Dropdown pill + `--primary-soft`
+  active; friendlier EmptyState chip; Modal/confirm scrim blur dropped.
+- ✅ **Phase 3 — App shell** (`df9d4a6`): solid full-width mobile bottom bar +
+  raised gradient Record button; greeting/back-aware header; `--primary-soft`
+  sidebar pills; no backdrop-blur.
+- ✅ **Phase 4 — Home** (`d5e49bf`): balance card (gradient + hide-balance eye
+  toggle), quick-actions grid, In/Out/Kept strip, recent activity; charts moved
+  to Reports (added "Spending by weekday" there); zero charts on home.
+- ◐ **Phase 5 — sweep (started)**: `c469f34` TransactionRow tinted category chips
+  + gradient LoginPage; `8af9796` warning states unified on `--warning`; Budgets
+  near-limit bar recolored. **Remaining:** TransactionForm/FilterPanel big type
+  toggle + quick date chips; Accounts/AccountDetail cards; Settings/Categories/
+  Tags/Books remnant sweep.
+- ☐ **Phases 6–9** not started (i18n/Bahasa, trust/PIN, perf hardening, a11y/QA).
+
+Verified each phase with `npm run build` + `npm run lint` + `npm run test` (88
+tests green); tokens/font + login hero confirmed rendering live in-browser. The
+authenticated pages (home, money pages) still need a manual visual pass — they sit
+behind Google OAuth, which can't be driven autonomously.
+
+---
+
 ## Design tokens (starting values — validate AA contrast before shipping)
 
 All in `src/index.css` `:root` / `.dark`, mapped via `@theme inline`. Keep every
