@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { format } from 'date-fns'
-import { Archive, ArrowLeft, Check, PiggyBank, Plus, Pencil, Trash2 } from 'lucide-react'
+import { Archive, Check, PiggyBank, Plus, Pencil, Trash2 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { PageHeader, Pill } from '@/components/ui/list'
 import { CenterSpinner } from '@/components/ui/States'
 import { useConfirm } from '@/components/ui/confirm-context'
 import { StarterGuide } from '@/components/ui/StarterGuide'
@@ -38,21 +38,16 @@ export function GoalsPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <div className="flex items-center gap-3 py-1">
-        <Link
-          to="/settings"
-          className="rounded-xl border border-transparent p-2 text-muted-foreground transition-all hover:border-border hover:bg-surface-muted hover:text-foreground"
-          aria-label="Back to settings"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <h1 className="flex-1 text-2xl font-extrabold tracking-tight lg:text-3xl">Savings goals</h1>
-        {goals.length > 0 && (
-          <Button size="sm" onClick={() => setCreating(true)}>
-            <Plus className="h-4 w-4" /> New
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Savings goals"
+        action={
+          goals.length > 0 ? (
+            <Pill variant="tint" icon={Plus} onClick={() => setCreating(true)}>
+              New
+            </Pill>
+          ) : undefined
+        }
+      />
 
       {isLoading ? (
         <CenterSpinner />
