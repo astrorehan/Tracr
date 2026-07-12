@@ -16,6 +16,8 @@ import { cn } from '@/lib/utils'
 import { formatMoney } from '@/lib/money'
 import { CategoryIcon } from '@/features/categories/CategoryIcon'
 import { TagChip } from '@/features/tags/TagChip'
+import { useT } from '@/features/settings/language-context'
+import { dateLocale } from '@/i18n'
 import type { Account, Category, Tag, Transaction } from '@/types/db'
 
 interface Props {
@@ -55,20 +57,24 @@ export function TransactionRow({
   onDuplicate,
   onEdit,
 }: Props) {
+  const { t } = useT()
   const account = accounts[tx.account_id]
   const counter = tx.counter_account_id ? accounts[tx.counter_account_id] : undefined
   const category = tx.category_id ? categories[tx.category_id] : undefined
-  const categoryLabel = splitCount > 0 ? `Split · ${splitCount} categories` : category?.name
+  const categoryLabel = splitCount > 0 ? t('tx.split', { n: splitCount }) : category?.name
 
   const title =
     tx.type === 'transfer'
       ? `${account?.name ?? '—'} → ${counter?.name ?? '—'}`
-      : (tx.payee || tx.note || categoryLabel || (tx.type === 'income' ? 'Income' : 'Expense'))
+      : tx.payee ||
+        tx.note ||
+        categoryLabel ||
+        t(tx.type === 'income' ? 'common.income' : 'common.expense')
 
   // When the payee leads the title, fold the note into the subtitle so it's not lost.
   const subtitle =
     tx.type === 'transfer'
-      ? 'Transfer'
+      ? t('common.transfer')
       : [categoryLabel, tx.payee && tx.note ? tx.note : null, account?.name]
           .filter(Boolean)
           .join(' · ')
@@ -107,7 +113,7 @@ export function TransactionRow({
           <span className="truncate">{title}</span>
         </p>
         <p className="mt-0.5 truncate text-xs font-medium text-muted-foreground">
-          {subtitle} · {format(new Date(tx.occurred_at), 'd MMM')}
+          {subtitle} · {format(new Date(tx.occurred_at), 'd MMM', { locale: dateLocale() })}
         </p>
         {linkedLabel && (
           <p className="mt-0.5 inline-flex max-w-full items-center gap-1 text-xs font-medium text-muted-foreground">
@@ -132,7 +138,7 @@ export function TransactionRow({
                 ? 'bg-foreground/10 text-foreground'
                 : 'bg-surface-muted text-muted-foreground',
             )}
-            title={tx.status === 'reconciled' ? 'Reconciled' : 'Cleared'}
+            title={tx.status === 'reconciled' ? t('tx.reconciled') : t('tx.cleared')}
           >
             {tx.status === 'reconciled' ? (
               <Lock className="h-3 w-3" />
@@ -140,7 +146,7 @@ export function TransactionRow({
               <Check className="h-3 w-3 stroke-[3]" />
             )}
             <span className="hidden sm:inline">
-              {tx.status === 'reconciled' ? 'Reconciled' : 'Cleared'}
+              {tx.status === 'reconciled' ? t('tx.reconciled') : t('tx.cleared')}
             </span>
           </span>
         )}
@@ -158,7 +164,7 @@ export function TransactionRow({
           <button
             onClick={() => onAttachments(tx.id)}
             className="inline-flex items-center gap-0.5 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
-            aria-label={`${attachmentCount} attachment(s)`}
+            aria-label={t('tx.attachments', { n: attachmentCount })}
           >
             <Paperclip className="h-3.5 w-3.5" />
             <span className="font-numeric text-xs font-bold">{attachmentCount}</span>
@@ -168,7 +174,7 @@ export function TransactionRow({
           <button
             onClick={() => onEdit(tx.id)}
             className="rounded-xl p-1.5 text-muted-foreground opacity-0 hover:text-primary hover:bg-primary/10 transition-all duration-200 group-hover:opacity-100"
-            aria-label="Edit transaction"
+            aria-label={t('tx.editTx')}
           >
             <Pencil className="h-4 w-4" />
           </button>
@@ -177,7 +183,7 @@ export function TransactionRow({
           <button
             onClick={() => onDuplicate(tx.id)}
             className="rounded-xl p-1.5 text-muted-foreground opacity-0 hover:text-primary hover:bg-primary/10 transition-all duration-200 group-hover:opacity-100"
-            aria-label="Duplicate transaction"
+            aria-label={t('tx.duplicateTx')}
           >
             <Copy className="h-4 w-4" />
           </button>
@@ -186,7 +192,7 @@ export function TransactionRow({
           <button
             onClick={() => onDelete(tx.id)}
             className="rounded-xl p-1.5 text-muted-foreground opacity-0 hover:text-danger hover:bg-danger/10 transition-all duration-200 group-hover:opacity-100"
-            aria-label="Delete transaction"
+            aria-label={t('tx.deleteTx')}
           >
             <Trash2 className="h-4 w-4" />
           </button>
