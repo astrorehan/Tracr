@@ -249,7 +249,7 @@ function AccountCard({
   const showUtil = isLiability && limit > 0
   const utilPct = showUtil ? Math.min(100, (owed / limit) * 100) : 0
   const available = limit - owed
-  const utilColor = utilPct >= 90 ? 'var(--danger)' : utilPct >= 70 ? '#f59e0b' : color
+  const utilColor = utilPct >= 90 ? 'var(--danger)' : utilPct >= 70 ? 'var(--warning)' : color
 
   return (
     <Card

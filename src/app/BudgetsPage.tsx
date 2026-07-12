@@ -213,7 +213,7 @@ function BudgetCard({
   const name = category?.name ?? 'Overall spending'
   const accent = category?.color ?? 'var(--primary)'
   const barColor =
-    status.level === 'over' ? 'var(--danger)' : status.level === 'near' ? '#f59e0b' : accent
+    status.level === 'over' ? 'var(--danger)' : status.level === 'near' ? 'var(--warning)' : accent
   const pctText = `${Math.round(status.pct)}%`
   const willExceed = status.level !== 'over' && status.projected > status.limit
 
@@ -285,7 +285,7 @@ function BudgetCard({
               status.level === 'over'
                 ? 'text-danger'
                 : status.level === 'near'
-                  ? 'text-amber-500'
+                  ? 'text-warning'
                   : 'text-positive',
             )}
           >
@@ -300,7 +300,7 @@ function BudgetCard({
       </div>
 
       {willExceed && (
-        <p className="text-xs font-semibold text-amber-500">
+        <p className="text-xs font-semibold text-warning">
           On track to spend {formatMoney(status.projected, currency, { signDisplay: 'never' })} —
           over budget.
         </p>
