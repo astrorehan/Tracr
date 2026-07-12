@@ -9,7 +9,6 @@ import { cn } from '@/lib/utils'
 import { useCreateAccount, useUpdateAccount } from './api'
 import { ACCOUNT_COLORS, ACCOUNT_TYPES, LIABILITY_TYPES } from './meta'
 import type { Account, AccountType } from '@/types/db'
-import { useT } from '@/features/settings/language-context'
 
 interface Props {
   open: boolean
@@ -18,17 +17,15 @@ interface Props {
 }
 
 export function AccountForm({ open, onClose, account }: Props) {
-  const { t } = useT()
   // Modal unmounts children when closed, so the body initializes fresh each open.
   return (
-    <Modal open={open} onClose={onClose} title={account ? t('acc.form.edit') : t('acc.form.new')}>
+    <Modal open={open} onClose={onClose} title={account ? 'Edit account' : 'New account'}>
       {open && <AccountFormBody onClose={onClose} account={account ?? null} />}
     </Modal>
   )
 }
 
 function AccountFormBody({ onClose, account }: { onClose: () => void; account: Account | null }) {
-  const { t } = useT()
   const create = useCreateAccount()
   const update = useUpdateAccount()
   const editing = Boolean(account)
@@ -64,7 +61,7 @@ function AccountFormBody({ onClose, account }: { onClose: () => void; account: A
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim()) {
-      setError(t('acc.form.errName'))
+      setError('Please name this account.')
       return
     }
     const magnitude = opening ? amountToMinor(opening, currency) : 0
@@ -103,26 +100,26 @@ function AccountFormBody({ onClose, account }: { onClose: () => void; account: A
       }
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('acc.form.errGeneric'))
+      setError(err instanceof Error ? err.message : 'Something went wrong.')
     }
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <Field label={t('common.name')}>
+      <Field label="Name">
         <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder={t('acc.form.placeholder')}
+          placeholder="e.g. BCA, Cash, GoPay, Binance"
           autoFocus
         />
       </Field>
 
-      <Field label={t('common.type') ?? 'Type'}>
+      <Field label="Type">
         <Select value={type} onChange={(e) => changeType(e.target.value as AccountType)}>
-          {ACCOUNT_TYPES.map((typeObj) => (
-            <option key={typeObj.value} value={typeObj.value}>
-              {t(typeObj.label)}
+          {ACCOUNT_TYPES.map((t) => (
+            <option key={t.value} value={t.value}>
+              {t.label}
             </option>
           ))}
         </Select>
@@ -133,7 +130,9 @@ function AccountFormBody({ onClose, account }: { onClose: () => void; account: A
         <div className="flex items-start gap-2.5 rounded-xl border border-danger/25 bg-danger/5 px-4 py-3">
           <Info className="mt-0.5 h-4 w-4 shrink-0 text-danger" />
           <p className="text-[12px] font-medium leading-snug text-muted-foreground">
-            {t('acc.form.debtTracked')} <span className="font-semibold text-danger">{t('acc.form.debtWord')}</span> {t('acc.form.debtDesc')}
+            Tracked as <span className="font-semibold text-danger">debt</span> — the balance is what
+            you still owe, and it lowers your net worth. Pay it down with a transfer from another
+            account.
           </p>
         </div>
       ) : (
@@ -160,17 +159,19 @@ function AccountFormBody({ onClose, account }: { onClose: () => void; account: A
           </span>
           <span className="min-w-0">
             <span className="block text-sm font-semibold text-foreground">
-              {t('acc.form.debtLabel')}
+              This account is money I owe
             </span>
             <span className="block text-xs font-medium text-muted-foreground">
-              {isLiability ? t('acc.form.debtCounted') : t('acc.form.debtTurnOn')}
+              {isLiability
+                ? 'Counted as debt — it lowers your net worth instead of adding to it.'
+                : 'Turn on if this is a debt you have to pay back (e.g. money you borrowed).'}
             </span>
           </span>
         </button>
       )}
 
       <div className="grid grid-cols-2 gap-3">
-        <Field label={t('common.currency')}>
+        <Field label="Currency">
           <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
             {CURRENCY_CODES.map((code) => (
               <option key={code} value={code}>
@@ -179,7 +180,7 @@ function AccountFormBody({ onClose, account }: { onClose: () => void; account: A
             ))}
           </Select>
         </Field>
-        <Field label={isLiability ? t('acc.form.amountOwed') : t('acc.form.openingBal')}>
+        <Field label={isLiability ? 'Amount owed now' : 'Opening balance'}>
           <Input
             type="number"
             inputMode="decimal"
@@ -192,24 +193,24 @@ function AccountFormBody({ onClose, account }: { onClose: () => void; account: A
       </div>
       {isLiability && (
         <p className="-mt-2 px-1 text-xs font-medium text-muted-foreground">
-          {t('acc.form.oweDesc')}
+          How much you currently owe on this account (we store it as a negative balance).
         </p>
       )}
 
       {isLiability && (
-        <Field label={t('acc.form.limit')}>
+        <Field label="Credit limit (optional)">
           <Input
             type="number"
             inputMode="decimal"
             step="any"
             value={creditLimit}
             onChange={(e) => setCreditLimit(e.target.value)}
-            placeholder={t('acc.form.limitPlaceholder')}
+            placeholder="e.g. your card’s spending limit"
           />
         </Field>
       )}
 
-      <Field label={t('acc.form.color')}>
+      <Field label="Color">
         <div className="flex flex-wrap gap-2">
           {ACCOUNT_COLORS.map((c) => (
             <button
@@ -248,9 +249,11 @@ function AccountFormBody({ onClose, account }: { onClose: () => void; account: A
           />
         </span>
         <span className="min-w-0">
-          <span className="block text-sm font-semibold text-foreground">{t('acc.form.excludeToggle')}</span>
+          <span className="block text-sm font-semibold text-foreground">Exclude from net worth</span>
           <span className="block text-xs font-medium text-muted-foreground">
-            {excludeFromStats ? t('acc.form.excludeHidden') : t('acc.form.excludeKeep')}
+            {excludeFromStats
+              ? 'Hidden from net worth, assets, debts &amp; allocation — still has its own history.'
+              : 'Keep a tracking-only or shared account out of your totals.'}
           </span>
         </span>
       </button>
@@ -259,10 +262,10 @@ function AccountFormBody({ onClose, account }: { onClose: () => void; account: A
 
       <div className="flex gap-3 pt-2">
         <Button type="button" variant="secondary" className="flex-1" onClick={onClose}>
-          {t('common.cancel')}
+          Cancel
         </Button>
         <Button type="submit" className="flex-1" loading={pending}>
-          {editing ? t('common.save') : t('acc.form.create')}
+          {editing ? 'Save' : 'Create'}
         </Button>
       </div>
     </form>
