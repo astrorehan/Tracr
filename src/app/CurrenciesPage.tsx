@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Coins, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { Coins, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select } from '@/components/ui/Input'
+import { PageHeader } from '@/components/ui/list'
 import { EmptyState } from '@/components/ui/States'
 import { CURRENCIES, CURRENCY_CODES, getCurrency } from '@/lib/currencies'
 import { cn } from '@/lib/utils'
@@ -80,27 +80,12 @@ export function CurrenciesPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">
-      {/* Header */}
-      <div className="flex items-center gap-3 py-1">
-        <Link
-          to="/settings"
-          className="rounded-xl border border-transparent p-2 text-muted-foreground transition-all hover:border-border hover:bg-surface-muted hover:text-foreground"
-          aria-label="Back to settings"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-2xl font-extrabold tracking-tight lg:text-3xl">Currencies</h1>
-          <p className="mt-0.5 text-sm font-medium text-muted-foreground">
-            Value foreign accounts in your base currency.
-          </p>
-        </div>
-      </div>
+      <PageHeader title="Currencies" subtitle="Value foreign accounts in your base currency." />
 
       {/* Base + refresh strip */}
       <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
         <div className="flex items-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-base font-bold text-primary ring-1 ring-primary/15">
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-soft text-base font-bold text-primary">
             {getCurrency(base).symbol}
           </span>
           <div>
@@ -231,12 +216,10 @@ function RateGroup({
                   <span
                     className={cn(
                       'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide',
-                      live
-                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                        : 'bg-primary/10 text-primary',
+                      live ? 'bg-positive/10 text-positive' : 'bg-primary-soft text-primary',
                     )}
                   >
-                    {live && <span className="h-1 w-1 rounded-full bg-emerald-500" />}
+                    {live && <span className="h-1 w-1 rounded-full bg-positive" />}
                     {live ? 'Live' : 'Manual'}
                   </span>
                 </div>

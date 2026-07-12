@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react'
-import { Link, Navigate, useParams } from 'react-router-dom'
+import { Navigate, useParams } from 'react-router-dom'
 import { format } from 'date-fns'
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
-import { Archive, ArrowLeft, Pencil, Scale } from 'lucide-react'
+import { Archive, Pencil, Scale } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Field, Input } from '@/components/ui/Input'
+import { PageHeader } from '@/components/ui/list'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
 import { useConfirm } from '@/components/ui/confirm-context'
 import { useAuth } from '@/features/auth/useAuth'
@@ -130,43 +131,38 @@ export function AccountDetailPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
-      <div className="flex items-center gap-3 py-1">
-        <Link
-          to="/accounts"
-          className="rounded-xl border border-transparent p-2 text-muted-foreground transition-all hover:border-border hover:bg-surface-muted hover:text-foreground"
-          aria-label="Back to accounts"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <h1 className="flex-1 truncate text-2xl font-extrabold tracking-tight lg:text-3xl">
-          {account.name}
-        </h1>
-        <button
-          onClick={() => setEditOpen(true)}
-          className="rounded-lg border border-transparent p-2 text-muted-foreground transition-colors hover:border-border hover:bg-surface-muted hover:text-foreground"
-          aria-label="Edit account"
-        >
-          <Pencil className="h-4 w-4" />
-        </button>
-        {!account.is_archived && (
-          <button
-            onClick={async () => {
-              if (
-                await confirm({
-                  title: `Archive "${account.name}"?`,
-                  message: 'It moves out of your active accounts but keeps its history.',
-                  confirmLabel: 'Archive',
-                })
-              )
-                archive.mutate(account.id)
-            }}
-            className="rounded-lg border border-transparent p-2 text-muted-foreground transition-colors hover:border-danger/20 hover:bg-danger/10 hover:text-danger"
-            aria-label="Archive account"
-          >
-            <Archive className="h-4 w-4" />
-          </button>
-        )}
-      </div>
+      <PageHeader
+        title={<span className="block truncate">{account.name}</span>}
+        action={
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setEditOpen(true)}
+              className="rounded-lg border border-transparent p-2 text-muted-foreground transition-colors hover:border-border hover:bg-surface-muted hover:text-foreground"
+              aria-label="Edit account"
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+            {!account.is_archived && (
+              <button
+                onClick={async () => {
+                  if (
+                    await confirm({
+                      title: `Archive "${account.name}"?`,
+                      message: 'It moves out of your active accounts but keeps its history.',
+                      confirmLabel: 'Archive',
+                    })
+                  )
+                    archive.mutate(account.id)
+                }}
+                className="rounded-lg border border-transparent p-2 text-muted-foreground transition-colors hover:border-danger/20 hover:bg-danger/10 hover:text-danger"
+                aria-label="Archive account"
+              >
+                <Archive className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        }
+      />
 
       {/* Balance hero + chart */}
       <Card className="overflow-hidden p-0">

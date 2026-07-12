@@ -1,9 +1,7 @@
 import { Fragment, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import {
   Archive,
   ArchiveRestore,
-  ArrowLeft,
   GitMerge,
   GripVertical,
   Pencil,
@@ -15,6 +13,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Field, Select } from '@/components/ui/Input'
+import { PageHeader } from '@/components/ui/list'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
 import { useConfirm } from '@/components/ui/confirm-context'
 import {
@@ -64,16 +63,7 @@ export function CategoriesPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <div className="flex items-center gap-3 py-1">
-        <Link
-          to="/settings"
-          className="rounded-xl p-2 text-muted-foreground hover:bg-surface-muted hover:text-foreground transition-all border border-transparent hover:border-border"
-          aria-label="Back to settings"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <h1 className="text-2xl font-extrabold tracking-tight lg:text-3xl">Categories</h1>
-      </div>
+      <PageHeader title="Categories" />
 
       {isLoading ? (
         <CenterSpinner />

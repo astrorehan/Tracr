@@ -148,7 +148,7 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
     })
 
   return (
-    <div className="sticky top-[80px] z-10 space-y-3 rounded-2xl border border-border bg-surface/95 p-4 shadow-sm backdrop-blur-xl">
+    <div className="sticky top-[80px] z-10 space-y-3 rounded-[20px] border border-border bg-surface p-4 shadow-sm">
       {/* Search */}
       <div className="relative">
         <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -180,7 +180,7 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
           className={cn(
             'col-span-2 inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-semibold shadow-sm transition-all sm:col-span-1',
             open || count > 0
-              ? 'border-primary/60 bg-primary/10 text-primary'
+              ? 'border-primary/60 bg-primary-soft text-primary'
               : 'border-border bg-surface text-foreground hover:bg-surface-muted',
           )}
           aria-expanded={open}
@@ -358,7 +358,7 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
                 className={cn(
                   'group inline-flex items-center gap-1 rounded-full border py-1 pl-3 pr-1.5 text-xs font-semibold transition',
                   matches
-                    ? 'border-primary/60 bg-primary/10 text-primary'
+                    ? 'border-primary/60 bg-primary-soft text-primary'
                     : 'border-border bg-surface text-foreground hover:bg-surface-muted',
                 )}
               >

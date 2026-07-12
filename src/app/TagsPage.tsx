@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { ArrowLeft, Pencil, Plus, Tags, Trash2 } from 'lucide-react'
-import { Card } from '@/components/ui/Card'
+import { Pencil, Plus, Tag as TagIcon, Tags, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
+import { PageHeader, Pill, ListCard, ListRow, IconChip } from '@/components/ui/list'
 import { useConfirm } from '@/components/ui/confirm-context'
 import { useDeleteTag, useTags } from '@/features/tags/api'
 import { TagForm } from '@/features/tags/TagForm'
@@ -30,21 +29,16 @@ export function TagsPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <div className="flex items-center gap-3 py-1">
-        <Link
-          to="/settings"
-          className="rounded-xl p-2 text-muted-foreground hover:bg-surface-muted hover:text-foreground transition-all border border-transparent hover:border-border"
-          aria-label="Back to settings"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <h1 className="flex-1 text-2xl font-extrabold tracking-tight lg:text-3xl">Tags</h1>
-        {(tags?.length ?? 0) > 0 && (
-          <Button variant="ghost" size="sm" onClick={() => setCreating(true)} className="h-8 rounded-xl">
-            <Plus className="h-3.5 w-3.5" /> Add
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Tags"
+        action={
+          (tags?.length ?? 0) > 0 ? (
+            <Pill variant="tint" icon={Plus} onClick={() => setCreating(true)}>
+              Add
+            </Pill>
+          ) : undefined
+        }
+      />
 
       {isLoading ? (
         <CenterSpinner />
@@ -60,33 +54,33 @@ export function TagsPage() {
           }
         />
       ) : (
-        <Card className="divide-y divide-border/60 py-1 px-4 shadow-sm">
+        <ListCard>
           {tags!.map((t) => (
-            <div key={t.id} className="flex items-center gap-3.5 py-3 group">
-              <span
-                className="h-4.5 w-4.5 shrink-0 rounded-lg shadow-sm border border-black/5"
-                style={{ backgroundColor: t.color ?? '#64748b' }}
-              />
-              <span className="flex-1 truncate text-sm font-bold text-foreground">{t.name}</span>
-              <div className="flex gap-1.5">
-                <button
-                  onClick={() => setEditing(t)}
-                  className="rounded-xl p-1.5 text-muted-foreground hover:text-foreground hover:bg-surface-muted transition-colors border border-transparent hover:border-border"
-                  aria-label={`Edit ${t.name}`}
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  onClick={() => remove(t)}
-                  className="rounded-xl p-1.5 text-muted-foreground hover:text-danger hover:bg-danger/10 transition-colors border border-transparent hover:border-danger/10"
-                  aria-label={`Delete ${t.name}`}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
+            <ListRow
+              key={t.id}
+              leading={<IconChip icon={TagIcon} color={t.color ?? '#64748b'} />}
+              title={t.name}
+              trailing={
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => setEditing(t)}
+                    className="rounded-xl border border-transparent p-1.5 text-muted-foreground transition-colors hover:border-border hover:bg-surface-muted hover:text-foreground"
+                    aria-label={`Edit ${t.name}`}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => remove(t)}
+                    className="rounded-xl border border-transparent p-1.5 text-muted-foreground transition-colors hover:border-danger/10 hover:bg-danger/10 hover:text-danger"
+                    aria-label={`Delete ${t.name}`}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              }
+            />
           ))}
-        </Card>
+        </ListCard>
       )}
 
       <TagForm

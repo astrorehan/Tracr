@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Plus, Pencil, Archive, GripVertical } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { PageHeader, Pill } from '@/components/ui/list'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
 import { useConfirm } from '@/components/ui/confirm-context'
 import { formatMoney } from '@/lib/money'
@@ -114,11 +115,11 @@ export function AccountsPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-extrabold tracking-tight lg:text-3xl">Accounts</h1>
-          {accounts && accounts.length > 0 && (
-            <p className="mt-1.5 text-sm font-medium text-muted-foreground">
+      <PageHeader
+        title="Accounts"
+        subtitle={
+          accounts && accounts.length > 0 ? (
+            <>
               <span className="font-numeric font-bold text-foreground">{formatMoney(net, base)}</span>{' '}
               net worth
               {hasLiabilities && (
@@ -134,13 +135,15 @@ export function AccountsPage() {
                   debts
                 </>
               )}
-            </p>
-          )}
-        </div>
-        <Button size="md" onClick={openNew}>
-          <Plus className="h-4 w-4 stroke-[2.5]" /> New account
-        </Button>
-      </header>
+            </>
+          ) : undefined
+        }
+        action={
+          <Pill variant="tint" icon={Plus} onClick={openNew}>
+            New account
+          </Pill>
+        }
+      />
 
       {isLoading ? (
         <CenterSpinner />

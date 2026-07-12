@@ -16,11 +16,11 @@ import {
   PiggyBank,
   Coins,
   Database,
-  ChevronRight,
 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Field, Select } from '@/components/ui/Input'
+import { PageHeader, Section, ListCard, ListRow, IconChip } from '@/components/ui/list'
 import { supabase } from '@/lib/supabase'
 import { CURRENCIES, CURRENCY_CODES } from '@/lib/currencies'
 import { useAuth } from '@/features/auth/useAuth'
@@ -37,28 +37,30 @@ interface NavItem {
   label: string
   desc: string
   icon: ComponentType<{ className?: string }>
-  tint: string
 }
 
-// Monochrome icon treatment — ink glyph on an inset surface, hairline ring. Keeps
-// the settings index in step with the black-and-white system (no rainbow tints).
-const TINT = 'bg-surface-muted text-foreground ring-border'
-
 const ORGANIZE: NavItem[] = [
-  { to: '/categories', label: 'Categories', desc: 'Income & expense groups', icon: Tag, tint: TINT },
-  { to: '/tags', label: 'Tags', desc: 'Free-form labels', icon: Tags, tint: TINT },
-  { to: '/rules', label: 'Rules', desc: 'Auto-categorize & tag', icon: Zap, tint: TINT },
+  { to: '/categories', label: 'Categories', desc: 'Income & expense groups', icon: Tag },
+  { to: '/tags', label: 'Tags', desc: 'Free-form labels', icon: Tags },
+  { to: '/rules', label: 'Rules', desc: 'Auto-categorize & tag', icon: Zap },
 ]
 
 const PLANNING: NavItem[] = [
-  { to: '/budgets', label: 'Budgets', desc: 'Limits & rollover', icon: Target, tint: TINT },
-  { to: '/bills', label: 'Bills', desc: 'Recurring & due dates', icon: Receipt, tint: TINT },
-  { to: '/goals', label: 'Savings goals', desc: 'Targets & progress', icon: PiggyBank, tint: TINT },
+  { to: '/budgets', label: 'Budgets', desc: 'Limits & rollover', icon: Target },
+  { to: '/bills', label: 'Bills', desc: 'Recurring & due dates', icon: Receipt },
+  { to: '/goals', label: 'Savings goals', desc: 'Targets & progress', icon: PiggyBank },
 ]
 
 const SYSTEM: NavItem[] = [
-  { to: '/currencies', label: 'Exchange rates', desc: 'Multi-currency conversion', icon: Coins, tint: TINT },
-  { to: '/data', label: 'Data & backup', desc: 'Import, export, restore', icon: Database, tint: TINT },
+  { to: '/currencies', label: 'Exchange rates', desc: 'Multi-currency conversion', icon: Coins },
+  { to: '/data', label: 'Data & backup', desc: 'Import, export, restore', icon: Database },
+]
+
+const COMING_SOON = [
+  { icon: Sparkles, label: 'AI spending insights' },
+  { icon: MessageCircle, label: 'Log via WhatsApp bot' },
+  { icon: Split, label: 'Split bills with friends' },
+  { icon: Table, label: 'Export to Google Sheets' },
 ]
 
 export function SettingsPage() {
@@ -79,28 +81,39 @@ export function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <h1 className="text-2xl font-extrabold tracking-tight lg:text-3xl">Settings</h1>
+      <PageHeader title="Settings" />
 
       {/* Profile */}
-      <Card className="flex items-center gap-4 p-5 shadow-sm">
+      <Card className="flex items-center gap-4 p-5">
         {profile?.avatar_url ? (
-          <img src={profile.avatar_url} alt="" className="h-14 w-14 rounded-2xl border border-border shadow-sm" />
+          <img
+            src={profile.avatar_url}
+            alt=""
+            className="h-14 w-14 rounded-2xl border border-border shadow-sm"
+          />
         ) : (
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 text-xl font-bold text-primary shadow-inner">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/20 bg-primary-soft text-xl font-bold text-primary">
             {(profile?.display_name ?? user?.email ?? '?').charAt(0).toUpperCase()}
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-lg font-bold text-foreground leading-tight">{profile?.display_name ?? 'Account'}</p>
-          <p className="truncate text-xs font-semibold text-muted-foreground mt-1">{user?.email}</p>
+          <p className="truncate text-lg font-bold leading-tight text-foreground">
+            {profile?.display_name ?? 'Account'}
+          </p>
+          <p className="mt-1 truncate text-xs font-semibold text-muted-foreground">{user?.email}</p>
         </div>
       </Card>
 
       {/* Preferences */}
       <Section title="Preferences">
-        <Card className="space-y-5 p-5 shadow-sm">
+        <Card className="space-y-5 p-5">
           <Field label="Base currency">
-            <Select value={base} disabled={saving} onChange={(e) => saveBaseCurrency(e.target.value)} className="bg-surface-muted/40">
+            <Select
+              value={base}
+              disabled={saving}
+              onChange={(e) => saveBaseCurrency(e.target.value)}
+              className="bg-surface-muted/40"
+            >
               {CURRENCY_CODES.map((code) => (
                 <option key={code} value={code}>
                   {code} — {CURRENCIES[code].name}
@@ -148,48 +161,42 @@ export function SettingsPage() {
 
       {/* Organize */}
       <Section title="Organize">
-        <div className="grid gap-3 sm:grid-cols-2">
+        <ListCard>
           {ORGANIZE.map((item) => (
-            <NavCard key={item.to} {...item} />
+            <NavRow key={item.to} {...item} />
           ))}
-        </div>
+        </ListCard>
       </Section>
 
       {/* Planning */}
       <Section title="Planning">
-        <div className="grid gap-3 sm:grid-cols-2">
+        <ListCard>
           {PLANNING.map((item) => (
-            <NavCard key={item.to} {...item} />
+            <NavRow key={item.to} {...item} />
           ))}
-        </div>
+        </ListCard>
       </Section>
 
       {/* Currency & data */}
       <Section title="Currency & data">
-        <div className="grid gap-3 sm:grid-cols-2">
+        <ListCard>
           {SYSTEM.map((item) => (
-            <NavCard key={item.to} {...item} />
+            <NavRow key={item.to} {...item} />
           ))}
-        </div>
+        </ListCard>
       </Section>
 
       {/* Roadmap */}
       <Section title="Coming soon">
-        <Card className="divide-y divide-border/60 py-1 px-5 shadow-sm">
-          {[
-            { icon: Sparkles, label: 'AI spending insights', color: 'text-foreground bg-surface-muted' },
-            { icon: MessageCircle, label: 'Log via WhatsApp bot', color: 'text-foreground bg-surface-muted' },
-            { icon: Split, label: 'Split bills with friends', color: 'text-foreground bg-surface-muted' },
-            { icon: Table, label: 'Export to Google Sheets', color: 'text-foreground bg-surface-muted' },
-          ].map(({ icon: Icon, label, color }) => (
-            <div key={label} className="flex items-center gap-3.5 py-3 text-sm font-semibold text-muted-foreground">
-              <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg border border-transparent', color)}>
-                <Icon className="h-4 w-4" />
-              </div>
-              <span>{label}</span>
-            </div>
+        <ListCard>
+          {COMING_SOON.map(({ icon: Icon, label }) => (
+            <ListRow
+              key={label}
+              leading={<IconChip icon={Icon} plain />}
+              title={<span className="text-muted-foreground">{label}</span>}
+            />
           ))}
-        </Card>
+        </ListCard>
       </Section>
 
       {/* Account */}
@@ -197,43 +204,40 @@ export function SettingsPage() {
         <DeleteAccountCard />
       </Section>
 
-      <Button variant="outline" className="w-full border-border/80 hover:bg-danger/5 hover:text-danger hover:border-danger/20 transition-all font-bold" onClick={() => signOut()}>
+      <Button
+        variant="outline"
+        className="w-full border-border/80 font-bold transition-all hover:border-danger/20 hover:bg-danger/5 hover:text-danger"
+        onClick={() => signOut()}
+      >
         <LogOut className="h-4 w-4" /> Sign out
       </Button>
 
       <div className="flex items-center justify-center gap-4 text-xs font-semibold text-muted-foreground">
-        <Link to="/legal/terms" className="hover:text-foreground">Terms</Link>
-        <span aria-hidden className="text-border">·</span>
-        <Link to="/legal/privacy" className="hover:text-foreground">Privacy</Link>
+        <Link to="/legal/terms" className="hover:text-foreground">
+          Terms
+        </Link>
+        <span aria-hidden className="text-border">
+          ·
+        </span>
+        <Link to="/legal/privacy" className="hover:text-foreground">
+          Privacy
+        </Link>
       </div>
 
-      <p className="pb-4 text-center text-xs font-bold tracking-wider text-muted-foreground">Tracr · v0.1</p>
+      <p className="pb-4 text-center text-xs font-bold tracking-wider text-muted-foreground">
+        Tracr · v0.1
+      </p>
     </div>
   )
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function NavRow({ to, label, desc, icon }: NavItem) {
   return (
-    <section className="space-y-2.5">
-      <h2 className="section-head px-1 text-[17px] text-foreground">{title}</h2>
-      {children}
-    </section>
-  )
-}
-
-function NavCard({ to, label, desc, icon: Icon, tint }: NavItem) {
-  return (
-    <Link to={to}>
-      <Card hoverable className="flex items-center gap-3.5 p-4 shadow-sm">
-        <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1', tint)}>
-          <Icon className="h-5 w-5" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold text-foreground">{label}</p>
-          <p className="truncate text-xs font-medium text-muted-foreground">{desc}</p>
-        </div>
-        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-      </Card>
-    </Link>
+    <ListRow
+      to={to}
+      leading={<IconChip icon={icon} plain className="text-foreground" />}
+      title={label}
+      subtitle={desc}
+    />
   )
 }

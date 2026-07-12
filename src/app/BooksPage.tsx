@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
+import { PageHeader, Pill } from '@/components/ui/list'
 import { CenterSpinner } from '@/components/ui/States'
 import { cn } from '@/lib/utils'
 import { useActiveBook } from '@/features/books/useActiveBook'
@@ -64,16 +65,15 @@ export function BooksPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <div className="flex items-center gap-3 py-1">
-        <h1 className="flex-1 text-2xl font-extrabold tracking-tight lg:text-3xl">Books</h1>
-        <Button size="sm" onClick={() => setCreating(true)}>
-          <Plus className="h-4 w-4" /> New book
-        </Button>
-      </div>
-      <p className="-mt-2 text-sm text-muted-foreground">
-        Each book is its own separate set of accounts, transactions and budgets. Switch between them
-        anytime — nothing is shared across books.
-      </p>
+      <PageHeader
+        title="Books"
+        subtitle="Each book is its own separate set of accounts, transactions and budgets. Switch anytime — nothing is shared across books."
+        action={
+          <Pill variant="tint" icon={Plus} onClick={() => setCreating(true)}>
+            New book
+          </Pill>
+        }
+      />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {active.map((book) => (
@@ -176,7 +176,7 @@ function BookCard({
           <p className="flex items-center gap-1.5 truncate text-sm font-bold text-foreground">
             {book.name}
             {isActive && (
-              <span className="inline-flex items-center gap-0.5 rounded-md bg-primary/10 px-1.5 py-0.5 text-xs font-bold uppercase text-primary">
+              <span className="inline-flex items-center gap-0.5 rounded-md bg-primary-soft px-1.5 py-0.5 text-xs font-bold uppercase text-primary">
                 <Check className="h-2.5 w-2.5" /> Open
               </span>
             )}
