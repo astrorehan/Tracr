@@ -272,6 +272,11 @@ input[type='number'] {
   }
 }
 
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
 @theme {
   --animate-slide-up: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-fade-in: fadeIn 0.2s ease-out both;
@@ -279,6 +284,7 @@ input[type='number'] {
   --animate-rise: riseIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
   /* Chat bubbles settle in fast — long rise feels laggy mid-conversation */
   --animate-msg: riseIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-marquee: marquee 35s linear infinite;
 }
 
 /* Stagger steps for grouped reveals — pair with animate-rise */

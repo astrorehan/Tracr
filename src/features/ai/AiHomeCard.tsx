@@ -66,20 +66,29 @@ export function AiHomeCard() {
         </button>
 
         {/* Quick questions — tap to open the chat already asked. */}
-        <div className="relative flex gap-2 overflow-x-auto px-4 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {STARTERS.slice(0, 3).map((k) => (
-            <button
-              key={k}
-              type="button"
-              onClick={() => {
-                setOpened(true)
-                sheet.current?.ask(t(k))
-              }}
-              className="pressable shrink-0 rounded-full border border-border bg-surface px-3.5 py-2 text-xs font-semibold text-foreground transition-colors hover:border-primary/40 hover:bg-primary-soft/50"
-            >
-              {t(k)}
-            </button>
-          ))}
+        <div className="relative overflow-hidden pb-4 mx-4 group">
+          <div className="pointer-events-none absolute left-0 top-0 bottom-4 z-20 w-8 bg-gradient-to-r from-surface to-transparent" />
+          <div className="pointer-events-none absolute right-0 top-0 bottom-4 z-20 w-8 bg-gradient-to-l from-surface to-transparent" />
+          
+          <div className="flex w-max animate-marquee group-hover:[animation-play-state:paused]">
+            {[0, 1].map((setIndex) => (
+              <div key={setIndex} className="flex gap-2 pr-2">
+                {STARTERS.slice(0, 3).map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => {
+                      setOpened(true)
+                      sheet.current?.ask(t(k))
+                    }}
+                    className="pressable shrink-0 rounded-full border border-border bg-surface px-3.5 py-2 text-xs font-semibold text-foreground transition-colors hover:border-primary/40 hover:bg-primary-soft/50"
+                  >
+                    {t(k)}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 

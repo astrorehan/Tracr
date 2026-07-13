@@ -1,5 +1,5 @@
 import { useState, type ComponentType } from 'react'
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
   Wallet,
@@ -12,7 +12,6 @@ import {
   Plus,
   Moon,
   Sun,
-  ChevronLeft,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { MsgKey } from '@/i18n'
@@ -39,22 +38,6 @@ const NAV: { to: string; label: MsgKey; icon: IconType }[] = [
   { to: '/settings', label: 'nav.settings', icon: Settings },
 ]
 
-const SECTION_TITLES: Record<string, MsgKey> = {
-  '/': 'nav.home',
-  '/accounts': 'nav.accounts',
-  '/transactions': 'nav.activity',
-  '/reports': 'nav.reports',
-  '/budgets': 'nav.budgets',
-  '/bills': 'section.billsSubs',
-  '/goals': 'section.savingsGoals',
-  '/settings': 'nav.settings',
-  '/categories': 'section.categories',
-  '/tags': 'section.tags',
-  '/currencies': 'section.currencies',
-  '/data': 'section.dataBackup',
-  '/books': 'section.books',
-}
-
 export function AppLayout() {
   const [addOpen, setAddOpen] = useState(false)
   const { profile } = useAuth()
@@ -62,10 +45,7 @@ export function AppLayout() {
   const { theme, toggle } = useTheme()
   const { t } = useT()
   const { pathname } = useLocation()
-  const navigate = useNavigate()
   const isHome = pathname === '/'
-  const section = t(SECTION_TITLES[pathname] ?? 'section.workspace')
-  const firstName = profile?.display_name?.split(' ')[0]
 
   // Refresh FX rates from the free live sources once per session.
   useLiveRatesSync()
@@ -115,58 +95,22 @@ export function AppLayout() {
 
       {/* ───────────────────────── Main column ───────────────────────── */}
       <div className="relative z-10 flex min-w-0 flex-1 flex-col">
-        {/* Top header: greeting on home, back + title on subpages. Solid, no blur.
-            On the home route it hides on mobile — the balance hero owns the top
-            of the screen there (GoPay style) — and stays on tablet/desktop. */}
-        <header
-          className={cn(
-            'sticky top-0 z-20 h-16 shrink-0 items-center justify-between border-b border-border bg-surface px-4 sm:px-6 lg:px-8 print:hidden',
-            isHome ? 'hidden sm:flex' : 'flex',
-          )}
-        >
-          {/* Left: greeting (home) · back + title (subpages) */}
-          {isHome ? (
-            <div className="flex items-center gap-2.5">
-              <img
-                src="/Tracr.svg"
-                alt="Tracr"
-                className="h-8 w-8 rounded-lg border border-border shadow-sm sm:hidden"
-              />
-              <p className="text-base font-bold text-foreground sm:text-lg">
-                {t(greetingKey())}
-                {firstName ? `, ${firstName}` : ''} 👋
-              </p>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => navigate(-1)}
-                className="pressable -ml-1.5 flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
-                aria-label={t('layout.goBack')}
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-              <span className="text-base font-bold text-foreground sm:text-lg">{section}</span>
-            </div>
-          )}
+        {/* Floating top right controls */}
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 sm:gap-3 sm:right-6 lg:right-8 print:hidden">
+          <span className="hidden items-center gap-1.5 text-xs font-medium text-muted-foreground md:inline-flex bg-surface/80 backdrop-blur px-2 py-1 rounded-lg border border-border">
+            <span className="h-1.5 w-1.5 rounded-full bg-positive" />
+            {t('layout.saved')}
+          </span>
 
-          {/* Right: sync · notifications · theme · profile */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            <span className="hidden items-center gap-1.5 text-xs font-medium text-muted-foreground md:inline-flex">
-              <span className="h-1.5 w-1.5 rounded-full bg-positive" />
-              {t('layout.saved')}
-            </span>
-
+          <div className="bg-surface/80 backdrop-blur rounded-xl border border-border flex items-center p-1 shadow-sm gap-1">
             <NotificationBell />
-
             <button
               onClick={toggle}
-              className="pressable flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface-muted text-muted-foreground transition-colors hover:text-foreground"
+              className="pressable flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
               aria-label={t('layout.toggleTheme')}
             >
               {theme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
             </button>
-
             <Link
               to="/settings"
               className="pressable transition-transform"
@@ -176,16 +120,16 @@ export function AppLayout() {
                 <img
                   src={profile.avatar_url}
                   alt=""
-                  className="h-9 w-9 rounded-xl border border-border object-cover shadow-sm transition-colors hover:border-primary/50"
+                  className="h-9 w-9 rounded-lg object-cover transition-opacity hover:opacity-80"
                 />
               ) : (
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-primary-soft text-sm font-bold text-primary transition-colors hover:border-primary/50">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-soft text-sm font-bold text-primary transition-opacity hover:opacity-80">
                   {(profile?.display_name ?? 'U').charAt(0).toUpperCase()}
                 </div>
               )}
             </Link>
           </div>
-        </header>
+        </div>
 
         {/* Scrolling body. The home route drops padding so its gradient hero can
             bleed edge-to-edge; the page manages its own spacing there. */}
@@ -279,11 +223,4 @@ function MobileNavLink({ to, label, icon: Icon }: { to: string; label: MsgKey; i
       )}
     </NavLink>
   )
-}
-
-function greetingKey(): MsgKey {
-  const h = new Date().getHours()
-  if (h < 12) return 'greeting.morning'
-  if (h < 18) return 'greeting.afternoon'
-  return 'greeting.evening'
 }
