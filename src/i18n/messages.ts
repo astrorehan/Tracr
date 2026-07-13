@@ -143,6 +143,19 @@ export const MESSAGES = {
   },
   'ai.analyzing2': { en: 'Adding up the numbers…', id: 'Menjumlahkan angka…' },
   'ai.analyzing3': { en: 'Writing your summary…', id: 'Menulis ringkasanmu…' },
+  'ai.attach': { en: 'Attach a receipt photo', id: 'Lampirkan foto struk' },
+  'ai.attachHint': {
+    en: 'Send a receipt photo — I read it and help record it.',
+    id: 'Kirim foto struk — aku baca dan bantu catat.',
+  },
+  'ai.removeImage': { en: 'Remove photo', id: 'Hapus foto' },
+  'ai.captionPlaceholder': { en: 'Add a note… (optional)', id: 'Tambah catatan… (opsional)' },
+  'ai.readingReceipt': { en: 'Reading the receipt…', id: 'Membaca struk…' },
+  'ai.imageInvalid': {
+    en: "That file can't be read — use a JPG/PNG photo.",
+    id: 'File tidak bisa dibaca — pakai foto JPG/PNG.',
+  },
+  'ai.photo': { en: 'Photo', id: 'Foto' },
   // ── Accounts ─────────────────────────────────────────────────────────────
   'acc.title': { en: 'Accounts', id: 'Dompet' },
   'acc.new': { en: 'New account', id: 'Dompet baru' },

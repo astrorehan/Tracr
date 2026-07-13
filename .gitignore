@@ -23,6 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 
+supabase/.temp/
+
 # Secrets — never commit
 supabase_pass.md
 .env

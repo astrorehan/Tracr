@@ -8,6 +8,8 @@ export interface AiResponse {
   text?: string
   limited?: boolean
   error?: string
+  /** True when the assistant wrote a transaction — caches must refresh. */
+  recorded?: boolean
 }
 
 export type ChatMsg = {
@@ -15,6 +17,8 @@ export type ChatMsg = {
   content: string
   /** Marks quota / failure notices so they can render differently. */
   kind?: 'limit' | 'error'
+  /** Receipt photo (data URL) shown in the bubble. Not persisted — see saveChat. */
+  image?: string
 }
 
 // Keep the sent history short — the model only needs recent context, and every
@@ -50,8 +54,15 @@ export function loadChat(bookId: string | null): ChatMsg[] {
 export function saveChat(bookId: string | null, messages: ChatMsg[]) {
   if (!bookId) return
   try {
-    if (messages.length === 0) sessionStorage.removeItem(chatKey(bookId))
-    else sessionStorage.setItem(chatKey(bookId), JSON.stringify(messages.slice(-CHAT_CAP)))
+    if (messages.length === 0) {
+      sessionStorage.removeItem(chatKey(bookId))
+      return
+    }
+    // Photos are hundreds of KB of base64 — persisting them would blow the
+    // ~5MB sessionStorage budget after a few scans. Keep the text only; a
+    // restored conversation shows a "photo" placeholder instead.
+    const slim = messages.slice(-CHAT_CAP).map((m) => (m.image ? { ...m, image: undefined } : m))
+    sessionStorage.setItem(chatKey(bookId), JSON.stringify(slim))
   } catch {
     /* private mode — ignore */
   }
