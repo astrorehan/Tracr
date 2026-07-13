@@ -8,11 +8,14 @@ import {
   type FormEvent,
 } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowUp, RotateCcw, Sparkles, X } from 'lucide-react'
+import { ArrowUp, ImagePlus, RotateCcw, Sparkles, X } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useT } from '@/features/settings/language-context'
 import { useActiveBook } from '@/features/books/useActiveBook'
+import { qk } from '@/lib/queryClient'
 import { cn } from '@/lib/utils'
 import { AiMarkdown } from './Markdown'
+import { compressImage } from './image'
 import { callAi, loadChat, saveChat, HISTORY_LIMIT, STARTERS, type ChatMsg } from './api'
 
 /** The assistant's face: a gradient sparkle chip, same everywhere it appears. */
@@ -92,10 +95,16 @@ export const ChatSheet = forwardRef<ChatSheetHandle, ChatSheetProps>(function Ch
 ) {
   const { t, lang } = useT()
   const { activeBookId } = useActiveBook()
+  const queryClient = useQueryClient()
 
   const [messages, setMessages] = useState<ChatMsg[]>(() => loadChat(activeBookId))
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
+  // The receipt photo staged in the input dock, ready to send.
+  const [pendingImage, setPendingImage] = useState<string | null>(null)
+  const [imageError, setImageError] = useState(false)
+  // Whether the in-flight question carries a photo (drives the typing label).
+  const [readingReceipt, setReadingReceipt] = useState(false)
   // Index of the reply currently being "typed out" (only ever the newest one).
   const [animIdx, setAnimIdx] = useState<number | null>(null)
 
@@ -105,6 +114,7 @@ export const ChatSheet = forwardRef<ChatSheetHandle, ChatSheetProps>(function Ch
   if (prevBook !== activeBookId) {
     setPrevBook(activeBookId)
     setAnimIdx(null)
+    setPendingImage(null)
     setMessages(loadChat(activeBookId))
   }
 
@@ -160,18 +170,28 @@ export const ChatSheet = forwardRef<ChatSheetHandle, ChatSheetProps>(function Ch
   }, [open, scrollToBottom])
 
   const send = useCallback(
-    async (raw: string) => {
+    async (raw: string, image?: string | null) => {
       const question = raw.trim()
-      if (!question || busy || !activeBookId) return
+      if ((!question && !image) || busy || !activeBookId) return
       const history = messages.filter((m) => !m.kind).slice(-HISTORY_LIMIT)
       const replyAt = messages.length + 1
-      setMessages((m) => [...m, { role: 'user', content: question }])
+      setMessages((m) => [...m, { role: 'user', content: question, image: image ?? undefined }])
       setInput('')
+      setPendingImage(null)
+      setImageError(false)
       setBusy(true)
+      setReadingReceipt(!!image)
       setAnimIdx(null)
       stickRef.current = true
       try {
-        const data = await callAi({ mode: 'chat', book_id: activeBookId, lang, question, history })
+        const data = await callAi({
+          mode: 'chat',
+          book_id: activeBookId,
+          lang,
+          question,
+          ...(image ? { image } : {}),
+          history,
+        })
         const msg: ChatMsg = data.limited
           ? { role: 'model', content: t('ai.limit'), kind: 'limit' }
           : data.text
@@ -179,26 +199,47 @@ export const ChatSheet = forwardRef<ChatSheetHandle, ChatSheetProps>(function Ch
             : { role: 'model', content: t('ai.error'), kind: 'error' }
         setMessages((m) => [...m, msg])
         if (!msg.kind) setAnimIdx(replyAt)
+        // The assistant wrote a transaction — refresh everything that shows money.
+        if (data.recorded) {
+          void queryClient.invalidateQueries({ queryKey: ['transactions'] })
+          void queryClient.invalidateQueries({ queryKey: qk.balances })
+          void queryClient.invalidateQueries({ queryKey: qk.payees })
+        }
       } catch {
         setMessages((m) => [...m, { role: 'model', content: t('ai.error'), kind: 'error' }])
       } finally {
         setBusy(false)
+        setReadingReceipt(false)
         inputRef.current?.focus()
       }
     },
-    [busy, activeBookId, messages, lang, t],
+    [busy, activeBookId, messages, lang, t, queryClient],
   )
 
   useImperativeHandle(ref, () => ({ ask: (q: string) => void send(q) }), [send])
 
   function submit(e: FormEvent) {
     e.preventDefault()
-    void send(input)
+    void send(input, pendingImage)
   }
 
   function reset() {
     setAnimIdx(null)
+    setPendingImage(null)
     setMessages([])
+  }
+
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  async function pickImage(file: File | undefined) {
+    if (!file) return
+    setImageError(false)
+    try {
+      setPendingImage(await compressImage(file))
+      inputRef.current?.focus()
+    } catch {
+      setImageError(true)
+    }
   }
 
   function handleScroll() {
@@ -279,7 +320,9 @@ export const ChatSheet = forwardRef<ChatSheetHandle, ChatSheetProps>(function Ch
                   onSkip={finish}
                 />
               ))}
-              {busy && <TypingRow label={t('ai.thinking')} />}
+              {busy && (
+                <TypingRow label={readingReceipt ? t('ai.readingReceipt') : t('ai.thinking')} />
+              )}
             </div>
           )}
         </div>
@@ -289,19 +332,69 @@ export const ChatSheet = forwardRef<ChatSheetHandle, ChatSheetProps>(function Ch
           onSubmit={submit}
           className="border-t border-border bg-surface px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3"
         >
+          {/* Staged receipt photo */}
+          {pendingImage && (
+            <div className="animate-msg mb-2.5 flex items-center gap-2.5 px-1">
+              <span className="relative inline-block">
+                <img
+                  src={pendingImage}
+                  alt=""
+                  className="h-14 w-14 rounded-xl border border-border object-cover shadow-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setPendingImage(null)}
+                  aria-label={t('ai.removeImage')}
+                  className="pressable absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-surface text-muted-foreground shadow-sm hover:text-foreground"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+              <p className="text-xs font-semibold text-muted-foreground">{t('ai.attachHint')}</p>
+            </div>
+          )}
+          {imageError && (
+            <p className="mb-2 px-1 text-xs font-semibold text-danger">{t('ai.imageInvalid')}</p>
+          )}
+
           <div className="flex items-center gap-2">
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={(e) => {
+                void pickImage(e.target.files?.[0])
+                e.target.value = '' // same file can be picked again
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={busy || !activeBookId}
+              aria-label={t('ai.attach')}
+              title={t('ai.attach')}
+              className={cn(
+                'pressable flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition-colors disabled:pointer-events-none disabled:opacity-40',
+                pendingImage
+                  ? 'border-primary/50 bg-primary-soft text-primary'
+                  : 'border-border bg-surface-muted/60 text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <ImagePlus className="h-5 w-5" />
+            </button>
             <input
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={t('ai.askPlaceholder')}
+              placeholder={pendingImage ? t('ai.captionPlaceholder') : t('ai.askPlaceholder')}
               disabled={!activeBookId}
               aria-label={t('ai.chatTitle')}
               className="h-12 w-full flex-1 rounded-full border border-border bg-surface-muted/60 px-5 text-[15px] text-foreground placeholder:text-muted-foreground focus-visible:border-primary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 disabled:opacity-50"
             />
             <button
               type="submit"
-              disabled={busy || !input.trim() || !activeBookId}
+              disabled={busy || (!input.trim() && !pendingImage) || !activeBookId}
               aria-label={t('ai.send')}
               className="brand-gradient btn-sheen pressable flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-white disabled:pointer-events-none disabled:opacity-40"
             >
@@ -347,6 +440,10 @@ function EmptyChat({ onPick, disabled }: { onPick: (q: string) => void; disabled
           </button>
         ))}
       </div>
+      <p className="stagger-5 animate-rise mt-4 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+        <ImagePlus className="h-3.5 w-3.5" />
+        {t('ai.attachHint')}
+      </p>
     </div>
   )
 }
@@ -364,8 +461,17 @@ function Bubble({
   if (msg.role === 'user') {
     return (
       <div className="animate-msg flex justify-end">
-        <div className="max-w-[85%] whitespace-pre-wrap rounded-[20px] rounded-br-md bg-primary px-4 py-2.5 text-sm font-medium leading-relaxed text-primary-foreground shadow-sm">
-          {msg.content}
+        <div className="max-w-[85%] overflow-hidden rounded-[20px] rounded-br-md bg-primary text-primary-foreground shadow-sm">
+          {msg.image && (
+            <img src={msg.image} alt="" className="max-h-56 w-full object-cover" />
+          )}
+          {msg.content ? (
+            <p className="whitespace-pre-wrap px-4 py-2.5 text-sm font-medium leading-relaxed">
+              {msg.content}
+            </p>
+          ) : (
+            !msg.image && <PhotoPlaceholder />
+          )}
         </div>
       </div>
     )
@@ -388,6 +494,17 @@ function Bubble({
         <AiMarkdown text={text} className={cn(typing != null && 'ai-caret')} />
       </div>
     </div>
+  )
+}
+
+/** Stand-in for a photo-only message restored from storage (photos aren't
+ *  persisted — see saveChat). */
+function PhotoPlaceholder() {
+  const { t } = useT()
+  return (
+    <p className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium leading-relaxed">
+      <ImagePlus className="h-4 w-4" /> {t('ai.photo')}
+    </p>
   )
 }
 
