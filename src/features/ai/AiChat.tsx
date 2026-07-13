@@ -15,8 +15,9 @@ import { useActiveBook } from '@/features/books/useActiveBook'
 import { qk } from '@/lib/queryClient'
 import { cn } from '@/lib/utils'
 import { AiMarkdown } from './Markdown'
-import { compressImage } from './image'
-import { callAi, loadChat, saveChat, HISTORY_LIMIT, STARTERS, type ChatMsg } from './api'
+import { prepareScanImages } from './image'
+import { callAi, loadChat, saveChat, HISTORY_LIMIT, STARTERS, type ChatMsg, type ScanDocument } from './api'
+import { ScanImportModal } from './ScanImportModal'
 
 /** The assistant's face: a gradient sparkle chip, same everywhere it appears. */
 export function AiAvatar({
@@ -100,11 +101,15 @@ export const ChatSheet = forwardRef<ChatSheetHandle, ChatSheetProps>(function Ch
   const [messages, setMessages] = useState<ChatMsg[]>(() => loadChat(activeBookId))
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
-  // The receipt photo staged in the input dock, ready to send.
-  const [pendingImage, setPendingImage] = useState<string | null>(null)
+  // Prepared scan tiles staged in the dock, how many photos the user picked
+  // (for the thumbnail badge), and a preview of the first tile.
+  const [pendingScan, setPendingScan] = useState<string[]>([])
+  const [pendingCount, setPendingCount] = useState(0)
   const [imageError, setImageError] = useState(false)
-  // Whether the in-flight question carries a photo (drives the typing label).
+  // Whether a scan is in flight (drives the typing label).
   const [readingReceipt, setReadingReceipt] = useState(false)
+  // Extracted document awaiting the one bulk-confirm in the review modal.
+  const [scan, setScan] = useState<ScanDocument | null>(null)
   // Index of the reply currently being "typed out" (only ever the newest one).
   const [animIdx, setAnimIdx] = useState<number | null>(null)
 
@@ -114,7 +119,9 @@ export const ChatSheet = forwardRef<ChatSheetHandle, ChatSheetProps>(function Ch
   if (prevBook !== activeBookId) {
     setPrevBook(activeBookId)
     setAnimIdx(null)
-    setPendingImage(null)
+    setPendingScan([])
+    setPendingCount(0)
+    setScan(null)
     setMessages(loadChat(activeBookId))
   }
 
@@ -170,17 +177,14 @@ export const ChatSheet = forwardRef<ChatSheetHandle, ChatSheetProps>(function Ch
   }, [open, scrollToBottom])
 
   const send = useCallback(
-    async (raw: string, image?: string | null) => {
+    async (raw: string) => {
       const question = raw.trim()
-      if ((!question && !image) || busy || !activeBookId) return
+      if (!question || busy || !activeBookId) return
       const history = messages.filter((m) => !m.kind).slice(-HISTORY_LIMIT)
       const replyAt = messages.length + 1
-      setMessages((m) => [...m, { role: 'user', content: question, image: image ?? undefined }])
+      setMessages((m) => [...m, { role: 'user', content: question }])
       setInput('')
-      setPendingImage(null)
-      setImageError(false)
       setBusy(true)
-      setReadingReceipt(!!image)
       setAnimIdx(null)
       stickRef.current = true
       try {
@@ -189,7 +193,6 @@ export const ChatSheet = forwardRef<ChatSheetHandle, ChatSheetProps>(function Ch
           book_id: activeBookId,
           lang,
           question,
-          ...(image ? { image } : {}),
           history,
         })
         const msg: ChatMsg = data.limited
@@ -209,33 +212,68 @@ export const ChatSheet = forwardRef<ChatSheetHandle, ChatSheetProps>(function Ch
         setMessages((m) => [...m, { role: 'model', content: t('ai.error'), kind: 'error' }])
       } finally {
         setBusy(false)
-        setReadingReceipt(false)
         inputRef.current?.focus()
       }
     },
     [busy, activeBookId, messages, lang, t, queryClient],
   )
 
+  // Photos/screenshots take a separate path: extract the rows, then show ONE
+  // review-and-confirm modal instead of a back-and-forth chat exchange.
+  const runScan = useCallback(async () => {
+    if (pendingScan.length === 0 || busy || !activeBookId) return
+    const caption = input.trim()
+    setBusy(true)
+    setReadingReceipt(true)
+    try {
+      const data = await callAi({
+        mode: 'scan',
+        book_id: activeBookId,
+        lang,
+        images: pendingScan,
+        ...(caption ? { question: caption } : {}),
+      })
+      if (data.limited) {
+        setMessages((m) => [...m, { role: 'model', content: t('ai.limit'), kind: 'limit' }])
+      } else if (data.scan) {
+        setScan(data.scan)
+        setPendingScan([])
+        setPendingCount(0)
+        setInput('')
+      } else {
+        setMessages((m) => [...m, { role: 'model', content: t('ai.scanFailed'), kind: 'error' }])
+      }
+    } catch {
+      setMessages((m) => [...m, { role: 'model', content: t('ai.scanFailed'), kind: 'error' }])
+    } finally {
+      setBusy(false)
+      setReadingReceipt(false)
+    }
+  }, [pendingScan, busy, activeBookId, lang, input, t])
+
   useImperativeHandle(ref, () => ({ ask: (q: string) => void send(q) }), [send])
 
   function submit(e: FormEvent) {
     e.preventDefault()
-    void send(input, pendingImage)
+    if (pendingScan.length > 0) void runScan()
+    else void send(input)
   }
 
   function reset() {
     setAnimIdx(null)
-    setPendingImage(null)
+    setPendingScan([])
+    setPendingCount(0)
     setMessages([])
   }
 
   const fileRef = useRef<HTMLInputElement>(null)
 
-  async function pickImage(file: File | undefined) {
-    if (!file) return
+  async function pickImages(files: FileList | null) {
+    if (!files || files.length === 0) return
     setImageError(false)
     try {
-      setPendingImage(await compressImage(file))
+      setPendingScan(await prepareScanImages(files))
+      setPendingCount(files.length)
       inputRef.current?.focus()
     } catch {
       setImageError(true)
@@ -247,13 +285,15 @@ export const ChatSheet = forwardRef<ChatSheetHandle, ChatSheetProps>(function Ch
     if (el) stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120
   }
 
-  if (!open) return null
-
   // Portalled to <body>: the page shell wraps routes in a z-10 stacking
   // context, so a fixed overlay rendered in place would sit under the z-40
-  // bottom tab bar.
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:justify-end sm:p-5">
+  // bottom tab bar. The review modal stays mounted even when the sheet is
+  // closed, so a scan already in review is never lost.
+  return (
+    <>
+      {open &&
+        createPortal(
+          <div className="fixed inset-0 z-50 flex items-end justify-center sm:justify-end sm:p-5">
       <div className="absolute inset-0 animate-fade-in bg-black/55" onClick={onClose} aria-hidden />
 
       <section
@@ -332,18 +372,26 @@ export const ChatSheet = forwardRef<ChatSheetHandle, ChatSheetProps>(function Ch
           onSubmit={submit}
           className="border-t border-border bg-surface px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3"
         >
-          {/* Staged receipt photo */}
-          {pendingImage && (
+          {/* Staged receipt / screenshot photos */}
+          {pendingScan.length > 0 && (
             <div className="animate-msg mb-2.5 flex items-center gap-2.5 px-1">
               <span className="relative inline-block">
                 <img
-                  src={pendingImage}
+                  src={pendingScan[0]}
                   alt=""
                   className="h-14 w-14 rounded-xl border border-border object-cover shadow-sm"
                 />
+                {pendingCount > 1 && (
+                  <span className="absolute -left-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-white shadow-sm">
+                    {pendingCount}
+                  </span>
+                )}
                 <button
                   type="button"
-                  onClick={() => setPendingImage(null)}
+                  onClick={() => {
+                    setPendingScan([])
+                    setPendingCount(0)
+                  }}
                   aria-label={t('ai.removeImage')}
                   className="pressable absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-surface text-muted-foreground shadow-sm hover:text-foreground"
                 >
@@ -362,9 +410,10 @@ export const ChatSheet = forwardRef<ChatSheetHandle, ChatSheetProps>(function Ch
               ref={fileRef}
               type="file"
               accept="image/jpeg,image/png,image/webp"
+              multiple
               className="hidden"
               onChange={(e) => {
-                void pickImage(e.target.files?.[0])
+                void pickImages(e.target.files)
                 e.target.value = '' // same file can be picked again
               }}
             />
@@ -376,7 +425,7 @@ export const ChatSheet = forwardRef<ChatSheetHandle, ChatSheetProps>(function Ch
               title={t('ai.attach')}
               className={cn(
                 'pressable flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition-colors disabled:pointer-events-none disabled:opacity-40',
-                pendingImage
+                pendingScan.length > 0
                   ? 'border-primary/50 bg-primary-soft text-primary'
                   : 'border-border bg-surface-muted/60 text-muted-foreground hover:text-foreground',
               )}
@@ -387,14 +436,14 @@ export const ChatSheet = forwardRef<ChatSheetHandle, ChatSheetProps>(function Ch
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={pendingImage ? t('ai.captionPlaceholder') : t('ai.askPlaceholder')}
+              placeholder={pendingScan.length > 0 ? t('ai.captionPlaceholder') : t('ai.askPlaceholder')}
               disabled={!activeBookId}
               aria-label={t('ai.chatTitle')}
               className="h-12 w-full flex-1 rounded-full border border-border bg-surface-muted/60 px-5 text-[15px] text-foreground placeholder:text-muted-foreground focus-visible:border-primary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 disabled:opacity-50"
             />
             <button
               type="submit"
-              disabled={busy || (!input.trim() && !pendingImage) || !activeBookId}
+              disabled={busy || (!input.trim() && pendingScan.length === 0) || !activeBookId}
               aria-label={t('ai.send')}
               className="brand-gradient btn-sheen pressable flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-white disabled:pointer-events-none disabled:opacity-40"
             >
@@ -407,7 +456,25 @@ export const ChatSheet = forwardRef<ChatSheetHandle, ChatSheetProps>(function Ch
         </form>
       </section>
     </div>,
-    document.body,
+          document.body,
+        )}
+      <ScanImportModal
+        scan={scan}
+        onClose={() => setScan(null)}
+        onImported={(imported, skipped) =>
+          setMessages((m) => [
+            ...m,
+            {
+              role: 'model',
+              content:
+                skipped > 0
+                  ? t('ai.scanSavedDup', { count: imported, skipped })
+                  : t('ai.scanSaved', { count: imported }),
+            },
+          ])
+        }
+      />
+    </>
   )
 })
 

@@ -4,10 +4,33 @@ import type { MsgKey } from '@/i18n'
 /** Starter questions shared by the empty state and the home launcher chips. */
 export const STARTERS: MsgKey[] = ['ai.q1', 'ai.q2', 'ai.q3', 'ai.q4']
 
+export type ScanDocumentType = 'receipt' | 'transaction_history' | 'unknown'
+
+export interface ScannedTransaction {
+  date: string | null
+  description: string | null
+  direction: 'debit' | 'credit' | null
+  amount: number | null
+  currency: string | null
+  reference: string | null
+  note: string | null
+  confidence: number | null
+}
+
+export interface ScanDocument {
+  document_type: ScanDocumentType
+  confidence: number | null
+  currency: string | null
+  account_name: string | null
+  transactions: ScannedTransaction[]
+  warnings: string[]
+}
 export interface AiResponse {
   text?: string
   limited?: boolean
   error?: string
+  /** Structured receipt or transaction-history extraction. */
+  scan?: ScanDocument
   /** True when the assistant wrote a transaction — caches must refresh. */
   recorded?: boolean
 }

@@ -156,6 +156,52 @@ export const MESSAGES = {
     id: 'File tidak bisa dibaca — pakai foto JPG/PNG.',
   },
   'ai.photo': { en: 'Photo', id: 'Foto' },
+  // ── Scan & import (receipt / transaction-history photos) ─────────────────
+  'ai.scanTitleReceipt': { en: 'Review this receipt', id: 'Periksa struk ini' },
+  'ai.scanTitleTxns': { en: 'Review {count} transactions', id: 'Periksa {count} transaksi' },
+  'ai.scanTitleUnknown': { en: "Couldn't read this image", id: 'Gambar tidak terbaca' },
+  'ai.scanDesc': {
+    en: 'Check the rows, then confirm once to save them all.',
+    id: 'Periksa barisnya, lalu konfirmasi sekali untuk simpan semua.',
+  },
+  'ai.scanDescUnknown': { en: 'Nothing will be saved.', id: 'Tidak ada yang disimpan.' },
+  'ai.scanAccount': { en: 'Save to account', id: 'Simpan ke dompet' },
+  'ai.scanChooseAccount': { en: 'Choose account…', id: 'Pilih dompet…' },
+  'ai.scanNeedAccount': {
+    en: 'Choose the account before saving.',
+    id: 'Pilih dompet dulu sebelum simpan.',
+  },
+  'ai.scanCheck': { en: 'Check before saving', id: 'Periksa sebelum simpan' },
+  'ai.scanUnknownHint': {
+    en: 'Upload a clearer receipt or transaction-history screenshot.',
+    id: 'Unggah foto struk atau riwayat transaksi yang lebih jelas.',
+  },
+  'ai.scanRowProblem': { en: 'Row {n}: {problem}', id: 'Baris {n}: {problem}' },
+  'ai.scanNoRows': {
+    en: 'No complete rows found. Try clearer screenshots that show dates and amounts.',
+    id: 'Tidak ada baris lengkap. Coba foto yang lebih jelas dengan tanggal dan jumlah.',
+  },
+  'ai.scanSave': { en: 'Save {count}', id: 'Simpan {count}' },
+  'ai.scanUnlabelled': { en: 'Unlabelled transaction', id: 'Transaksi tanpa nama' },
+  'ai.scanDateUnreadable': { en: 'Date unreadable', id: 'Tanggal tidak terbaca' },
+  'ai.scanDirUnreadable': { en: 'Direction unreadable', id: 'Arah tidak terbaca' },
+  'ai.scanUnreadable': { en: 'Unreadable', id: 'Tidak terbaca' },
+  'ai.scanProblemAccount': { en: 'Choose an account', id: 'Pilih dompet' },
+  'ai.scanProblemCurrency': {
+    en: 'Currency {a} does not match {b}',
+    id: 'Mata uang {a} tidak cocok dengan {b}',
+  },
+  'ai.scanProblemDir': { en: 'Debit/credit unreadable', id: 'Debit/kredit tidak terbaca' },
+  'ai.scanProblemAmount': { en: 'Amount unreadable', id: 'Jumlah tidak terbaca' },
+  'ai.scanSaved': { en: 'Saved {count} transaction(s).', id: 'Tersimpan {count} transaksi.' },
+  'ai.scanSavedDup': {
+    en: 'Saved {count}, skipped {skipped} duplicate(s).',
+    id: 'Tersimpan {count}, {skipped} duplikat dilewati.',
+  },
+  'ai.scanFailed': {
+    en: "I couldn't read that. Try clearer screenshots.",
+    id: 'Tidak bisa kubaca. Coba foto yang lebih jelas.',
+  },
   // ── Accounts ─────────────────────────────────────────────────────────────
   'acc.title': { en: 'Accounts', id: 'Dompet' },
   'acc.new': { en: 'New account', id: 'Dompet baru' },

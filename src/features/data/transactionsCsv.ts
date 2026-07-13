@@ -1,7 +1,7 @@
 import { format } from 'date-fns'
 import { toCsv, parseCsv } from '@/lib/csv'
 import { fromMinorUnits, toMinorUnits } from '@/lib/money'
-import type { Account, Category, Transaction, TransactionType } from '@/types/db'
+import type { Account, Category, Transaction, TransactionStatus, TransactionType } from '@/types/db'
 
 const HEADER = ['date', 'type', 'amount', 'currency', 'account', 'category', 'counter_account', 'payee', 'note']
 
@@ -38,6 +38,12 @@ export interface ParsedTxRow {
   occurred_at: string
   payee: string | null
   note: string | null
+  /** Provider reference for duplicate detection on statement scans. */
+  external_ref?: string | null
+  /** Statement rows have already cleared at the bank/e-wallet. */
+  status?: TransactionStatus
+  /** Opt this row into scan de-duplication (receipt/statement scans only). */
+  dedupe?: boolean
 }
 
 export interface ImportResult {
