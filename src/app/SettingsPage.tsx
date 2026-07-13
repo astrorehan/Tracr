@@ -70,8 +70,13 @@ const SYSTEM: NavItem[] = [
   { to: '/data', label: 'section.dataBackup', desc: 'settings.dataBackupDesc', icon: Database },
 ]
 
+// AI shipped — chat lives on Home (this deep-link auto-opens it), the monthly
+// analysis lives on Reports.
+const ASSISTANT: NavItem[] = [
+  { to: '/?chat=1', label: 'settings.soonAI', desc: 'settings.aiDesc', icon: Sparkles },
+]
+
 const COMING_SOON: { icon: ComponentType<{ className?: string }>; label: MsgKey }[] = [
-  { icon: Sparkles, label: 'settings.soonAI' },
   { icon: MessageCircle, label: 'settings.soonWhatsApp' },
   { icon: Split, label: 'settings.soonSplit' },
   { icon: Table, label: 'settings.soonSheets' },
@@ -188,6 +193,15 @@ export function SettingsPage() {
             </div>
           </div>
         </Card>
+      </Section>
+
+      {/* Assistant */}
+      <Section title={t('settings.assistant')}>
+        <ListCard>
+          {ASSISTANT.map((item) => (
+            <NavRow key={item.to} {...item} />
+          ))}
+        </ListCard>
       </Section>
 
       {/* Organize */}
