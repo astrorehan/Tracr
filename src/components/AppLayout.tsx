@@ -1,5 +1,5 @@
 import { useState, type ComponentType } from 'react'
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
   Wallet,
@@ -12,7 +12,6 @@ import {
   Plus,
   Moon,
   Sun,
-  ChevronLeft,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { MsgKey } from '@/i18n'
@@ -39,22 +38,6 @@ const NAV: { to: string; label: MsgKey; icon: IconType }[] = [
   { to: '/settings', label: 'nav.settings', icon: Settings },
 ]
 
-const SECTION_TITLES: Record<string, MsgKey> = {
-  '/': 'nav.home',
-  '/accounts': 'nav.accounts',
-  '/transactions': 'nav.activity',
-  '/reports': 'nav.reports',
-  '/budgets': 'nav.budgets',
-  '/bills': 'section.billsSubs',
-  '/goals': 'section.savingsGoals',
-  '/settings': 'nav.settings',
-  '/categories': 'section.categories',
-  '/tags': 'section.tags',
-  '/currencies': 'section.currencies',
-  '/data': 'section.dataBackup',
-  '/books': 'section.books',
-}
-
 export function AppLayout() {
   const [addOpen, setAddOpen] = useState(false)
   const { profile } = useAuth()
@@ -62,10 +45,7 @@ export function AppLayout() {
   const { theme, toggle } = useTheme()
   const { t } = useT()
   const { pathname } = useLocation()
-  const navigate = useNavigate()
   const isHome = pathname === '/'
-  const section = t(SECTION_TITLES[pathname] ?? 'section.workspace')
-  const firstName = profile?.display_name?.split(' ')[0]
 
   // Refresh FX rates from the free live sources once per session.
   useLiveRatesSync()
@@ -243,11 +223,4 @@ function MobileNavLink({ to, label, icon: Icon }: { to: string; label: MsgKey; i
       )}
     </NavLink>
   )
-}
-
-function greetingKey(): MsgKey {
-  const h = new Date().getHours()
-  if (h < 12) return 'greeting.morning'
-  if (h < 18) return 'greeting.afternoon'
-  return 'greeting.evening'
 }
