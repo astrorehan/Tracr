@@ -36,6 +36,7 @@ import { useFxRates } from '@/features/fx/api'
 import { buildRateTable, convertMinor } from '@/features/fx/fx'
 import { TransactionRow } from '@/features/transactions/TransactionRow'
 import { TransactionForm } from '@/features/transactions/TransactionForm'
+import { AiHomeCard } from '@/features/ai/AiHomeCard'
 import { indexById } from '@/lib/collections'
 import { cn } from '@/lib/utils'
 
@@ -321,6 +322,9 @@ export function DashboardPage() {
             delta={deltaOf(month.net, month.prevEarned - month.prevSpent, true)}
           />
         </section>
+
+        {/* Assistant — chat about your money */}
+        <AiHomeCard />
 
         {/* Recent activity */}
         <section>

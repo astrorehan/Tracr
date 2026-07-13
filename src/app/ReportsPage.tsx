@@ -59,6 +59,7 @@ import {
   type NetWorthDelta,
 } from '@/features/reports/reports'
 import { toCsv, downloadTextFile } from '@/lib/csv'
+import { AiInsightCard } from '@/features/ai/AiInsightCard'
 import { formatMoney, fromMinorUnits } from '@/lib/money'
 import { cn } from '@/lib/utils'
 import type { Account, Transaction, TransactionSplit } from '@/types/db'
@@ -341,6 +342,9 @@ export function ReportsPage() {
           </div>
         )}
       </div>
+
+      {/* AI read of the current month */}
+      <AiInsightCard />
 
       {skipped.length > 0 && (
         <p className="rounded-xl border border-border bg-surface-muted/50 px-4 py-2.5 text-xs font-medium text-muted-foreground">
