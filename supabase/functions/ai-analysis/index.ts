@@ -15,7 +15,7 @@
 //   * Every call is metered against a per-user monthly cap (migration 0030)
 //     before any tokens are spent.
 //
-// Receipt scanning is a two-model pipeline:
+// Document scanning is a two-model pipeline:
 //   photo → Gemini (vision, strict-JSON extraction only, no tools)
 //         → DeepSeek (reads the JSON, talks to the user, records on confirm)
 //
@@ -391,21 +391,35 @@ async function recordTransaction(ctx: ToolCtx, args: Record<string, unknown>): P
   }
 }
 
-// --- receipt extraction (Gemini vision, strict JSON, no tools) ---------------
+// --- document extraction (Gemini vision, strict JSON, no tools) -------------
 
-interface Receipt {
-  is_receipt: boolean
-  merchant: string | null
+type DocumentType = 'receipt' | 'transaction_history' | 'unknown'
+type TransactionDirection = 'debit' | 'credit'
+
+interface ScannedTransaction {
   date: string | null
+  description: string | null
+  direction: TransactionDirection | null
+  amount: number | null
   currency: string | null
-  total: number | null
-  items: { name: string; qty: number; price: number }[]
+  reference: string | null
   note: string | null
+  confidence: number | null
 }
 
-/** One vision call: photo in, structured JSON out. Throwing here is fine — the
- *  caller turns any failure into a friendly chat reply. */
-async function extractReceipt(imageDataUrl: string, caption: string): Promise<Receipt> {
+interface ScanDocument {
+  document_type: DocumentType
+  confidence: number | null
+  currency: string | null
+  account_name: string | null
+  transactions: ScannedTransaction[]
+  warnings: string[]
+}
+
+/** One vision call: one or more photos in, structured rows out. The scanner
+ * deliberately does not write to the database; the browser presents its result
+ * for one explicit bulk confirmation first. */
+async function extractDocument(imageDataUrls: string[], caption: string): Promise<ScanDocument> {
   const key = Deno.env.get('GEMINI_API_KEY')
   if (!key) throw new Error('vision-not-configured')
 
@@ -418,27 +432,38 @@ async function extractReceipt(imageDataUrl: string, caption: string): Promise<Re
   const res = await vision.chat.completions.create({
     model: Deno.env.get('GEMINI_MODEL') ?? 'gemini-3.1-flash-lite',
     temperature: 0,
-    max_tokens: 900,
+    max_tokens: 2400,
     response_format: { type: 'json_object' },
     messages: [
       {
         role: 'system',
         content:
-          'You extract data from receipt/invoice photos. Reply with ONLY a JSON object, ' +
-          'no prose, matching exactly: {"is_receipt": boolean, "merchant": string|null, ' +
-          '"date": "YYYY-MM-DD"|null, "currency": "ISO code e.g. IDR"|null, ' +
-          '"total": number|null (grand total actually paid, MAJOR units, no thousands separators), ' +
-          '"items": [{"name": string, "qty": number, "price": number}] (top items, max 8), ' +
-          '"note": string|null (anything odd, e.g. unreadable total). ' +
-          'Indonesian receipts: amounts like 25.000 mean twenty-five thousand (dots are ' +
-          'thousands separators) and the currency is IDR unless stated otherwise. ' +
-          'If the photo is not a receipt/invoice, return {"is_receipt": false} with nulls.',
+          'Classify and extract financial-document images. Reply with ONLY one JSON object, no prose, ' +
+          'matching exactly: {"document_type":"receipt"|"transaction_history"|"unknown", ' +
+          '"confidence":number|null, "currency":"ISO code e.g. IDR"|null, ' +
+          '"account_name":string|null, "transactions":[{"date":"YYYY-MM-DD"|null, ' +
+          '"description":string|null, "direction":"debit"|"credit"|null, ' +
+          '"amount":number|null, "currency":"ISO code"|null, "reference":string|null, ' +
+          '"note":string|null, "confidence":number|null}], "warnings":[string]}. ' +
+          'A receipt/invoice has one purchase and a grand total: return document_type="receipt" and ' +
+          'exactly one transaction whose amount is the grand total. A receipt is money spent, so set its ' +
+          'direction="debit" unless it is clearly a refund (then "credit"). A bank/e-wallet transaction ' +
+          'history has repeated dated rows: return ' +
+          'document_type="transaction_history" and one transaction per visible row. ' +
+          'For bank/e-wallet histories, debit/outgoing/spent/paid is direction="debit" and ' +
+          'credit/incoming/received is direction="credit". Ignore balances, running totals, headers, ' +
+          'pending rows and rows where the amount or direction cannot be read. Amounts are positive MAJOR ' +
+          'units without thousands separators. Preserve a provider transaction/reference ID when visible. ' +
+          'Indonesian amounts like 25.000 mean twenty-five thousand; use IDR unless another currency is ' +
+          'shown. Images may be sequential tiles of one long screenshot: combine their rows and do not ' +
+          'repeat overlap rows. Never invent missing values. If it is neither, return document_type="unknown" ' +
+          'with an empty transactions array and a short warning.',
       },
       {
         role: 'user',
         content: [
-          { type: 'text', text: caption || 'Extract this receipt.' },
-          { type: 'image_url', image_url: { url: imageDataUrl } },
+          { type: 'text', text: caption || 'Classify this financial document and extract its transactions.' },
+          ...imageDataUrls.map((url) => ({ type: 'image_url' as const, image_url: { url } })),
         ],
         // deno-lint-ignore no-explicit-any
       } as any,
@@ -447,28 +472,57 @@ async function extractReceipt(imageDataUrl: string, caption: string): Promise<Re
 
   const raw = res.choices[0]?.message?.content ?? ''
   const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim()
-  const parsed = JSON.parse(cleaned) as Partial<Receipt>
+  const parsed = JSON.parse(cleaned) as Partial<ScanDocument>
+  const documentType: DocumentType =
+    parsed.document_type === 'receipt' || parsed.document_type === 'transaction_history'
+      ? parsed.document_type
+      : 'unknown'
+  const currency = typeof parsed.currency === 'string' ? parsed.currency.toUpperCase().slice(0, 8) : null
+
   return {
-    is_receipt: parsed.is_receipt === true,
-    merchant: typeof parsed.merchant === 'string' ? parsed.merchant.slice(0, 120) : null,
-    date: typeof parsed.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(parsed.date) ? parsed.date : null,
-    currency: typeof parsed.currency === 'string' ? parsed.currency.toUpperCase().slice(0, 8) : null,
-    total: typeof parsed.total === 'number' && Number.isFinite(parsed.total) ? parsed.total : null,
-    items: Array.isArray(parsed.items)
-      ? parsed.items.slice(0, 8).flatMap((it) =>
-          it && typeof it.name === 'string'
-            ? [{ name: it.name.slice(0, 80), qty: Number(it.qty) || 1, price: Number(it.price) || 0 }]
-            : [],
-        )
+    document_type: documentType,
+    confidence:
+      typeof parsed.confidence === 'number' && Number.isFinite(parsed.confidence)
+        ? Math.max(0, Math.min(1, parsed.confidence))
+        : null,
+    currency,
+    account_name: typeof parsed.account_name === 'string' ? parsed.account_name.slice(0, 120) : null,
+    transactions: Array.isArray(parsed.transactions)
+      ? parsed.transactions.slice(0, 100).flatMap((row) => {
+          if (!row || typeof row !== 'object') return []
+          const item = row as Partial<ScannedTransaction>
+          const direction: TransactionDirection | null =
+            item.direction === 'debit' || item.direction === 'credit' ? item.direction : null
+          return [{
+            date: typeof item.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(item.date) ? item.date : null,
+            description: typeof item.description === 'string' ? item.description.slice(0, 160) : null,
+            direction,
+            amount: typeof item.amount === 'number' && Number.isFinite(item.amount) && item.amount > 0 ? item.amount : null,
+            currency: typeof item.currency === 'string' ? item.currency.toUpperCase().slice(0, 8) : currency,
+            reference: typeof item.reference === 'string' ? item.reference.slice(0, 160) : null,
+            note: typeof item.note === 'string' ? item.note.slice(0, 300) : null,
+            confidence:
+              typeof item.confidence === 'number' && Number.isFinite(item.confidence)
+                ? Math.max(0, Math.min(1, item.confidence))
+                : null,
+          }]
+        })
       : [],
-    note: typeof parsed.note === 'string' ? parsed.note.slice(0, 200) : null,
+    warnings: Array.isArray(parsed.warnings)
+      ? parsed.warnings
+          .filter((item): item is string => typeof item === 'string')
+          .slice(0, 8)
+          .map((item) => item.slice(0, 240))
+      : [],
   }
 }
 
 const MAX_STEPS = 6
-// ~2.6M base64 chars ≈ 1.9MB image — the client compresses well below this;
-// the cap only guards against hand-rolled oversized requests.
-const MAX_IMAGE_CHARS = 2_600_000
+const MAX_IMAGES = 6
+// The client keeps each tile below this cap. The aggregate limit prevents
+// hand-written requests from exhausting the edge function.
+const MAX_IMAGE_CHARS = 1_300_000
+const MAX_TOTAL_IMAGE_CHARS = 7_200_000
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
@@ -496,12 +550,14 @@ Deno.serve(async (req) => {
   if (!user) return json({ error: 'unauthorized' }, 401)
 
   let body: {
-    mode?: 'insights' | 'chat'
+    mode?: 'insights' | 'chat' | 'scan'
     book_id?: string
     lang?: string
     question?: string
     /** Receipt photo as a data URL (image/jpeg|png|webp). Chat mode only. */
     image?: string
+    /** Receipt, statement, or e-wallet history images for structured extraction. */
+    images?: string[]
     history?: { role: 'user' | 'model'; content: string }[]
   }
   try {
@@ -512,13 +568,23 @@ Deno.serve(async (req) => {
 
   const bookId = body.book_id
   if (!bookId) return json({ error: 'book_id required' }, 400)
-  const mode = body.mode === 'chat' ? 'chat' : 'insights'
+  const mode = body.mode === 'chat' || body.mode === 'scan' ? body.mode : 'insights'
   const language = body.lang === 'id' ? 'Indonesian' : 'English'
 
-  const image = typeof body.image === 'string' ? body.image : ''
-  if (image) {
-    if (!/^data:image\/(jpeg|png|webp);base64,/.test(image)) return json({ error: 'bad image' }, 400)
-    if (image.length > MAX_IMAGE_CHARS) return json({ error: 'image too large' }, 413)
+  const images = Array.isArray(body.images)
+    ? body.images.filter((item): item is string => typeof item === 'string')
+    : typeof body.image === 'string'
+      ? [body.image]
+      : []
+  if (images.length > MAX_IMAGES) return json({ error: 'too many images' }, 413)
+  if (images.some((image) => !/^data:image\/(jpeg|png|webp);base64,/.test(image))) {
+    return json({ error: 'bad image' }, 400)
+  }
+  if (
+    images.some((image) => image.length > MAX_IMAGE_CHARS) ||
+    images.reduce((total, image) => total + image.length, 0) > MAX_TOTAL_IMAGE_CHARS
+  ) {
+    return json({ error: 'image too large' }, 413)
   }
 
   // Meter first — refuse before spending any tokens.
@@ -533,6 +599,21 @@ Deno.serve(async (req) => {
     .from('profiles').select('base_currency').eq('id', user.id).single()
   const baseCurrency = profile?.base_currency ?? 'IDR'
   const today = new Date().toISOString().slice(0, 10)
+  // Scanner results never enter the text-model tool loop. The browser shows a
+  // review screen and only its explicit bulk confirmation can create records.
+  if (mode === 'scan') {
+    if (images.length === 0) return json({ error: 'image required' }, 400)
+    try {
+      return json({ scan: await extractDocument(images, (body.question ?? '').trim()) })
+    } catch (e) {
+      const notConfigured = e instanceof Error && e.message === 'vision-not-configured'
+      return json({
+        error: notConfigured
+          ? 'Photo reading is not enabled on the server.'
+          : 'The document could not be read. Please try clearer screenshots.',
+      }, notConfigured ? 503 : 422)
+    }
+  }
 
   const systemPrompt =
     `You are the built-in money assistant for a personal finance app called Tracr. ` +
@@ -562,22 +643,18 @@ Deno.serve(async (req) => {
   const messages: any[] = [{ role: 'system', content: systemPrompt }]
   if (mode === 'chat') {
     const question = (body.question ?? '').trim()
-    if (!question && !image) return json({ error: 'question required' }, 400)
+    if (!question && images.length === 0) return json({ error: 'question required' }, 400)
     for (const m of body.history ?? []) {
       // Map the app's 'model' role to OpenAI's 'assistant'.
       if (m?.content) messages.push({ role: m.role === 'model' ? 'assistant' : 'user', content: m.content })
     }
 
-    if (image) {
-      // Vision step first; its JSON rides into the text model as part of the
-      // user turn, so follow-ups ("ya, catat") keep working from history.
+    if (images.length > 0) {
       try {
-        const receipt = await extractReceipt(image, question)
+        const scan = await extractDocument(images, question)
         messages.push({
           role: 'user',
-          content:
-            (question ? `${question}\n\n` : '') +
-            `[RECEIPT_SCAN]\n${JSON.stringify(receipt)}`,
+          content: (question ? `${question}\n\n` : '') + `[DOCUMENT_SCAN]\n${JSON.stringify(scan)}`,
         })
       } catch (e) {
         const notConfigured = e instanceof Error && e.message === 'vision-not-configured'
@@ -585,11 +662,11 @@ Deno.serve(async (req) => {
           text:
             language === 'Indonesian'
               ? notConfigured
-                ? 'Fitur baca foto belum diaktifkan di server. Ketik saja jumlahnya, nanti aku bantu catat.'
-                : 'Fotonya tidak bisa kubaca. Coba foto ulang yang lebih terang, atau ketik jumlahnya saja.'
+                ? 'Fitur baca foto belum diaktifkan di server.'
+                : 'Fotonya tidak bisa kubaca. Coba foto ulang yang lebih terang.'
               : notConfigured
-                ? "Photo reading isn't enabled on the server yet. Type the amount and I'll help record it."
-                : "I couldn't read that photo. Try a clearer shot, or just type the amount.",
+                ? "Photo reading isn't enabled on the server yet."
+                : "I couldn't read that photo. Try clearer screenshots.",
         })
       }
     } else {
