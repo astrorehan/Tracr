@@ -223,6 +223,13 @@ export const ChatSheet = forwardRef<ChatSheetHandle, ChatSheetProps>(function Ch
   const runScan = useCallback(async () => {
     if (pendingScan.length === 0 || busy || !activeBookId) return
     const caption = input.trim()
+    const images = pendingScan
+    // Record the upload in the thread and clear the dock up front (mirrors
+    // send()), so the sheet never looks blank while the scan is in flight.
+    setMessages((m) => [...m, { role: 'user', content: caption, image: images[0] }])
+    setPendingScan([])
+    setPendingCount(0)
+    setInput('')
     setBusy(true)
     setReadingReceipt(true)
     try {
@@ -230,16 +237,16 @@ export const ChatSheet = forwardRef<ChatSheetHandle, ChatSheetProps>(function Ch
         mode: 'scan',
         book_id: activeBookId,
         lang,
-        images: pendingScan,
+        images,
         ...(caption ? { question: caption } : {}),
       })
       if (data.limited) {
         setMessages((m) => [...m, { role: 'model', content: t('ai.limit'), kind: 'limit' }])
       } else if (data.scan) {
+        // Hand off to the review modal — close the sheet so it isn't left
+        // stacked behind it looking like the conversation was wiped.
         setScan(data.scan)
-        setPendingScan([])
-        setPendingCount(0)
-        setInput('')
+        onClose()
       } else {
         setMessages((m) => [...m, { role: 'model', content: t('ai.scanFailed'), kind: 'error' }])
       }
@@ -249,7 +256,7 @@ export const ChatSheet = forwardRef<ChatSheetHandle, ChatSheetProps>(function Ch
       setBusy(false)
       setReadingReceipt(false)
     }
-  }, [pendingScan, busy, activeBookId, lang, input, t])
+  }, [pendingScan, busy, activeBookId, lang, input, t, onClose])
 
   useImperativeHandle(ref, () => ({ ask: (q: string) => void send(q) }), [send])
 

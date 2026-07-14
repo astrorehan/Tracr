@@ -127,6 +127,16 @@ h1,
   letter-spacing: -0.02em;
 }
 
+/* Brand wordmark — Space Grotesk, blue ink matching the "T" logo mark. */
+.font-wordmark {
+  font-family: 'Space Grotesk Variable', 'Plus Jakarta Sans Variable', sans-serif;
+  letter-spacing: -0.03em;
+  background: linear-gradient(90deg, #1b8ed1 0%, #2f97d5 55%, #49a6da 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
 /* Numeric styling — tabular figures stop money jitter on update */
 .font-numeric {
   font-family: 'Plus Jakarta Sans Variable', sans-serif;
