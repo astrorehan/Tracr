@@ -185,6 +185,15 @@ export const MESSAGES = {
   'ai.scanUnlabelled': { en: 'Unlabelled transaction', id: 'Transaksi tanpa nama' },
   'ai.scanDateUnreadable': { en: 'Date unreadable', id: 'Tanggal tidak terbaca' },
   'ai.scanDirUnreadable': { en: 'Direction unreadable', id: 'Arah tidak terbaca' },
+  'ai.scanIn': { en: 'Money in', id: 'Uang masuk' },
+  'ai.scanOut': { en: 'Money out', id: 'Uang keluar' },
+  'ai.scanSelectAll': { en: 'Select all', id: 'Pilih semua' },
+  'ai.scanClear': { en: 'Clear', id: 'Kosongkan' },
+  'ai.scanSelectedCount': { en: '{n} of {total} chosen', id: '{n} dari {total} dipilih' },
+  'ai.scanNothingValid': {
+    en: "None of these can be saved yet — check the notes below.",
+    id: 'Belum ada yang bisa disimpan — cek catatan di bawah.',
+  },
   'ai.scanUnreadable': { en: 'Unreadable', id: 'Tidak terbaca' },
   'ai.scanProblemAccount': { en: 'Choose an account', id: 'Pilih dompet' },
   'ai.scanProblemCurrency': {

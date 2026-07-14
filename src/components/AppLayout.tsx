@@ -65,7 +65,7 @@ export function AppLayout() {
             alt="Tracr"
             className="h-9 w-9 rounded-xl border border-border shadow-sm transition-transform duration-300 group-hover:scale-105 group-active:scale-95"
           />
-          <span className="font-display hidden text-2xl font-extrabold tracking-tight text-foreground lg:block">
+          <span className="font-wordmark hidden text-2xl font-bold tracking-tight lg:block">
             Tracr
           </span>
         </Link>
@@ -97,11 +97,6 @@ export function AppLayout() {
       <div className="relative z-10 flex min-w-0 flex-1 flex-col">
         {/* Floating top right controls */}
         <div className="fixed top-4 right-4 z-50 flex items-center gap-2 sm:gap-3 sm:right-6 lg:right-8 print:hidden">
-          <span className="hidden items-center gap-1.5 text-xs font-medium text-muted-foreground md:inline-flex bg-surface/80 backdrop-blur px-2 py-1 rounded-lg border border-border">
-            <span className="h-1.5 w-1.5 rounded-full bg-positive" />
-            {t('layout.saved')}
-          </span>
-
           <div className="bg-surface/80 backdrop-blur rounded-xl border border-border flex items-center p-1 shadow-sm gap-1">
             <NotificationBell />
             <button

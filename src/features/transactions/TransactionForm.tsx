@@ -1,6 +1,20 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState, type ComponentType } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BookmarkPlus, Paperclip, Plus, Split, X, Zap } from 'lucide-react'
+import {
+  ArrowDownLeft,
+  ArrowLeftRight,
+  ArrowUpRight,
+  BookmarkPlus,
+  Camera,
+  Check,
+  Loader2,
+  Paperclip,
+  Plus,
+  Sparkles,
+  Split,
+  X,
+  Zap,
+} from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Label, Select } from '@/components/ui/Input'
@@ -9,6 +23,10 @@ import { getCurrency } from '@/lib/currencies'
 import { amountToMinor, formatMoney, fromMinorUnits } from '@/lib/money'
 import { isExpression } from '@/lib/calc'
 import { useAuth } from '@/features/auth/useAuth'
+import { useActiveBook } from '@/features/books/useActiveBook'
+import { useT } from '@/features/settings/language-context'
+import { callAi, type ScanDocument } from '@/features/ai/api'
+import { prepareScanImages } from '@/features/ai/image'
 import { useFxRates } from '@/features/fx/api'
 import { buildRateTable, convertMinor } from '@/features/fx/fx'
 import { useAccounts } from '@/features/accounts/api'
@@ -43,11 +61,14 @@ interface Props {
   initialCounterAmount?: string
 }
 
-// Active pill takes the money-direction color so the chosen type reads at a glance.
-const TYPES: { value: TransactionType; label: string; activeText: string }[] = [
-  { value: 'expense', label: 'Expense', activeText: 'text-negative' },
-  { value: 'income', label: 'Income', activeText: 'text-positive' },
-  { value: 'transfer', label: 'Transfer', activeText: 'text-foreground' },
+type IconType = ComponentType<{ className?: string }>
+
+// Active pill takes the money-direction color + a matching direction glyph so the
+// chosen type reads at a glance.
+const TYPES: { value: TransactionType; label: string; activeText: string; icon: IconType }[] = [
+  { value: 'expense', label: 'Expense', activeText: 'text-negative', icon: ArrowUpRight },
+  { value: 'income', label: 'Income', activeText: 'text-positive', icon: ArrowDownLeft },
+  { value: 'transfer', label: 'Transfer', activeText: 'text-foreground', icon: ArrowLeftRight },
 ]
 
 const AMOUNT_TONE: Record<TransactionType, { label: string; border: string }> = {
@@ -61,6 +82,9 @@ interface SplitRow {
   categoryId: string
   amount: string
 }
+
+/** Result of a receipt scan, shown as a small banner above the form. */
+type ScanNotice = { kind: 'ok' | 'error'; text: string }
 
 function newRow(categoryId = '', amount = ''): SplitRow {
   return { key: crypto.randomUUID(), categoryId, amount }
@@ -88,7 +112,12 @@ export function TransactionForm({
   initialCounterAmount,
 }: Props) {
   return (
-    <Modal open={open} onClose={onClose} title={transaction ? 'Edit transaction' : 'Add transaction'}>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={transaction ? 'Edit transaction' : 'Add transaction'}
+      className="sm:max-w-2xl"
+    >
       {open && (
         <TransactionFormBody
           onClose={onClose}
@@ -120,6 +149,8 @@ function TransactionFormBody({
 }) {
   const navigate = useNavigate()
   const { profile } = useAuth()
+  const { activeBookId } = useActiveBook()
+  const { lang } = useT()
   const base = profile?.base_currency ?? 'IDR'
   const { data: accounts = [] } = useAccounts()
   const { data: categories = [] } = useCategories()
@@ -137,6 +168,7 @@ function TransactionFormBody({
   const setSplits = useSetTransactionSplits()
   const uploadFiles = useUploadAttachments()
   const fileRef = useRef<HTMLInputElement>(null)
+  const scanRef = useRef<HTMLInputElement>(null)
 
   const [type, setType] = useState<TransactionType>(transaction?.type ?? 'expense')
   const [accountId, setAccountId] = useState(
@@ -168,6 +200,9 @@ function TransactionFormBody({
   const [savingTpl, setSavingTpl] = useState(false)
   const [tplName, setTplName] = useState('')
   const [error, setError] = useState<string | null>(null)
+  // Receipt scan: in-flight flag + the review banner after a fill.
+  const [scanning, setScanning] = useState(false)
+  const [scanNotice, setScanNotice] = useState<ScanNotice | null>(null)
 
   // Fall back to the first account if state is still empty (e.g. accounts
   // loaded after this body mounted).
@@ -305,6 +340,75 @@ function TransactionFormBody({
     setSavingTpl(false)
   }
 
+  // ── Receipt scan ──────────────────────────────────────────────────────────
+  // Read a photo with the same vision path the assistant uses, then pre-fill the
+  // single-entry fields so the user only reviews and saves. Never writes on its
+  // own — the form's Save button stays the one confirmation.
+  function applyScan(doc: ScanDocument) {
+    const rows = doc.transactions.filter((r) => r.amount != null && r.amount > 0)
+    if (rows.length === 0) {
+      setScanNotice({ kind: 'error', text: 'No amount found on that receipt — enter it by hand.' })
+      return
+    }
+    const first = rows[0]
+    setType(first.direction === 'credit' ? 'income' : 'expense')
+    setSplitMode(false)
+    // Receipts often come back as a single total; itemised ones sum to it.
+    const total = rows.reduce((sum, r) => sum + (r.amount ?? 0), 0)
+    setAmount(String(total))
+    setPayee(first.description?.trim() || doc.account_name?.trim() || '')
+    setDate(first.date ?? todayLocal())
+    const noteText =
+      rows.length > 1
+        ? rows.map((r) => r.description?.trim()).filter(Boolean).join(', ')
+        : first.note?.trim() ?? ''
+    if (noteText) setNote(noteText.slice(0, 200))
+    // Let category/tag rules react to the filled-in payee.
+    setCategoryTouched(false)
+    setTagsTouched(false)
+    const mismatch =
+      doc.currency && doc.currency.toUpperCase() !== currency
+        ? ` Amount is in ${doc.currency.toUpperCase()} — check it matches ${currency}.`
+        : ''
+    setScanNotice({
+      kind: 'ok',
+      text:
+        (rows.length > 1
+          ? `Filled from your photo · ${rows.length} items added up.`
+          : 'Filled from your photo.') +
+        ' Review and save.' +
+        mismatch,
+    })
+  }
+
+  async function handleScan(fileList: FileList | null) {
+    if (!fileList || fileList.length === 0 || scanning) return
+    if (!activeBookId) {
+      setScanNotice({ kind: 'error', text: 'Pick a book first, then try scanning again.' })
+      return
+    }
+    setScanNotice(null)
+    setScanning(true)
+    try {
+      const images = await prepareScanImages(fileList)
+      const data = await callAi({ mode: 'scan', book_id: activeBookId, lang, images })
+      if (data.limited) {
+        setScanNotice({ kind: 'error', text: 'You’ve hit your AI limit for now — enter it by hand.' })
+        return
+      }
+      const doc = data.scan
+      if (!doc || doc.document_type === 'unknown' || doc.transactions.length === 0) {
+        setScanNotice({ kind: 'error', text: 'Couldn’t read a receipt there. Try a clearer photo.' })
+        return
+      }
+      applyScan(doc)
+    } catch {
+      setScanNotice({ kind: 'error', text: 'Couldn’t read that image. Try another photo.' })
+    } finally {
+      setScanning(false)
+    }
+  }
+
   if (accounts.length === 0) {
     return (
       <div>
@@ -411,8 +515,152 @@ function TransactionFormBody({
     }
   }
 
+  const categoryBlock =
+    type === 'transfer' ? null : (
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
+          <Label className="mb-0">{splitting ? 'Splits' : 'Category'}</Label>
+          <button
+            type="button"
+            onClick={toggleSplit}
+            className={cn(
+              'inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold transition',
+              splitting
+                ? 'bg-primary/10 text-primary'
+                : 'text-muted-foreground hover:bg-surface-muted hover:text-foreground',
+            )}
+            aria-pressed={splitting}
+          >
+            <Split className="h-3.5 w-3.5" />
+            {splitting ? 'Splitting' : 'Split'}
+          </button>
+        </div>
+
+        {splitting ? (
+          <div className="space-y-2">
+            {splits.map((r) => (
+              <div key={r.key} className="flex gap-2">
+                <Select
+                  value={r.categoryId}
+                  onChange={(e) => updateSplit(r.key, { categoryId: e.target.value })}
+                  className="h-11 flex-1"
+                >
+                  <option value="">Uncategorized</option>
+                  {categoryOptions.map(({ category, depth }) => (
+                    <option key={category.id} value={category.id}>
+                      {depth ? '  — ' : ''}
+                      {category.name}
+                    </option>
+                  ))}
+                </Select>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  value={r.amount}
+                  onChange={(e) => updateSplit(r.key, { amount: e.target.value })}
+                  placeholder="0"
+                  className="h-11 w-28 rounded-xl border border-border bg-surface px-3 text-right font-numeric text-sm text-foreground shadow-sm focus-visible:border-primary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeSplit(r.key)}
+                  disabled={splits.length <= 1}
+                  className="flex h-11 w-9 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-danger/10 hover:text-danger disabled:opacity-40"
+                  aria-label="Remove split"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={addSplit}
+              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-primary transition hover:bg-primary/10"
+            >
+              <Plus className="h-3.5 w-3.5" /> Add split
+            </button>
+          </div>
+        ) : (
+          <>
+            <Select
+              value={effectiveCategoryId}
+              onChange={(e) => {
+                setCategoryTouched(true)
+                setCategoryId(e.target.value)
+              }}
+            >
+              <option value="">Uncategorized</option>
+              {categoryOptions.map(({ category, depth }) => (
+                <option key={category.id} value={category.id}>
+                  {depth ? '  — ' : ''}
+                  {category.name}
+                </option>
+              ))}
+            </Select>
+            {!categoryTouched && ruleOutcome.matched.length > 0 && (
+              <p className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-primary">
+                <Zap className="h-3 w-3" /> Auto-filled by rule “{ruleOutcome.matched[0].name}”
+              </p>
+            )}
+          </>
+        )}
+      </div>
+    )
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-5">
+      {/* Scan a receipt — auto-fill the whole form from a photo (new entries only) */}
+      {!editing && (
+        <div>
+          <input
+            ref={scanRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              void handleScan(e.target.files)
+              e.target.value = '' // let the same photo be picked again
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => scanRef.current?.click()}
+            disabled={scanning}
+            className="group flex w-full items-center gap-3 rounded-2xl border border-primary/25 bg-primary-soft/50 px-4 py-3.5 text-left transition-colors hover:border-primary/50 hover:bg-primary-soft disabled:cursor-wait disabled:opacity-80"
+          >
+            <span className="brand-gradient flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-sm">
+              {scanning ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Camera className="h-5 w-5" />
+              )}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center gap-1.5 text-sm font-bold text-foreground">
+                {scanning ? 'Reading your receipt…' : 'Scan a receipt'}
+                {!scanning && <Sparkles className="h-3.5 w-3.5 text-primary" />}
+              </span>
+              <span className="mt-0.5 block text-xs font-medium text-muted-foreground">
+                {scanning ? 'This takes a few seconds.' : 'Snap a photo — we’ll fill in the details.'}
+              </span>
+            </span>
+          </button>
+          {scanNotice && (
+            <p
+              className={cn(
+                'mt-2 flex items-start gap-1.5 text-xs font-semibold',
+                scanNotice.kind === 'ok' ? 'text-positive' : 'text-danger',
+              )}
+            >
+              {scanNotice.kind === 'ok' && <Check className="mt-px h-3.5 w-3.5 shrink-0" />}
+              <span>{scanNotice.text}</span>
+            </p>
+          )}
+        </div>
+      )}
+
       {!editing && templates.length > 0 && (
         <div className="space-y-1.5">
           <Label className="mb-0">Quick templates</Label>
@@ -445,21 +693,25 @@ function TransactionFormBody({
 
       {/* Type switch */}
       <div className="grid grid-cols-3 gap-1 rounded-xl bg-surface-muted p-1">
-        {TYPES.map((t) => (
-          <button
-            key={t.value}
-            type="button"
-            onClick={() => setType(t.value)}
-            className={cn(
-              'rounded-lg py-2 text-sm transition-all duration-200',
-              type === t.value
-                ? cn('bg-surface font-bold shadow-sm', t.activeText)
-                : 'font-semibold text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
+        {TYPES.map((t) => {
+          const Icon = t.icon
+          return (
+            <button
+              key={t.value}
+              type="button"
+              onClick={() => setType(t.value)}
+              className={cn(
+                'flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm transition-all duration-200',
+                type === t.value
+                  ? cn('bg-surface font-bold shadow-sm', t.activeText)
+                  : 'font-semibold text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              {t.label}
+            </button>
+          )
+        })}
       </div>
 
       {/* Amount — focal point, tinted by money direction */}
@@ -508,253 +760,182 @@ function TransactionFormBody({
         )}
       </div>
 
-      <Field label={type === 'transfer' ? 'From account' : 'Account'}>
-        <Select value={effectiveAccountId} onChange={(e) => setAccountId(e.target.value)}>
-          {accounts.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name} ({a.currency})
-            </option>
-          ))}
-        </Select>
-      </Field>
-
-      {type === 'transfer' ? (
-        <>
-          <Field label="To account">
-            <Select value={counterId} onChange={(e) => setCounterId(e.target.value)}>
-              <option value="">Select…</option>
-              {accounts
-                .filter((a) => a.id !== effectiveAccountId)
-                .map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name} ({a.currency})
-                  </option>
-                ))}
+      {/* Details — two columns on desktop, single column on phones */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className={cn(splitting && 'sm:col-span-2')}>
+          <Field label={type === 'transfer' ? 'From account' : 'Account'}>
+            <Select value={effectiveAccountId} onChange={(e) => setAccountId(e.target.value)}>
+              {accounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name} ({a.currency})
+                </option>
+              ))}
             </Select>
           </Field>
+        </div>
 
-          {crossCurrency && (
-            <Field label={`Amount received (${destCurrency})`}>
-              <div className="flex items-center gap-2">
-                <span className="font-numeric text-sm font-semibold text-muted-foreground">
-                  {getCurrency(destCurrency).symbol}
-                </span>
-                <Input
-                  type="number"
-                  inputMode="decimal"
-                  step="any"
-                  value={counterValue}
-                  onChange={(e) => {
-                    setCounterEdited(true)
-                    setCounterAmount(e.target.value)
-                  }}
-                  placeholder="0"
-                />
-              </div>
-              <p className="mt-1.5 text-xs font-medium text-muted-foreground">
-                {amountToMinor(counterValue, destCurrency) > 0 && amountToMinor(amount, currency) > 0
-                  ? `≈ 1 ${currency} = ${new Intl.NumberFormat(undefined, {
-                      maximumFractionDigits: 6,
-                    }).format(
-                      fromMinorUnits(amountToMinor(counterValue, destCurrency), destCurrency) /
-                        fromMinorUnits(amountToMinor(amount, currency), currency),
-                    )} ${destCurrency}`
-                  : counterEdited
-                    ? 'Enter what the destination account receives.'
-                    : `No saved ${currency}→${destCurrency} rate — enter the received amount, or add a rate in Settings.`}
-              </p>
-            </Field>
-          )}
-        </>
-      ) : (
-        <div>
-          <div className="mb-1.5 flex items-center justify-between">
-            <Label className="mb-0">{splitting ? 'Splits' : 'Category'}</Label>
-            <button
-              type="button"
-              onClick={toggleSplit}
-              className={cn(
-                'inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold transition',
-                splitting
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:bg-surface-muted hover:text-foreground',
-              )}
-              aria-pressed={splitting}
-            >
-              <Split className="h-3.5 w-3.5" />
-              {splitting ? 'Splitting' : 'Split'}
-            </button>
-          </div>
-
-          {splitting ? (
-            <div className="space-y-2">
-              {splits.map((r) => (
-                <div key={r.key} className="flex gap-2">
-                  <Select
-                    value={r.categoryId}
-                    onChange={(e) => updateSplit(r.key, { categoryId: e.target.value })}
-                    className="h-11 flex-1"
-                  >
-                    <option value="">Uncategorized</option>
-                    {categoryOptions.map(({ category, depth }) => (
-                      <option key={category.id} value={category.id}>
-                        {depth ? '  — ' : ''}
-                        {category.name}
+        {type === 'transfer' ? (
+          <>
+            <div>
+              <Field label="To account">
+                <Select value={counterId} onChange={(e) => setCounterId(e.target.value)}>
+                  <option value="">Select…</option>
+                  {accounts
+                    .filter((a) => a.id !== effectiveAccountId)
+                    .map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name} ({a.currency})
                       </option>
                     ))}
-                  </Select>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    step="any"
-                    value={r.amount}
-                    onChange={(e) => updateSplit(r.key, { amount: e.target.value })}
-                    placeholder="0"
-                    className="h-11 w-28 rounded-xl border border-border bg-surface px-3 text-right font-numeric text-sm text-foreground shadow-sm focus-visible:border-primary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeSplit(r.key)}
-                    disabled={splits.length <= 1}
-                    className="flex h-11 w-9 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-danger/10 hover:text-danger disabled:opacity-40"
-                    aria-label="Remove split"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={addSplit}
-                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-primary transition hover:bg-primary/10"
-              >
-                <Plus className="h-3.5 w-3.5" /> Add split
-              </button>
+                </Select>
+              </Field>
             </div>
-          ) : (
-            <>
-              <Select
-                value={effectiveCategoryId}
-                onChange={(e) => {
-                  setCategoryTouched(true)
-                  setCategoryId(e.target.value)
-                }}
-              >
-                <option value="">Uncategorized</option>
-                {categoryOptions.map(({ category, depth }) => (
-                  <option key={category.id} value={category.id}>
-                    {depth ? '  — ' : ''}
-                    {category.name}
+
+            {crossCurrency && (
+              <div className="sm:col-span-2">
+                <Field label={`Amount received (${destCurrency})`}>
+                  <div className="flex items-center gap-2">
+                    <span className="font-numeric text-sm font-semibold text-muted-foreground">
+                      {getCurrency(destCurrency).symbol}
+                    </span>
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      step="any"
+                      value={counterValue}
+                      onChange={(e) => {
+                        setCounterEdited(true)
+                        setCounterAmount(e.target.value)
+                      }}
+                      placeholder="0"
+                    />
+                  </div>
+                  <p className="mt-1.5 text-xs font-medium text-muted-foreground">
+                    {amountToMinor(counterValue, destCurrency) > 0 && amountToMinor(amount, currency) > 0
+                      ? `≈ 1 ${currency} = ${new Intl.NumberFormat(undefined, {
+                          maximumFractionDigits: 6,
+                        }).format(
+                          fromMinorUnits(amountToMinor(counterValue, destCurrency), destCurrency) /
+                            fromMinorUnits(amountToMinor(amount, currency), currency),
+                        )} ${destCurrency}`
+                      : counterEdited
+                        ? 'Enter what the destination account receives.'
+                        : `No saved ${currency}→${destCurrency} rate — enter the received amount, or add a rate in Settings.`}
+                  </p>
+                </Field>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className={cn(splitting && 'sm:col-span-2')}>{categoryBlock}</div>
+        )}
+
+        {type !== 'transfer' && (
+          <div className="sm:col-span-2">
+            <Field label={type === 'income' ? 'Payer / source' : 'Payee / merchant'}>
+              <Input
+                list="payee-suggestions"
+                value={payee}
+                onChange={(e) => setPayee(e.target.value)}
+                placeholder={type === 'income' ? 'Who paid you? (optional)' : 'Who did you pay? (optional)'}
+                autoComplete="off"
+              />
+              <datalist id="payee-suggestions">
+                {payeeSuggestions.map((p) => (
+                  <option key={p} value={p} />
+                ))}
+              </datalist>
+            </Field>
+          </div>
+        )}
+
+        {type !== 'transfer' && (linkCandidates.length > 0 || linkedId) && (
+          <div className="sm:col-span-2">
+            <Field label={type === 'income' ? 'Refund for (optional)' : 'Reimbursed by (optional)'}>
+              <Select value={linkedId} onChange={(e) => setLinkedId(e.target.value)}>
+                <option value="">Not linked</option>
+                {linkedMissing && <option value={linkedId}>Currently linked transaction</option>}
+                {linkCandidates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {linkLabel(t)}
                   </option>
                 ))}
               </Select>
-              {!categoryTouched && ruleOutcome.matched.length > 0 && (
-                <p className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-primary">
-                  <Zap className="h-3 w-3" /> Auto-filled by rule “{ruleOutcome.matched[0].name}”
-                </p>
-              )}
-            </>
-          )}
-        </div>
-      )}
-
-      {type !== 'transfer' && (
-        <Field label={type === 'income' ? 'Payer / source' : 'Payee / merchant'}>
-          <Input
-            list="payee-suggestions"
-            value={payee}
-            onChange={(e) => setPayee(e.target.value)}
-            placeholder={type === 'income' ? 'Who paid you? (optional)' : 'Who did you pay? (optional)'}
-            autoComplete="off"
-          />
-          <datalist id="payee-suggestions">
-            {payeeSuggestions.map((p) => (
-              <option key={p} value={p} />
-            ))}
-          </datalist>
-        </Field>
-      )}
-
-      {type !== 'transfer' && (linkCandidates.length > 0 || linkedId) && (
-        <Field
-          label={type === 'income' ? 'Refund for (optional)' : 'Reimbursed by (optional)'}
-        >
-          <Select value={linkedId} onChange={(e) => setLinkedId(e.target.value)}>
-            <option value="">Not linked</option>
-            {linkedMissing && <option value={linkedId}>Currently linked transaction</option>}
-            {linkCandidates.map((t) => (
-              <option key={t.id} value={t.id}>
-                {linkLabel(t)}
-              </option>
-            ))}
-          </Select>
-          <p className="mt-1.5 text-xs font-medium text-muted-foreground">
-            {type === 'income'
-              ? 'Tie this money back to the original expense it refunds.'
-              : 'Tie this to the income that paid you back for it.'}
-          </p>
-        </Field>
-      )}
-
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Date">
-          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        </Field>
-        <Field label="Note">
-          <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
-        </Field>
-      </div>
-
-      <Field label="Tags">
-        <TagPicker
-          selected={effectiveTagIds}
-          onChange={(ids) => {
-            setTagsTouched(true)
-            setTagIds(ids)
-          }}
-        />
-      </Field>
-
-      <Field label="Receipts">
-        <input
-          ref={fileRef}
-          type="file"
-          multiple
-          accept="image/*,application/pdf"
-          className="hidden"
-          onChange={(e) => {
-            setFiles((cur) => [...cur, ...Array.from(e.target.files ?? [])])
-            e.target.value = ''
-          }}
-        />
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border text-sm font-semibold text-muted-foreground transition hover:border-primary/50 hover:text-primary"
-        >
-          <Paperclip className="h-4 w-4" /> Attach receipt
-        </button>
-        {files.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {files.map((f, i) => (
-              <span
-                key={`${f.name}-${i}`}
-                className="inline-flex items-center gap-1 rounded-full bg-surface-muted py-1 pl-3 pr-1.5 text-xs font-medium text-foreground"
-              >
-                <span className="max-w-[10rem] truncate">{f.name}</span>
-                <button
-                  type="button"
-                  onClick={() => setFiles((cur) => cur.filter((_, idx) => idx !== i))}
-                  className="rounded-full p-0.5 text-muted-foreground hover:text-danger"
-                  aria-label={`Remove ${f.name}`}
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            ))}
+              <p className="mt-1.5 text-xs font-medium text-muted-foreground">
+                {type === 'income'
+                  ? 'Tie this money back to the original expense it refunds.'
+                  : 'Tie this to the income that paid you back for it.'}
+              </p>
+            </Field>
           </div>
         )}
-      </Field>
+
+        <div>
+          <Field label="Date">
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </Field>
+        </div>
+        <div>
+          <Field label="Note">
+            <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
+          </Field>
+        </div>
+
+        <div className="sm:col-span-2">
+          <Field label="Tags">
+            <TagPicker
+              selected={effectiveTagIds}
+              onChange={(ids) => {
+                setTagsTouched(true)
+                setTagIds(ids)
+              }}
+            />
+          </Field>
+        </div>
+
+        <div className="sm:col-span-2">
+          <Field label="Receipts">
+            <input
+              ref={fileRef}
+              type="file"
+              multiple
+              accept="image/*,application/pdf"
+              className="hidden"
+              onChange={(e) => {
+                setFiles((cur) => [...cur, ...Array.from(e.target.files ?? [])])
+                e.target.value = ''
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border text-sm font-semibold text-muted-foreground transition hover:border-primary/50 hover:text-primary"
+            >
+              <Paperclip className="h-4 w-4" /> Attach receipt
+            </button>
+            {files.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {files.map((f, i) => (
+                  <span
+                    key={`${f.name}-${i}`}
+                    className="inline-flex items-center gap-1 rounded-full bg-surface-muted py-1 pl-3 pr-1.5 text-xs font-medium text-foreground"
+                  >
+                    <span className="max-w-[10rem] truncate">{f.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => setFiles((cur) => cur.filter((_, idx) => idx !== i))}
+                      className="rounded-full p-0.5 text-muted-foreground hover:text-danger"
+                      aria-label={`Remove ${f.name}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </Field>
+        </div>
+      </div>
 
       {type !== 'transfer' &&
         (savingTpl ? (

@@ -6,6 +6,9 @@ import { BrowserRouter } from 'react-router-dom'
 // content-hashed by Vite, precached by the PWA, and subset by unicode-range so
 // only the latin file downloads for id/en text — no external font servers.
 import '@fontsource-variable/plus-jakarta-sans/wght.css'
+// Space Grotesk (variable) — used only for the "Tracr" wordmark. Self-hosted,
+// same no-external-servers rule as the body font.
+import '@fontsource-variable/space-grotesk/wght.css'
 import './index.css'
 import App from './App.tsx'
 import { queryClient } from './lib/queryClient'

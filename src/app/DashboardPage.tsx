@@ -19,6 +19,7 @@ import {
   type LucideProps,
 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
+import { IconChip, ListRow } from '@/components/ui/list'
 import { AnimatedNumber } from '@/components/ui/AnimatedNumber'
 import { EmptyState, Skeleton } from '@/components/ui/States'
 import { pctChange } from '@/features/reports/reports'
@@ -30,6 +31,8 @@ import { useT } from '@/features/settings/language-context'
 import { dateLocale, type MsgKey } from '@/i18n'
 import { NotificationBell } from '@/features/notifications/NotificationBell'
 import { useAccounts, useBalances } from '@/features/accounts/api'
+import { accountTypeMeta } from '@/features/accounts/meta'
+import type { Account } from '@/types/db'
 import { useCategories } from '@/features/categories/api'
 import { useTransactions } from '@/features/transactions/api'
 import { useFxRates } from '@/features/fx/api'
@@ -155,10 +158,17 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-2xl lg:max-w-none lg:px-8">
       {/* Mobile: the blue is a FIXED background layer. The hero text below scrolls
           in normal flow over it, then slides under the white sheet. */}
       <div aria-hidden className="brand-hero pointer-events-none fixed inset-x-0 top-0 h-[45vh] z-0 sm:hidden" />
+
+      {/* Desktop splits into a primary column (hero, actions, assistant) and a
+          right rail (accounts + activity summary). Below lg it all stacks into the
+          single scrolling column. */}
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-6 xl:grid-cols-[minmax(0,1fr)_400px] xl:gap-8">
+      {/* ───────── Primary column ───────── */}
+      <div className="min-w-0">
 
       {/* ───────── Balance hero — full-bleed gradient (GoPay saldo card) ───────── */}
       <section className="brand-hero relative z-10 overflow-hidden px-4 pb-7 pt-4 text-white max-sm:bg-none sm:mt-6 sm:rounded-[24px] sm:px-6 sm:pb-6 sm:pt-5">
@@ -325,70 +335,82 @@ export function DashboardPage() {
 
         {/* Assistant — chat about your money */}
         <AiHomeCard />
+        </div>
+        {/* end content sheet */}
+        </div>
+        {/* end primary column */}
 
-        {/* Recent activity */}
-        <section>
-          <div className="mb-1 flex items-baseline justify-between px-1">
-            <h2 className="text-base font-bold text-foreground">{t('dash.recentActivity')}</h2>
-            <Link
-              to="/transactions"
-              className="text-sm font-semibold text-primary transition hover:underline"
-            >
-              {t('dash.seeAll')}
-            </Link>
-          </div>
-          {recent.length === 0 ? (
-            <EmptyState title={t('dash.nothingYet')} description={t('dash.tapRecord')} />
-          ) : (
-            <Card className="divide-y divide-border px-4 py-1">
-              {recent.map((tx) => (
-                <TransactionRow key={tx.id} tx={tx} accounts={accountMap} categories={categoryMap} />
-              ))}
-            </Card>
-          )}
-        </section>
+        {/* ───────── Right rail — accounts & activity summary ─────────
+            On desktop this is the second grid column; below lg it stacks under the
+            primary column (opaque bg so it clears the mobile fixed hero). */}
+        <aside className="relative z-10 space-y-5 bg-background px-4 pb-6 pt-1 sm:bg-transparent sm:px-0 sm:pt-0 lg:mt-16">
+          <AccountsPanel accounts={accounts} balances={balances} hidden={hidden} />
 
-        {/* Light / dark switch — big, playful, GoPay-style */}
-        <section className="pb-4 pt-4 text-center">
-          <h2 className="text-xl font-extrabold tracking-tight text-foreground">
-            {t('dash.lightOrDark')}
-          </h2>
-          <p className="mt-1 text-sm font-medium text-muted-foreground">{t('dash.flipSwitch')}</p>
+          {/* Recent activity */}
+          <section>
+            <div className="mb-1 flex items-baseline justify-between px-1">
+              <h2 className="text-base font-bold text-foreground">{t('dash.recentActivity')}</h2>
+              <Link
+                to="/transactions"
+                className="text-sm font-semibold text-primary transition hover:underline"
+              >
+                {t('dash.seeAll')}
+              </Link>
+            </div>
+            {recent.length === 0 ? (
+              <EmptyState title={t('dash.nothingYet')} description={t('dash.tapRecord')} />
+            ) : (
+              <Card className="divide-y divide-border px-4 py-1">
+                {recent.map((tx) => (
+                  <TransactionRow key={tx.id} tx={tx} accounts={accountMap} categories={categoryMap} />
+                ))}
+              </Card>
+            )}
+          </section>
 
-          <button
-            type="button"
-            role="switch"
-            aria-checked={theme === 'dark'}
-            onClick={toggle}
-            aria-label={t('dash.switchTheme')}
-            className="pressable mx-auto mt-7 flex h-[128px] w-[128px] items-center justify-center rounded-[30px] bg-surface-muted"
-          >
-            <span
-              className={cn(
-                'flex h-[60px] w-[92px] items-center rounded-full p-1.5 shadow-inner transition-colors duration-300',
-                theme === 'dark' ? 'bg-primary/80' : 'bg-border',
-              )}
+          {/* Light / dark switch — big, playful, GoPay-style */}
+          <section className="pb-4 pt-4 text-center">
+            <h2 className="text-xl font-extrabold tracking-tight text-foreground">
+              {t('dash.lightOrDark')}
+            </h2>
+            <p className="mt-1 text-sm font-medium text-muted-foreground">{t('dash.flipSwitch')}</p>
+
+            <button
+              type="button"
+              role="switch"
+              aria-checked={theme === 'dark'}
+              onClick={toggle}
+              aria-label={t('dash.switchTheme')}
+              className="pressable mx-auto mt-7 flex h-[128px] w-[128px] items-center justify-center rounded-[30px] bg-surface-muted"
             >
               <span
                 className={cn(
-                  'flex h-12 w-12 items-center justify-center rounded-full bg-surface shadow-md transition-transform duration-300',
-                  theme === 'dark' ? 'translate-x-[32px]' : 'translate-x-0',
+                  'flex h-[60px] w-[92px] items-center rounded-full p-1.5 shadow-inner transition-colors duration-300',
+                  theme === 'dark' ? 'bg-primary/80' : 'bg-border',
                 )}
               >
-                {theme === 'dark' ? (
-                  <Moon className="h-5 w-5 text-primary" />
-                ) : (
-                  <Sun className="h-5 w-5 text-warning" />
-                )}
+                <span
+                  className={cn(
+                    'flex h-12 w-12 items-center justify-center rounded-full bg-surface shadow-md transition-transform duration-300',
+                    theme === 'dark' ? 'translate-x-[32px]' : 'translate-x-0',
+                  )}
+                >
+                  {theme === 'dark' ? (
+                    <Moon className="h-5 w-5 text-primary" />
+                  ) : (
+                    <Sun className="h-5 w-5 text-warning" />
+                  )}
+                </span>
               </span>
-            </span>
-          </button>
+            </button>
 
-          <p className="mx-auto mt-7 max-w-[280px] text-sm font-medium text-muted-foreground">
-            {t('dash.onePlace')}
-          </p>
-        </section>
+            <p className="mx-auto mt-7 max-w-[280px] text-sm font-medium text-muted-foreground">
+              {t('dash.onePlace')}
+            </p>
+          </section>
+        </aside>
       </div>
+      {/* end desktop grid */}
 
       <TransactionForm open={addOpen} onClose={() => setAddOpen(false)} />
     </div>
@@ -447,6 +469,60 @@ function QuickTile({
     <button type="button" onClick={onClick} className={cls} aria-label={label}>
       {inner}
     </button>
+  )
+}
+
+/** Right-rail accounts summary: the first few accounts with their balances.
+ *  Deliberately shallow — the full breakdown lives on the Accounts tab. */
+function AccountsPanel({
+  accounts,
+  balances,
+  hidden,
+}: {
+  accounts: Account[]
+  balances: Record<string, number>
+  hidden: boolean
+}) {
+  const { t } = useT()
+  const shown = accounts.slice(0, 5)
+  return (
+    <Card className="p-4">
+      <div className="mb-1 flex items-baseline justify-between px-1">
+        <h2 className="text-base font-bold text-foreground">{t('nav.accounts')}</h2>
+        <Link
+          to="/accounts"
+          className="text-sm font-semibold text-primary transition hover:underline"
+        >
+          {t('dash.seeAll')}
+        </Link>
+      </div>
+      <div className="divide-y divide-border">
+        {shown.map((a) => {
+          const meta = accountTypeMeta(a.type)
+          const balance = balances[a.id] ?? a.opening_balance
+          return (
+            <ListRow
+              key={a.id}
+              to={`/accounts/${a.id}`}
+              chevron={false}
+              leading={<IconChip icon={meta.icon} color={a.color ?? '#0072BC'} />}
+              title={a.name}
+              subtitle={t(meta.label)}
+              trailing={
+                <p
+                  className={cn(
+                    'font-numeric text-sm font-extrabold tracking-tight',
+                    a.is_liability ? 'text-danger' : 'text-foreground',
+                  )}
+                >
+                  {hidden ? '••••' : formatMoney(balance, a.currency)}
+                </p>
+              }
+            />
+          )
+        })}
+      </div>
+    </Card>
   )
 }
 

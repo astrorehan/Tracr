@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { AlertTriangle, Check, Landmark, X } from 'lucide-react'
+import { AlertTriangle, ArrowDownLeft, ArrowUpRight, Check, Landmark } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown'
 import { Modal } from '@/components/ui/Modal'
@@ -9,6 +9,7 @@ import { useT } from '@/features/settings/language-context'
 import type { MsgKey, TVars } from '@/i18n'
 import type { ParsedTxRow } from '@/features/data/transactionsCsv'
 import { formatMoney, toMinorUnits } from '@/lib/money'
+import { cn } from '@/lib/utils'
 import type { Account } from '@/types/db'
 import type { ScanDocument, ScannedTransaction } from './api'
 
@@ -21,6 +22,8 @@ interface PreparedRow {
   direction: 'debit' | 'credit' | null
   amountMinor: number
   currency: string
+  /** Intrinsically importable (date/direction/amount/currency all read cleanly).
+   *  Whether an account is chosen is a separate, modal-level gate. */
   valid: boolean
   problem: string | null
   transaction: ParsedTxRow | null
@@ -66,9 +69,16 @@ export function ScanImportModal({ scan, onClose, onImported }: ScanImportModalPr
   const selectedAccountId = accountId || autoAccountId
   const account = accounts.find((item) => item.id === selectedAccountId)
   const rows = useMemo(() => buildRows(scan, account, t), [account, scan, t])
-  const selected = rows.filter((row) => !excluded.has(row.index))
-  const valid = selected.filter((row) => row.valid && row.transaction)
-  const invalid = selected.filter((row) => !row.valid)
+
+  // Intrinsically importable rows the user hasn't unchecked. The account itself
+  // is a separate gate (the Save button), so an unpicked account never makes a
+  // clean row look broken.
+  const validRows = rows.filter((row) => row.valid)
+  const chosen = validRows.filter((row) => !excluded.has(row.index))
+  const problemRows = rows.filter((row) => !row.valid)
+  const toSave = account ? chosen.filter((row) => row.transaction) : []
+  const allChosen = validRows.length > 0 && chosen.length === validRows.length
+
   const accountOptions: DropdownOption<string>[] = [
     { value: '', label: t('ai.scanChooseAccount') },
     ...accounts.map((item) => ({ value: item.id, label: `${item.name} · ${item.currency}` })),
@@ -83,6 +93,7 @@ export function ScanImportModal({ scan, onClose, onImported }: ScanImportModalPr
       ? t('ai.scanTitleReceipt')
       : t('ai.scanTitleTxns', { count: rows.length })
   const description = isUnknown ? t('ai.scanDescUnknown') : t('ai.scanDesc')
+  const needsAccount = !isUnknown && rows.length > 0 && !selectedAccountId
 
   function toggle(index: number) {
     setExcluded((current) => {
@@ -93,107 +104,225 @@ export function ScanImportModal({ scan, onClose, onImported }: ScanImportModalPr
     })
   }
 
+  function toggleAll() {
+    setExcluded(allChosen ? new Set(validRows.map((row) => row.index)) : new Set())
+  }
+
   async function confirm() {
-    const imported = await importTransactions.mutateAsync(valid.map((row) => row.transaction!))
-    onImported(imported, valid.length - imported)
+    const imported = await importTransactions.mutateAsync(toSave.map((row) => row.transaction!))
+    onImported(imported, toSave.length - imported)
     onClose()
   }
 
   return (
-    <Modal open onClose={onClose} title={title} description={description} className="max-w-2xl">
+    <Modal open onClose={onClose} title={title} description={description} className="max-w-xl">
       <div className="space-y-4">
-        {!isUnknown && (
-          <div className="rounded-xl border border-border bg-surface-muted p-3">
-            <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-              <Landmark className="h-3.5 w-3.5" /> {t('ai.scanAccount')}
-            </p>
-            <Dropdown
-              value={selectedAccountId}
-              onChange={setAccountId}
-              options={accountOptions}
-              aria-label={t('ai.scanAccount')}
-            />
-            {accounts.length > 1 && !selectedAccountId && (
-              <p className="mt-2 text-xs text-warning">{t('ai.scanNeedAccount')}</p>
-            )}
-          </div>
-        )}
-
-        {(scan.warnings.length > 0 || invalid.length > 0 || isUnknown) && (
-          <div className="rounded-xl border border-warning/35 bg-warning/10 p-3 text-sm text-foreground">
-            <p className="flex items-center gap-1.5 font-semibold">
-              <AlertTriangle className="h-4 w-4 text-warning" /> {t('ai.scanCheck')}
-            </p>
-            <ul className="mt-1.5 list-disc space-y-1 pl-5 text-xs text-muted-foreground">
-              {scan.warnings.map((warning, index) => <li key={`warning-${index}`}>{warning}</li>)}
-              {isUnknown && scan.warnings.length === 0 && <li>{t('ai.scanUnknownHint')}</li>}
-              {invalid.slice(0, 3).map((row) => (
-                <li key={`invalid-${row.index}`}>
-                  {t('ai.scanRowProblem', { n: row.index + 1, problem: row.problem ?? '' })}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {!isUnknown && rows.length > 0 && (
-          <div className="max-h-[42vh] overflow-auto rounded-xl border border-border">
-            <div className="min-w-[580px] divide-y divide-border text-sm">
-              {rows.map((row) => {
-                const isSelected = !excluded.has(row.index)
-                return (
-                  <div key={row.index} className="flex items-center gap-3 px-3 py-2.5">
-                    <button
-                      type="button"
-                      onClick={() => toggle(row.index)}
-                      aria-label={`${isSelected ? 'Exclude' : 'Include'} row ${row.index + 1}`}
-                      className={isSelected
-                        ? 'flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary text-white'
-                        : 'h-5 w-5 shrink-0 rounded-md border border-border bg-surface'}
-                    >
-                      {isSelected && <Check className="h-3.5 w-3.5" />}
-                    </button>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold text-foreground">{row.description}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {row.date ?? t('ai.scanDateUnreadable')} · {row.direction ?? t('ai.scanDirUnreadable')}
-                      </p>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <p className={row.direction === 'credit' ? 'font-numeric font-bold text-primary' : 'font-numeric font-bold text-foreground'}>
-                        {row.amountMinor > 0 ? formatMoney(row.amountMinor, row.currency) : t('ai.scanUnreadable')}
-                      </p>
-                      {!row.valid && <p className="text-xs font-medium text-danger">{row.problem}</p>}
-                    </div>
-                  </div>
-                )
-              })}
+        {isUnknown ? (
+          <UnknownState hint={scan.warnings[0] ?? t('ai.scanUnknownHint')} />
+        ) : (
+          <>
+            {/* ── Save-to account ── */}
+            <div>
+              <label className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                <Landmark className="h-3.5 w-3.5" /> {t('ai.scanAccount')}
+              </label>
+              <Dropdown
+                value={selectedAccountId}
+                onChange={setAccountId}
+                options={accountOptions}
+                aria-label={t('ai.scanAccount')}
+              />
+              {needsAccount && (
+                <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-warning">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  {t('ai.scanNeedAccount')}
+                </p>
+              )}
             </div>
-          </div>
+
+            {/* ── Rows ── */}
+            {rows.length > 0 ? (
+              <div className="overflow-hidden rounded-2xl border border-border">
+                <div className="flex items-center justify-between gap-2 border-b border-border bg-surface-muted/60 px-3.5 py-2.5">
+                  <button
+                    type="button"
+                    onClick={toggleAll}
+                    disabled={validRows.length === 0}
+                    className="pressable inline-flex items-center gap-2 text-xs font-bold text-foreground disabled:opacity-40"
+                  >
+                    <Box checked={allChosen} />
+                    {allChosen ? t('ai.scanClear') : t('ai.scanSelectAll')}
+                  </button>
+                  <span className="text-xs font-semibold text-muted-foreground">
+                    {t('ai.scanSelectedCount', { n: chosen.length, total: validRows.length })}
+                  </span>
+                </div>
+
+                <div className="max-h-[42vh] divide-y divide-border overflow-y-auto">
+                  {rows.map((row) => (
+                    <Row
+                      key={row.index}
+                      row={row}
+                      checked={row.valid && !excluded.has(row.index)}
+                      onToggle={() => toggle(row.index)}
+                      t={t}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="rounded-2xl border border-border bg-surface-muted p-4 text-sm text-muted-foreground">
+                {t('ai.scanNoRows')}
+              </p>
+            )}
+
+            {/* ── Read notices (statement warnings only; per-row issues show inline) ── */}
+            {scan.warnings.length > 0 && (
+              <div className="rounded-2xl border border-warning/30 bg-warning/10 p-3.5">
+                <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-warning" /> {t('ai.scanCheck')}
+                </p>
+                <ul className="mt-1.5 list-disc space-y-1 pl-5 text-xs text-muted-foreground">
+                  {scan.warnings.map((warning, index) => (
+                    <li key={`warning-${index}`}>{warning}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {rows.length > 0 && validRows.length === 0 && scan.warnings.length === 0 && (
+              <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-warning" />
+                {t('ai.scanNothingValid')}
+              </p>
+            )}
+          </>
         )}
 
-        {!isUnknown && rows.length === 0 && (
-          <p className="rounded-xl bg-surface-muted p-3 text-sm text-muted-foreground">
-            {t('ai.scanNoRows')}
-          </p>
-        )}
-
+        {/* ── Actions ── */}
         <div className="flex gap-3 pt-1">
-          <Button variant="secondary" className="flex-1" onClick={onClose}>{t('common.cancel')}</Button>
+          <Button variant="secondary" className="flex-1" onClick={onClose}>
+            {isUnknown ? t('common.close') : t('common.cancel')}
+          </Button>
           {!isUnknown && (
             <Button
               className="flex-1"
               loading={importTransactions.isPending}
-              disabled={!account || valid.length === 0}
+              disabled={!account || toSave.length === 0}
               onClick={() => void confirm()}
             >
-              {t('ai.scanSave', { count: valid.length })}
+              {t('ai.scanSave', { count: chosen.length })}
             </Button>
           )}
-          {isUnknown && <Button className="flex-1" onClick={onClose}><X className="h-4 w-4" /> {t('common.close')}</Button>}
         </div>
+        {problemRows.length > 0 && !isUnknown && (
+          <p className="text-center text-[11px] font-medium text-muted-foreground">
+            {t('ai.scanRowProblem', {
+              n: problemRows[0].index + 1,
+              problem: problemRows[0].problem ?? '',
+            })}
+            {problemRows.length > 1 ? ` +${problemRows.length - 1}` : ''}
+          </p>
+        )}
       </div>
     </Modal>
+  )
+}
+
+/** A single scanned line: check state, direction glyph, label, amount. Rows that
+ *  didn't read cleanly show a warning marker instead of a checkbox and can't be
+ *  chosen. */
+function Row({
+  row,
+  checked,
+  onToggle,
+  t,
+}: {
+  row: PreparedRow
+  checked: boolean
+  onToggle: () => void
+  t: Translate
+}) {
+  const credit = row.direction === 'credit'
+  const dirLabel = credit ? t('ai.scanIn') : row.direction === 'debit' ? t('ai.scanOut') : t('ai.scanDirUnreadable')
+  return (
+    <div className={cn('flex items-center gap-3 px-3.5 py-3', !row.valid && 'opacity-70')}>
+      {row.valid ? (
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label={`${checked ? 'Exclude' : 'Include'} row ${row.index + 1}`}
+        >
+          <Box checked={checked} />
+        </button>
+      ) : (
+        <span
+          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-warning/15 text-warning"
+          title={row.problem ?? ''}
+        >
+          <AlertTriangle className="h-3 w-3" />
+        </span>
+      )}
+
+      <span
+        className={cn(
+          'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
+          credit ? 'bg-positive/10 text-positive' : 'bg-surface-muted text-muted-foreground',
+        )}
+        aria-hidden
+      >
+        {credit ? <ArrowDownLeft className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
+      </span>
+
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold text-foreground">{row.description}</p>
+        <p className="truncate text-xs text-muted-foreground">
+          {row.date ?? t('ai.scanDateUnreadable')} · {dirLabel}
+        </p>
+      </div>
+
+      <div className="shrink-0 text-right">
+        <p
+          className={cn(
+            'font-numeric text-sm font-bold',
+            credit ? 'text-positive' : 'text-foreground',
+          )}
+        >
+          {row.amountMinor > 0
+            ? `${credit ? '+' : ''}${formatMoney(row.amountMinor, row.currency)}`
+            : t('ai.scanUnreadable')}
+        </p>
+        {!row.valid && row.problem && (
+          <p className="text-[11px] font-medium text-warning">{row.problem}</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** Square check control shared by the select-all header and each row. */
+function Box({ checked }: { checked: boolean }) {
+  return (
+    <span
+      className={cn(
+        'flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors',
+        checked ? 'border-primary bg-primary text-white' : 'border-border bg-surface',
+      )}
+    >
+      {checked && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+    </span>
+  )
+}
+
+/** Shown when the image couldn't be parsed as a receipt or statement. */
+function UnknownState({ hint }: { hint: string }) {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-surface-muted/50 px-4 py-8 text-center">
+      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-warning/15 text-warning">
+        <AlertTriangle className="h-6 w-6" />
+      </span>
+      <p className="max-w-[320px] text-sm font-medium text-muted-foreground">{hint}</p>
+    </div>
   )
 }
 
@@ -217,12 +346,16 @@ function buildRow(
   // A single receipt with no printed date reasonably defaults to today;
   // statement rows stay strict since a missing date there is a real read error.
   const date = item.date ?? (isReceipt ? new Date().toISOString().slice(0, 10) : null)
+
+  // Row validity covers only what was read off the image. A missing account is
+  // NOT a row problem — it's one modal-level gate (the Save button), so an
+  // unpicked account never spams every row with the same warning.
   let problem: string | null = null
-  if (!account) problem = t('ai.scanProblemAccount')
-  else if (currency !== account.currency) problem = t('ai.scanProblemCurrency', { a: currency, b: account.currency })
-  else if (!date) problem = t('ai.scanDateUnreadable')
+  if (!date) problem = t('ai.scanDateUnreadable')
   else if (!item.direction) problem = t('ai.scanProblemDir')
   else if (!Number.isFinite(amountMinor) || amountMinor <= 0) problem = t('ai.scanProblemAmount')
+  else if (account && currency !== account.currency)
+    problem = t('ai.scanProblemCurrency', { a: currency, b: account.currency })
 
   const valid = problem == null
   return {
