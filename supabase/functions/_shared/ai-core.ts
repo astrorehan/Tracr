@@ -33,6 +33,72 @@ export function formatMoney(minor: number, currency: string): string {
   }
 }
 
+// --- FX (port of src/features/fx/fx.ts — keep the two in step) --------------
+//
+// Conversion is DISPLAY-ONLY: stored native amounts are never rewritten, we only
+// estimate a total in the base currency. A rate row means 1 unit of `base` =
+// `rate` units of `quote`. Latest row per directed pair wins; inverses are
+// derived; anything else triangulates through the user's base currency.
+//
+// This mirrors what AccountsPage shows so the assistant and the dashboard can
+// never quote two different net worths. If you change one, change the other.
+interface FxRow {
+  base: string
+  quote: string
+  rate: number
+  as_of: string
+}
+export interface RateTable {
+  pairs: Map<string, number>
+  base: string
+}
+const pairKey = (from: string, to: string) => `${from}>${to}`
+
+export function buildRateTable(rates: FxRow[], baseCurrency: string): RateTable {
+  const best = new Map<string, FxRow>()
+  for (const r of rates ?? []) {
+    const k = pairKey(r.base, r.quote)
+    const cur = best.get(k)
+    if (!cur || r.as_of > cur.as_of) best.set(k, r)
+  }
+  const pairs = new Map<string, number>()
+  for (const r of best.values()) {
+    pairs.set(pairKey(r.base, r.quote), Number(r.rate))
+    // Only fill the inverse if it wasn't given explicitly.
+    const inv = pairKey(r.quote, r.base)
+    if (!best.has(inv)) pairs.set(inv, 1 / Number(r.rate))
+  }
+  return { pairs, base: baseCurrency }
+}
+
+export function rateBetween(from: string, to: string, table: RateTable): number | null {
+  if (from === to) return 1
+  const direct = table.pairs.get(pairKey(from, to))
+  if (direct != null) return direct
+  const fromBase = from === table.base ? 1 : table.pairs.get(pairKey(from, table.base))
+  const baseTo = to === table.base ? 1 : table.pairs.get(pairKey(table.base, to))
+  if (fromBase != null && baseTo != null) return fromBase * baseTo
+  return null
+}
+
+/** Minor units of `from` → minor units of `to`, accounting for differing decimal
+ *  places. Null when no rate is known — callers must surface that rather than
+ *  fall back to zero, or the total silently under-reports. */
+export function convertMinor(minor: number, from: string, to: string, table: RateTable): number | null {
+  if (from === to) return minor
+  const rate = rateBetween(from, to, table)
+  if (rate == null) return null
+  const major = minor / 10 ** decimalsOf(from)
+  return Math.round(major * rate * 10 ** decimalsOf(to))
+}
+
+/** Account types that are debts by nature — mirrors LIABILITY_TYPES in
+ *  src/features/accounts/meta.ts. Used to default the liability flag. */
+const ACCOUNT_TYPES = [
+  'cash', 'bank_card', 'credit_card', 'e_wallet', 'crypto', 'stocks', 'loan', 'receivable', 'other',
+] as const
+const LIABILITY_TYPES = new Set(['credit_card', 'loan'])
+
 // --- the tools the model is allowed to call (OpenAI function schema) ---
 // deno-lint-ignore no-explicit-any
 export const tools: any[] = [
@@ -112,6 +178,101 @@ export const tools: any[] = [
         "The user's wallets/accounts (name and currency). Call before recording " +
         'a transaction when you need to know which account to use or what exists.',
       parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'net_worth',
+      description:
+        'Current net worth: everything owned minus everything owed, valued in the ' +
+        "user's base currency, plus each account's own balance. Use for questions " +
+        'like "how much do I have?", "what am I worth?", "how much is in my wallet?".',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'list_categories',
+      description:
+        'The categories in this ledger. Call this BEFORE recording a transaction ' +
+        'so you can put it in the right one, and before create_category so you ' +
+        "don't duplicate an existing category.",
+      parameters: {
+        type: 'object',
+        properties: {
+          kind: {
+            type: 'string',
+            enum: ['expense', 'income'],
+            description: 'Only categories of this kind. Omit for both.',
+          },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'create_category',
+      description:
+        'Create a category, then use it on a transaction. Call this ONLY when you ' +
+        'have checked list_categories and nothing existing reasonably fits — prefer ' +
+        'an existing category every time. Good reason to create: the spending is ' +
+        'specific and recurring and has no home yet. Bad reason: a one-off purchase ' +
+        'that fits a broader category you already have. If the name already exists ' +
+        'the existing one is returned instead of a duplicate. Always tell the user ' +
+        'when you created a category.',
+      parameters: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'Short, plain name, e.g. "Coffee".' },
+          kind: { type: 'string', enum: ['expense', 'income'] },
+          parent_name: {
+            type: 'string',
+            description:
+              'Optional existing category of the same kind to nest this under, e.g. ' +
+              '"Food" for a new "Coffee". Must already exist.',
+          },
+        },
+        required: ['name', 'kind'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'create_account',
+      description:
+        'Create a wallet/account (a place money sits, e.g. a bank account, cash, an ' +
+        'e-wallet, a credit card). Call ONLY after the user has explicitly confirmed ' +
+        'the name, type and currency in this conversation — never on your own ' +
+        'initiative, and never to work around a transaction whose account you could ' +
+        'not resolve (ask which existing account instead).',
+      parameters: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'What the user calls it, e.g. "BCA" or "Cash".' },
+          type: {
+            type: 'string',
+            enum: [...ACCOUNT_TYPES],
+            description:
+              'credit_card and loan are debts. receivable is money owed TO the user.',
+          },
+          currency: { type: 'string', description: 'ISO code, e.g. IDR.' },
+          opening_balance: {
+            type: 'number',
+            description:
+              'How much is in it right now, MAJOR units, not negative. For a debt ' +
+              '(credit_card/loan) this is how much is OWED. Defaults to 0.',
+          },
+          credit_limit: {
+            type: 'number',
+            description: 'Major units. Only meaningful for a credit_card or loan.',
+          },
+        },
+        required: ['name', 'type', 'currency'],
+      },
     },
   },
   {
@@ -252,9 +413,224 @@ export async function runTool(ctx: ToolCtx, name: string, args: Record<string, u
     return { rows: data ?? [] }
   }
 
+  if (name === 'list_categories') {
+    let query = supabase
+      .from('categories')
+      .select('id, name, kind, parent_id')
+      .eq('book_id', bookId)
+      .eq('is_archived', false)
+    const kind = String(args.kind ?? '')
+    if (kind === 'expense' || kind === 'income') query = query.eq('kind', kind)
+    const { data, error } = await query.order('sort_order')
+    if (error) return { error: error.message }
+
+    // Resolve parent names locally so the model sees "Food > Coffee" rather than
+    // uuids it would only be tempted to echo back.
+    const byId = new Map((data ?? []).map((c: Row) => [c.id, c.name]))
+    return {
+      rows: (data ?? []).map((c: Row) => ({
+        name: c.name,
+        kind: c.kind,
+        parent: c.parent_id ? byId.get(c.parent_id) ?? null : null,
+      })),
+    }
+  }
+
+  if (name === 'net_worth') return netWorth(ctx)
+  if (name === 'create_category') return createCategory(ctx, args)
+  if (name === 'create_account') return createAccount(ctx, args)
   if (name === 'record_transaction') return recordTransaction(ctx, args)
 
   return { error: `unknown tool: ${name}` }
+}
+
+/** Assets minus debts in the base currency, mirroring AccountsPage. Accounts
+ *  flagged exclude_from_stats are listed but not counted; accounts whose currency
+ *  has no known rate are reported separately rather than silently counted as
+ *  zero, so the model can say the total is incomplete instead of quoting a wrong
+ *  number. */
+export async function netWorth(ctx: ToolCtx): Promise<unknown> {
+  const { supabase, bookId, userId, baseCurrency } = ctx
+
+  const [accountsRes, balancesRes, ratesRes] = await Promise.all([
+    supabase.from('accounts')
+      .select('id, name, type, currency, is_liability, exclude_from_stats, opening_balance')
+      .eq('book_id', bookId).eq('is_archived', false).order('sort_order'),
+    supabase.from('account_balances').select('account_id, balance').eq('book_id', bookId),
+    // fx_rates is scoped by user, not book — it has no book_id column.
+    supabase.from('fx_rates').select('base, quote, rate, as_of').eq('user_id', userId),
+  ])
+  if (accountsRes.error) return { error: accountsRes.error.message }
+  if (balancesRes.error) return { error: balancesRes.error.message }
+
+  const balanceById = new Map<string, number>(
+    (balancesRes.data ?? []).map((b: Row) => [String(b.account_id), Number(b.balance)]),
+  )
+  const table = buildRateTable((ratesRes.data ?? []) as FxRow[], baseCurrency)
+
+  let assets = 0
+  let debts = 0
+  const rows: Row[] = []
+  const noRate: string[] = []
+
+  for (const a of (accountsRes.data ?? []) as Row[]) {
+    const currency = String(a.currency)
+    const balance = balanceById.get(String(a.id)) ?? Number(a.opening_balance)
+    const counted = !a.exclude_from_stats
+    const converted = convertMinor(balance, currency, baseCurrency, table)
+
+    rows.push({
+      name: a.name,
+      type: a.type,
+      // Debts are stored negative; show the plain "owed" figure.
+      balance: formatMoney(a.is_liability ? Math.abs(balance) : balance, currency),
+      is_debt: !!a.is_liability,
+      counted_in_net_worth: counted && converted != null,
+    })
+
+    if (!counted) continue
+    if (converted == null) {
+      noRate.push(`${a.name} (${currency})`)
+      continue
+    }
+    if (a.is_liability) debts += Math.abs(converted)
+    else assets += converted
+  }
+
+  return {
+    net_worth: formatMoney(assets - debts, baseCurrency),
+    total_assets: formatMoney(assets, baseCurrency),
+    total_debts: formatMoney(debts, baseCurrency),
+    accounts: rows,
+    ...(noRate.length
+      ? {
+          warning:
+            `No exchange rate for ${noRate.join(', ')}, so ${noRate.length === 1 ? 'it is' : 'they are'} ` +
+            `left out of the total. Say so when you answer.`,
+        }
+      : {}),
+  }
+}
+
+/** Create a category, or hand back the existing one with the same name. The
+ *  model is told to prefer existing categories, but "prefer" is a prompt rule —
+ *  the case-insensitive dedupe here is what actually stops the list filling up
+ *  with near-duplicates. */
+export async function createCategory(ctx: ToolCtx, args: Record<string, unknown>): Promise<unknown> {
+  const { supabase, bookId, userId } = ctx
+
+  const kind = String(args.kind ?? '')
+  if (kind !== 'expense' && kind !== 'income') return { error: 'kind must be expense or income' }
+
+  const name = String(args.name ?? '').trim().slice(0, 60)
+  if (!name) return { error: 'name is required' }
+
+  const { data: existing, error: exErr } = await supabase
+    .from('categories')
+    .select('id, name, is_archived')
+    .eq('book_id', bookId).eq('kind', kind).ilike('name', name)
+    .limit(1)
+  if (exErr) return { error: exErr.message }
+  if (existing?.[0]) {
+    return {
+      ok: true,
+      created: false,
+      name: existing[0].name,
+      note: existing[0].is_archived
+        ? 'A category with this name already exists but is archived; it was reused.'
+        : 'A category with this name already exists; use it as-is.',
+    }
+  }
+
+  // Optional parent, same kind, must already exist. One level only — the app
+  // nests categories, but a bot inventing deep trees is not worth the confusion.
+  let parentId: string | null = null
+  const parentName = String(args.parent_name ?? '').trim()
+  if (parentName) {
+    const { data: parents } = await supabase
+      .from('categories')
+      .select('id, parent_id')
+      .eq('book_id', bookId).eq('kind', kind).eq('is_archived', false)
+      .ilike('name', parentName)
+      .limit(1)
+    if (!parents?.[0]) return { error: `no ${kind} category named "${parentName}" to nest under` }
+    if (parents[0].parent_id) return { error: `"${parentName}" is already a sub-category` }
+    parentId = parents[0].id
+  }
+
+  const { error: insErr } = await supabase.from('categories').insert({
+    user_id: userId, book_id: bookId, name, kind, parent_id: parentId,
+  })
+  if (insErr) return { error: insErr.message }
+
+  ctx.onRecorded()
+  return { ok: true, created: true, name, kind, parent: parentName || null }
+}
+
+/** Create an account. Like record_transaction, the model's claim that the user
+ *  confirmed is only a prompt rule — so the blast radius is bounded here: one
+ *  row, own book, known type, sane currency and amount. */
+export async function createAccount(ctx: ToolCtx, args: Record<string, unknown>): Promise<unknown> {
+  const { supabase, bookId, userId } = ctx
+
+  const name = String(args.name ?? '').trim().slice(0, 60)
+  if (!name) return { error: 'name is required' }
+
+  const type = String(args.type ?? '')
+  if (!(ACCOUNT_TYPES as readonly string[]).includes(type)) {
+    return { error: `type must be one of: ${ACCOUNT_TYPES.join(', ')}` }
+  }
+
+  const currency = String(args.currency ?? '').toUpperCase().trim()
+  if (!/^[A-Z]{3,8}$/.test(currency)) return { error: 'invalid currency code' }
+
+  const { data: clash } = await supabase
+    .from('accounts').select('id').eq('book_id', bookId).ilike('name', name).limit(1)
+  if (clash?.[0]) return { error: `an account named "${name}" already exists` }
+
+  const isLiability = LIABILITY_TYPES.has(type)
+
+  const openingMajor = Number(args.opening_balance ?? 0)
+  if (!Number.isFinite(openingMajor) || openingMajor < 0) {
+    return { error: 'opening_balance must be 0 or more (for a debt, how much is owed)' }
+  }
+  const magnitude = Math.round(openingMajor * 10 ** decimalsOf(currency))
+  if (magnitude > 1e15) return { error: 'opening_balance out of range' }
+  // Debts carry a negative balance so they subtract from net worth (same rule as
+  // AccountForm).
+  const openingBalance = isLiability ? -magnitude : magnitude
+
+  // Credit limit only applies to debts; ignored otherwise.
+  let creditLimit: number | null = null
+  if (isLiability && args.credit_limit != null) {
+    const limitMajor = Number(args.credit_limit)
+    if (!Number.isFinite(limitMajor) || limitMajor < 0) return { error: 'credit_limit must be 0 or more' }
+    creditLimit = Math.round(limitMajor * 10 ** decimalsOf(currency))
+  }
+
+  const { error: insErr } = await supabase.from('accounts').insert({
+    user_id: userId,
+    book_id: bookId,
+    name,
+    type,
+    currency,
+    opening_balance: openingBalance,
+    is_liability: isLiability,
+    credit_limit: creditLimit,
+  })
+  if (insErr) return { error: insErr.message }
+
+  ctx.onRecorded()
+  return {
+    ok: true,
+    created: {
+      name,
+      type,
+      currency,
+      is_debt: isLiability,
+      balance: formatMoney(magnitude, currency),
+    },
+  }
 }
 
 /** The one write the model can perform. Every field is validated here — the
@@ -525,6 +901,19 @@ export function buildSystemPrompt(opts: {
     `conversation. Before asking for confirmation, check list_accounts; if there ` +
     `is more than one account, ask which one. After recording, restate exactly ` +
     `what was saved. Never record the same receipt twice.\n` +
+    `- Categories: every transaction you record should have one. Check ` +
+    `list_categories and pick the closest existing category yourself — do not make ` +
+    `the user choose, and do not ask permission to use an existing one. Only when ` +
+    `nothing fits, create_category, then use it and mention that you made it. A ` +
+    `new category must earn its place: "Coffee" for someone buying coffee weekly, ` +
+    `yes; a separate category for one unusual purchase, no — put it in the closest ` +
+    `broader one instead.\n` +
+    `- Accounts: create_account ONLY when the user has asked for a new account and ` +
+    `confirmed its name, type and currency. If you cannot work out which account a ` +
+    `transaction belongs to, ask — never invent a new account to hold it.\n` +
+    `- Net worth: net_worth already subtracts debts and converts to the base ` +
+    `currency. Quote its numbers as given; never add up the per-account balances ` +
+    `yourself. If it returns a warning that accounts were left out, pass that on.\n` +
     `- When you receive a [RECEIPT_SCAN] or [DOCUMENT_SCAN] block: it is ` +
     `machine-extracted data from a photo the user sent. Summarize it briefly ` +
     `(merchant, date, total, notable items), point out anything the scanner ` +
