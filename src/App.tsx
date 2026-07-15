@@ -46,11 +46,15 @@ const TelegramPage = lazy(() =>
   import('./app/TelegramPage').then((m) => ({ default: m.TelegramPage })),
 )
 const LegalPage = lazy(() => import('./app/LegalPage').then((m) => ({ default: m.LegalPage })))
+const LandingPage = lazy(() =>
+  import('./app/LandingPage').then((m) => ({ default: m.LandingPage })),
+)
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth()
   if (loading) return <CenterSpinner />
-  if (!session) return <Navigate to="/login" replace />
+  // Signed-out visitors land on the marketing page, not the login form.
+  if (!session) return <Navigate to="/welcome" replace />
   return <>{children}</>
 }
 
@@ -60,6 +64,14 @@ export default function App() {
   return (
     <ConfirmProvider>
       <Routes>
+      <Route
+        path="/welcome"
+        element={
+          <Suspense fallback={<CenterSpinner />}>
+            <LandingPage />
+          </Suspense>
+        }
+      />
       <Route path="/login" element={<LoginPage />} />
       <Route
         path="/legal/:doc"
