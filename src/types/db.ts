@@ -12,7 +12,7 @@ export type AccountType =
   | 'other'
 export type TransactionType = 'income' | 'expense' | 'transfer'
 export type CategoryKind = 'income' | 'expense'
-export type TransactionSource = 'web' | 'whatsapp' | 'import'
+export type TransactionSource = 'web' | 'whatsapp' | 'import' | 'telegram'
 /** Reconciliation state: just recorded, seen on the statement, or matched & locked. */
 export type TransactionStatus = 'pending' | 'cleared' | 'reconciled'
 

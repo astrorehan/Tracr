@@ -6,6 +6,7 @@ import {
   Sun,
   Sparkles,
   MessageCircle,
+  Send,
   Table,
   Split,
   Tag,
@@ -71,11 +72,15 @@ const SYSTEM: NavItem[] = [
 ]
 
 // AI shipped — chat lives on Home (this deep-link auto-opens it), the monthly
-// analysis lives on Reports.
+// analysis lives on Reports. The Telegram bot is the same assistant reached
+// from a chat app.
 const ASSISTANT: NavItem[] = [
   { to: '/?chat=1', label: 'settings.soonAI', desc: 'settings.aiDesc', icon: Sparkles },
+  { to: '/telegram', label: 'settings.telegram', desc: 'settings.telegramDesc', icon: Send },
 ]
 
+// WhatsApp stays here: the backend exists, but the channel needs Meta Business
+// verification before it can message anyone.
 const COMING_SOON: { icon: ComponentType<{ className?: string }>; label: MsgKey }[] = [
   { icon: MessageCircle, label: 'settings.soonWhatsApp' },
   { icon: Split, label: 'settings.soonSplit' },
