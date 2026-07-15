@@ -29,6 +29,7 @@ export const qk = {
   payees: ['payees'] as const,
   transactionTemplates: ['transaction_templates'] as const,
   rules: ['rules'] as const,
+  botLinks: ['bot_links'] as const,
   transactions: (filters?: Record<string, unknown>) =>
     filters ? (['transactions', filters] as const) : (['transactions'] as const),
 }

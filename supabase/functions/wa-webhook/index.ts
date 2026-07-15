@@ -1,18 +1,18 @@
-// WhatsApp bot webhook (Meta WhatsApp Cloud API).
+// WhatsApp transport (Meta WhatsApp Cloud API).
 //
-// This exposes the SAME agent brain as ai-analysis (../_shared/ai-core.ts)
-// through WhatsApp. The critical difference: there is NO user session on a
-// webhook — Meta authenticates the request, not a user. So:
+// PARKED: this channel needs Meta Business verification, which is not done. The
+// code is kept working and on the shared core so it can be switched on later;
+// Telegram (../tg-webhook) is the live channel. Anything you change in the
+// message pipeline belongs in ../_shared/bot-core.ts, not here.
+//
+// This file is transport only: authenticate the request, parse the update, fetch
+// media bytes, hand the turn to bot-core, send the reply string back.
 //
 //   * Auth of the REQUEST is the HMAC signature check (X-Hub-Signature-256 vs
 //     WA_APP_SECRET). The endpoint is public; the signature is the only gate.
 //     Skipping it lets anyone forge messages.
-//   * Auth of the USER is the phone → (user_id, book_id) binding in
-//     whatsapp_links. A phone is bound once, via the LINK handshake.
-//   * The Supabase client is the SERVICE ROLE — RLS does NOT protect us. Every
-//     query is hard-scoped to the resolved book_id inside ai-core (audited) and
-//     the user_id/book_id we pass in come ONLY from whatsapp_links. Never derive
-//     scope from anything in the message body.
+//   * Auth of the USER is the phone -> (user_id, book_id) binding in bot_links.
+//     A phone is bound once, via the LINK handshake.
 //
 // Meta retries a webhook that doesn't 200 within ~20s, which would double-deliver
 // (and could double-record a "yes"). We therefore ACK immediately after the
@@ -26,17 +26,17 @@
 //   WA_VERIFY_TOKEN  — random string you also enter in the Meta webhook config
 //   (LLM_* / GEMINI_* / AI_MONTHLY_LIMIT already set for ai-analysis)
 // SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are injected by the platform.
-import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { encodeBase64 } from 'jsr:@std/encoding@1/base64'
-import OpenAI from 'npm:openai'
 import {
-  buildSystemPrompt,
-  extractDocument,
-  runAgentLoop,
-  type ToolCtx,
-} from '../_shared/ai-core.ts'
+  adminClient,
+  consumeBotLinkToken,
+  resolveBotLink,
+  runBotTurn,
+  touchBotLink,
+} from '../_shared/bot-core.ts'
 
 const GRAPH = 'https://graph.facebook.com/v21.0'
+const CHANNEL = 'whatsapp' as const
 const enc = new TextEncoder()
 
 // --- signature verification (the only auth on a public webhook) -------------
@@ -81,7 +81,7 @@ async function sendText(phoneId: string, token: string, to: string, body: string
 }
 
 /** Two authed calls: media id → media URL → bytes. Returns a data: URL that
- *  extractDocument accepts. */
+ *  the scanner accepts. */
 async function fetchMediaDataUrl(mediaId: string, token: string): Promise<string> {
   const metaRes = await fetch(`${GRAPH}/${mediaId}`, { headers: { Authorization: `Bearer ${token}` } })
   if (!metaRes.ok) throw new Error(`media meta ${metaRes.status}`)
@@ -95,10 +95,6 @@ async function fetchMediaDataUrl(mediaId: string, token: string): Promise<string
   const mime = /^image\/(jpeg|png|webp)$/.test(meta.mime_type ?? '') ? meta.mime_type : 'image/jpeg'
   return `data:${mime};base64,${encodeBase64(bytes)}`
 }
-
-// --- conversation history (WhatsApp is stateless per call) ------------------
-const HISTORY_LIMIT = 8
-type Turn = { role: 'user' | 'model'; content: string }
 
 // --- incoming payload shapes (only the bits we read) ------------------------
 interface WaMessage {
@@ -189,180 +185,43 @@ async function handleMessage(value: WaValue, message: WaMessage): Promise<void> 
   const reply = (body: string) => sendText(phoneId, waToken, from, body)
 
   // Service-role client — NO RLS. Scope is enforced by hand from here on.
-  const admin = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    { auth: { persistSession: false } },
-  )
-
+  const admin = adminClient()
   const textBody = (message.text?.body ?? '').trim()
 
   // --- LINK handshake: "LINK <token>" binds this phone to a user + book ------
   if (/^LINK\s+/i.test(textBody)) {
-    await handleLink(admin, from, textBody.replace(/^LINK\s+/i, '').trim(), reply)
+    const res = await consumeBotLinkToken(admin, CHANNEL, from, textBody.replace(/^LINK\s+/i, '').trim())
+    await reply(res.ok
+      ? `Connected to *${res.bookName}*. Send me an expense like "Lunch 45k" or a photo of a receipt and I'll log it.`
+      : res.message)
     return
   }
 
   // --- resolve the phone → (user_id, book_id) binding ------------------------
-  const { data: link } = await admin
-    .from('whatsapp_links')
-    .select('user_id, book_id')
-    .eq('wa_phone', from)
-    .maybeSingle()
+  const link = await resolveBotLink(admin, CHANNEL, from)
   if (!link) {
     await reply('Not connected yet. Open Tracr → Settings → Connect WhatsApp to link this number.')
     return
   }
-  admin.from('whatsapp_links').update({ last_seen_at: new Date().toISOString() }).eq('wa_phone', from)
-    .then(() => {}, () => {})
+  touchBotLink(admin, CHANNEL, from)
 
-  // --- meter (service-role variant; ai_try_consume uses auth.uid()) ----------
-  const monthlyLimit = Number(Deno.env.get('AI_MONTHLY_LIMIT') ?? '50')
-  const { data: allowed, error: capErr } = await admin.rpc('ai_try_consume_for', {
-    p_user: link.user_id, p_max: monthlyLimit,
-  })
-  if (capErr) {
-    console.error('meter failed', capErr)
-    await reply('Something went wrong on my side. Please try again in a bit.')
-    return
-  }
-  if (!allowed) {
-    await reply("You've reached this month's assistant limit. It resets at the start of next month.")
-    return
-  }
-
-  // --- LLM config ------------------------------------------------------------
-  const apiKey = Deno.env.get('LLM_API_KEY')
-  if (!apiKey) {
-    await reply('The assistant is not configured yet.')
-    return
-  }
-  const baseURL = Deno.env.get('LLM_BASE_URL') ?? 'https://api.deepseek.com'
-  const model = Deno.env.get('LLM_MODEL') ?? 'deepseek-v4-flash'
-  const disableThinking = (Deno.env.get('LLM_DISABLE_THINKING') ?? 'true') === 'true'
-
-  // Base currency, scoped to the linked user by hand.
-  const { data: profile } = await admin
-    .from('profiles').select('base_currency').eq('id', link.user_id).single()
-  const baseCurrency = profile?.base_currency ?? 'IDR'
-  const today = new Date().toISOString().slice(0, 10)
-
-  // --- load rolling history --------------------------------------------------
-  const { data: hist } = await admin
-    .from('whatsapp_history').select('turns').eq('wa_phone', from).maybeSingle()
-  const priorTurns: Turn[] = Array.isArray(hist?.turns) ? hist!.turns as Turn[] : []
-
-  // --- assemble messages -----------------------------------------------------
-  const systemPrompt = buildSystemPrompt({ today, baseCurrency, language: 'English', channel: 'whatsapp' })
-  // deno-lint-ignore no-explicit-any
-  const messages: any[] = [{ role: 'system', content: systemPrompt }]
-  for (const t of priorTurns) {
-    if (t?.content) messages.push({ role: t.role === 'model' ? 'assistant' : 'user', content: t.content })
-  }
-
-  // A short, human-readable record of THIS turn to persist afterwards (never the
-  // giant scan JSON — that stays ephemeral, like the app does).
-  let userTurnText = textBody
+  // --- fetch media (transport-specific), then hand off to the shared core ----
+  let imageDataUrls: string[] | undefined
+  let text = textBody
 
   if (message.type === 'image' && message.image?.id) {
-    const caption = (message.image.caption ?? '').trim()
+    text = (message.image.caption ?? '').trim()
     try {
-      const dataUrl = await fetchMediaDataUrl(message.image.id, waToken)
-      const scan = await extractDocument([dataUrl], caption)
-      messages.push({
-        role: 'user',
-        content: (caption ? `${caption}\n\n` : '') + `[DOCUMENT_SCAN]\n${JSON.stringify(scan)}`,
-      })
-      userTurnText = caption ? `[photo] ${caption}` : '[photo]'
+      imageDataUrls = [await fetchMediaDataUrl(message.image.id, waToken)]
     } catch (e) {
-      const notConfigured = e instanceof Error && e.message === 'vision-not-configured'
-      await reply(notConfigured
-        ? "Photo reading isn't enabled yet. Please type the amount instead."
-        : "I couldn't read that photo. Try a clearer one, or type the amount.")
+      console.error('media fetch failed', e)
+      await reply("I couldn't download that photo. Try sending it again.")
       return
     }
-  } else if (message.type === 'text' && textBody) {
-    messages.push({ role: 'user', content: textBody })
-  } else {
+  } else if (message.type !== 'text' || !textBody) {
     await reply('Send me a message or a photo of a receipt and I can log it for you.')
     return
   }
 
-  // --- run the shared agent loop (service-role, hard-scoped) -----------------
-  const client = new OpenAI({
-    apiKey,
-    baseURL,
-    defaultHeaders: {
-      'HTTP-Referer': Deno.env.get('LLM_SITE_URL') ?? 'https://tracr.app',
-      'X-Title': 'Tracr',
-    },
-  })
-  const ctx: ToolCtx = {
-    supabase: admin,
-    bookId: link.book_id,
-    userId: link.user_id,
-    baseCurrency,
-    source: 'whatsapp',
-    onRecorded: () => {},
-  }
-
-  let replyText: string
-  try {
-    const result = await runAgentLoop({ client, model, messages, ctx, disableThinking })
-    replyText = result.timedOut || !result.text
-      ? 'Sorry, that took too long. Please try again.'
-      : result.text
-  } catch (e) {
-    console.error('agent loop failed', e)
-    await reply('Something went wrong reading that. Please try again.')
-    return
-  }
-
-  await reply(replyText)
-
-  // --- persist the trimmed history ------------------------------------------
-  const nextTurns = [...priorTurns, { role: 'user', content: userTurnText }, { role: 'model', content: replyText }]
-    .slice(-HISTORY_LIMIT)
-  await admin.from('whatsapp_history')
-    .upsert({ wa_phone: from, turns: nextTurns, updated_at: new Date().toISOString() })
-}
-
-// ---------------------------------------------------------------------------
-// LINK handshake: consume a one-time token, bind the phone. Service role only.
-// ---------------------------------------------------------------------------
-// deno-lint-ignore no-explicit-any
-async function handleLink(admin: any, from: string, token: string, reply: (b: string) => Promise<void>) {
-  if (!token) {
-    await reply('That link looks incomplete. Please tap Connect WhatsApp in Tracr again.')
-    return
-  }
-  const { data: row } = await admin
-    .from('whatsapp_link_tokens')
-    .select('token, user_id, book_id, expires_at, used_at')
-    .eq('token', token)
-    .maybeSingle()
-
-  if (!row || row.used_at || new Date(row.expires_at).getTime() < Date.now()) {
-    await reply('That link has expired. Open Tracr → Settings → Connect WhatsApp for a fresh one.')
-    return
-  }
-
-  // Bind the phone (upsert so re-linking a number just moves it to the new book).
-  const { error: linkErr } = await admin.from('whatsapp_links').upsert({
-    wa_phone: from,
-    user_id: row.user_id,
-    book_id: row.book_id,
-    linked_at: new Date().toISOString(),
-    last_seen_at: new Date().toISOString(),
-  })
-  if (linkErr) {
-    console.error('link upsert failed', linkErr)
-    await reply('Could not connect just now. Please try again.')
-    return
-  }
-  await admin.from('whatsapp_link_tokens').update({ used_at: new Date().toISOString() }).eq('token', token)
-
-  const { data: book } = await admin.from('books').select('name').eq('id', row.book_id).maybeSingle()
-  const bookName = book?.name ?? 'your ledger'
-  await reply(`Connected to *${bookName}*. Send me an expense like "Lunch 45k" or a photo of a receipt and I'll log it.`)
+  await reply(await runBotTurn({ admin, channel: CHANNEL, chatId: from, link, text, imageDataUrls }))
 }

@@ -91,6 +91,7 @@ export const SORT_OPTIONS: { value: TxSort; label: string }[] = [
 export const SOURCE_OPTIONS: { value: TransactionSource; label: string }[] = [
   { value: 'web', label: 'Added in app' },
   { value: 'import', label: 'Imported' },
+  { value: 'telegram', label: 'Telegram' },
   { value: 'whatsapp', label: 'WhatsApp' },
 ]
 

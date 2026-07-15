@@ -100,6 +100,64 @@ export const MESSAGES = {
   'settings.soonSheets': { en: 'Export to Google Sheets', id: 'Ekspor ke Google Sheets' },
   'settings.assistant': { en: 'Assistant', id: 'Asisten' },
   'settings.aiDesc': { en: 'Summaries & answers about your money', id: 'Ringkasan & jawaban soal uangmu' },
+  'settings.telegram': { en: 'Telegram bot', id: 'Bot Telegram' },
+  'settings.telegramDesc': {
+    en: 'Note spending by chatting, even outside the app',
+    id: 'Catat pengeluaran lewat chat, tanpa buka aplikasi',
+  },
+  // ── Telegram bot ─────────────────────────────────────────────────────────
+  'tg.title': { en: 'Telegram bot', id: 'Bot Telegram' },
+  'tg.subtitle': {
+    en: 'Chat to note what you spent — no need to open the app.',
+    id: 'Cukup chat buat catat pengeluaran — nggak perlu buka aplikasi.',
+  },
+  'tg.pitch': {
+    en: 'Send it something like "Lunch 45k" or a photo of a receipt, and it writes it down for you. You can also ask it things like "how much did I spend last month?".',
+    id: 'Kirim aja "Makan siang 45rb" atau foto struk, nanti dicatatkan. Bisa juga ditanya, misalnya "bulan lalu habis berapa?".',
+  },
+  'tg.checkFirst': {
+    en: 'It always shows you what it understood and waits for your OK before saving anything.',
+    id: 'Sebelum disimpan, isinya selalu ditunjukkan dulu dan nunggu kamu setuju.',
+  },
+  'tg.connect': { en: 'Connect Telegram', id: 'Hubungkan Telegram' },
+  'tg.connecting': { en: 'Opening Telegram…', id: 'Membuka Telegram…' },
+  'tg.waitingTitle': { en: 'Waiting for Telegram', id: 'Menunggu Telegram' },
+  'tg.waitingBody': {
+    en: 'Tap START in the chat that just opened. This page updates by itself once it works.',
+    id: 'Tekan START di chat yang barusan kebuka. Halaman ini bakal berubah sendiri kalau berhasil.',
+  },
+  'tg.manualHint': {
+    en: 'Telegram did not open? Message {bot} and send:',
+    id: 'Telegram nggak kebuka? Chat {bot} lalu kirim:',
+  },
+  'tg.expiresHint': {
+    en: 'This code works for 10 minutes.',
+    id: 'Kode ini berlaku 10 menit.',
+  },
+  'tg.copied': { en: 'Copied', id: 'Tersalin' },
+  'tg.copy': { en: 'Copy', id: 'Salin' },
+  'tg.cancel': { en: 'Never mind', id: 'Batalkan' },
+  'tg.connectedTitle': { en: 'Connected', id: 'Terhubung' },
+  'tg.connectedSince': { en: 'Connected {date}', id: 'Terhubung {date}' },
+  'tg.writesTo': { en: 'Notes go into {book}', id: 'Catatan masuk ke {book}' },
+  'tg.bookWarning': {
+    en: 'This stays pointed at {book}, even when you switch books here. Disconnect and connect again to move it.',
+    id: 'Ini tetap ke {book}, walau kamu ganti buku di sini. Putuskan lalu hubungkan lagi kalau mau pindah.',
+  },
+  'tg.unlink': { en: 'Disconnect', id: 'Putuskan' },
+  'tg.unlinkConfirmTitle': { en: 'Disconnect Telegram?', id: 'Putuskan Telegram?' },
+  'tg.unlinkConfirmBody': {
+    en: 'The bot will stop answering and can no longer see your money. Nothing you already saved is deleted. You can connect again anytime.',
+    id: 'Bot berhenti menjawab dan nggak bisa lihat uangmu lagi. Catatan yang sudah tersimpan tetap aman. Bisa dihubungkan lagi kapan aja.',
+  },
+  'tg.error': {
+    en: 'Could not start the connection. Please try again.',
+    id: 'Gagal memulai koneksi. Coba lagi ya.',
+  },
+  'tg.noBook': {
+    en: 'Open a book first, then connect.',
+    id: 'Buka buku dulu, baru hubungkan.',
+  },
   // ── AI insights ──────────────────────────────────────────────────────────
   'ai.title': { en: 'AI spending insights', id: 'Analisis pengeluaran AI' },
   'ai.subtitle': {
