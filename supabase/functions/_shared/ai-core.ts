@@ -159,7 +159,8 @@ export interface ToolCtx {
   bookId: string
   userId: string
   baseCurrency: string
-  /** How the row is stamped in transactions.source ('web' | 'whatsapp'). */
+  /** How the row is stamped in transactions.source — must be a value of the
+   *  transaction_source enum ('web' | 'whatsapp' | 'telegram' | 'import'). */
   source?: string
   onRecorded: () => void
 }
@@ -497,14 +498,14 @@ export const MAX_IMAGES = 6
 export const MAX_IMAGE_CHARS = 1_300_000
 export const MAX_TOTAL_IMAGE_CHARS = 7_200_000
 
-/** Build the agent system prompt. The web and WhatsApp channels share the same
- *  rules; only the formatting guidance differs (WhatsApp has no markdown and a
- *  server-persisted history, so the "confirm before write" rule spans messages). */
+/** Build the agent system prompt. Every channel shares the same rules; only the
+ *  formatting guidance differs. The chat channels also have a server-persisted
+ *  history, so the "confirm before write" rule has to span messages there. */
 export function buildSystemPrompt(opts: {
   today: string
   baseCurrency: string
   language: string
-  channel?: 'web' | 'whatsapp'
+  channel?: 'web' | 'whatsapp' | 'telegram'
 }): string {
   const { today, baseCurrency, language, channel = 'web' } = opts
   const common =
@@ -531,13 +532,24 @@ export function buildSystemPrompt(opts: {
     `the total is missing, say so and ask the user to type the amount instead.\n` +
     `- If asked anything unrelated to this user's money, politely decline.`
 
+  const remembers =
+    `Earlier messages in this chat are remembered, so a plain "yes" refers to the ` +
+    `transaction you just proposed.`
+
   if (channel === 'whatsapp') {
     return (
       common +
       `\n- This is a WhatsApp chat. Keep replies short (a couple of lines). Do NOT ` +
-      `use markdown; WhatsApp uses *single asterisks* for bold. Earlier messages in ` +
-      `this chat are remembered, so a plain "yes" refers to the transaction you just ` +
-      `proposed.`
+      `use markdown; WhatsApp uses *single asterisks* for bold. ${remembers}`
+    )
+  }
+  if (channel === 'telegram') {
+    return (
+      common +
+      `\n- This is a Telegram chat. Keep replies short (a couple of lines). Write ` +
+      `PLAIN TEXT only — no markdown of any kind, no *asterisks*, _underscores_ or ` +
+      `backticks for emphasis, since the message is sent unformatted and the symbols ` +
+      `would show up literally. ${remembers}`
     )
   }
   return common

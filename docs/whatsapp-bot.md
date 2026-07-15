@@ -1,5 +1,24 @@
 # WhatsApp Bot — Implementation Plan
 
+> **Status: WhatsApp is PARKED; Telegram shipped first.** Meta requires Business
+> verification before a number can message real users, so Telegram became the
+> first live channel. `wa-webhook` still exists and is kept working, but no Meta
+> app is configured and nothing routes to it.
+>
+> The design below is still accurate in substance — the channel is just a
+> transport. What changed since it was written:
+>
+> - The agent brain moved to `supabase/functions/_shared/ai-core.ts`, and the
+>   per-channel plumbing (link, metering, history, one-turn pipeline) to
+>   `_shared/bot-core.ts`. A webhook is now transport only.
+> - The `whatsapp_*` tables were generalized to `bot_links` / `bot_link_tokens` /
+>   `bot_history`, keyed by `(channel, chat_id)` (migration 0032). `chat_id` is
+>   E.164-without-`+` for WhatsApp, the numeric chat id for Telegram.
+> - `wa_mint_link_token()` → `bot_mint_link_token(p_channel)`.
+> - Telegram specifics live in the header of `supabase/functions/tg-webhook/index.ts`.
+>
+> Reviving WhatsApp = Meta verification + the Settings link button, not new backend.
+
 Goal: a WhatsApp bot that lets a user record transactions by messaging the bot in
 plain language (text or photo). It is the same AI brain already shipped in the app,
 exposed through a new input channel.
