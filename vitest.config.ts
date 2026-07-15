@@ -11,6 +11,8 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    // Edge functions are Deno, but their pure-logic modules import nothing and
+    // run fine here — worth covering, since a bot reply is hard to eyeball.
+    include: ['src/**/*.test.ts', 'supabase/functions/**/*.test.ts'],
   },
 })

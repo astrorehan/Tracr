@@ -492,6 +492,24 @@ input[type='number'] {
   font-weight: 700;
 }
 
+/* ── Landing page ────────────────────────────────────────────────────────
+   Gentle bob for the floating chat / insight cards around the phone mock.
+   Collapsed by the global prefers-reduced-motion rule like everything else. */
+@keyframes landingFloat {
+  from {
+    transform: translateY(-6px);
+  }
+  to {
+    transform: translateY(6px);
+  }
+}
+.landing-float {
+  animation: landingFloat 5s ease-in-out infinite alternate;
+}
+.landing-float-delay {
+  animation-delay: 2.5s;
+}
+
 /* Sidebar active-link rail indicator (legacy — the app shell now uses a
    --primary-soft pill; kept for any remaining callers). */
 .nav-rail {

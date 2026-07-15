@@ -41,6 +41,7 @@
 // SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are injected by the platform.
 import { encodeBase64 } from 'jsr:@std/encoding@1/base64'
 import { MAX_IMAGE_CHARS } from '../_shared/ai-core.ts'
+import { renderTelegramHtml, stripMarkdown } from '../_shared/telegram-format.ts'
 import {
   adminClient,
   consumeBotLinkToken,
@@ -66,27 +67,42 @@ function timingSafeEqual(a: string, b: string): boolean {
 }
 
 // --- Bot API helpers --------------------------------------------------------
-async function sendText(token: string, chatId: string, body: string): Promise<void> {
-  // No parse_mode: the reply is arbitrary model text, and Telegram's MarkdownV2
-  // rejects the whole message on a single unescaped '.' or '-'. Plain text can't
-  // fail, and the system prompt tells the model not to emit markup.
-  const res = await fetch(`${API(token)}/sendMessage`, {
+async function post(token: string, method: string, body: unknown): Promise<Response> {
+  return await fetch(`${API(token)}/${method}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    // Telegram caps a text message at 4096 chars.
-    body: JSON.stringify({ chat_id: chatId, text: body.slice(0, 4096) }),
+    body: JSON.stringify(body),
   })
-  if (!res.ok) console.error('tg send failed', res.status, await res.text().catch(() => ''))
+}
+
+async function sendText(token: string, chatId: string, body: string): Promise<void> {
+  // Telegram caps a text message at 4096 chars. Slicing HTML could cut a tag in
+  // half, so trim the markdown first and render what survives.
+  const text = renderTelegramHtml(body.slice(0, 3900))
+
+  const res = await post(token, 'sendMessage', {
+    chat_id: chatId,
+    text,
+    parse_mode: 'HTML',
+    link_preview_options: { is_disabled: true },
+  })
+  if (res.ok) return
+
+  // A malformed entity 400s the whole message. Never lose the reply over
+  // formatting — resend it as plain text with the markup stripped.
+  const detail = await res.text().catch(() => '')
+  console.error('tg send failed', res.status, detail)
+  const retry = await post(token, 'sendMessage', {
+    chat_id: chatId,
+    text: stripMarkdown(body).slice(0, 4096),
+  })
+  if (!retry.ok) console.error('tg plain retry failed', retry.status, await retry.text().catch(() => ''))
 }
 
 /** "typing…" in the chat. The agent loop can take several seconds; the status
  *  expires by itself after ~5s, so this is fire-and-forget. */
 function sendTyping(token: string, chatId: string): void {
-  fetch(`${API(token)}/sendChatAction`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, action: 'typing' }),
-  }).then(() => {}, () => {})
+  post(token, 'sendChatAction', { chat_id: chatId, action: 'typing' }).then(() => {}, () => {})
 }
 
 interface PhotoSize {
