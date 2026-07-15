@@ -510,6 +510,23 @@ input[type='number'] {
   animation-delay: 2.5s;
 }
 
+/* Slow-drifting glow blobs behind the hero — transform-only, so cheap. */
+@keyframes landingDrift {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(42px, -28px);
+  }
+}
+.landing-drift {
+  animation: landingDrift 14s ease-in-out infinite alternate;
+}
+.landing-drift-delay {
+  animation-duration: 18s;
+  animation-delay: -7s;
+}
+
 /* Sidebar active-link rail indicator (legacy — the app shell now uses a
    --primary-soft pill; kept for any remaining callers). */
 .nav-rail {
