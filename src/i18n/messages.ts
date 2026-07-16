@@ -214,6 +214,32 @@ export const MESSAGES = {
     id: 'File tidak bisa dibaca — pakai foto JPG/PNG.',
   },
   'ai.photo': { en: 'Photo', id: 'Foto' },
+  'ai.fileGone': {
+    en: 'Download expired — make the report again.',
+    id: 'Unduhan kedaluwarsa — buat lagi laporannya.',
+  },
+  // PDF report — a free, deterministic path (no AI call, no monthly-limit cost).
+  'ai.report': { en: 'PDF report', id: 'Laporan PDF' },
+  'ai.reportPick': { en: 'Report period', id: 'Periode laporan' },
+  'ai.reportRequest': { en: 'PDF report · {period}', id: 'Laporan PDF · {period}' },
+  'ai.reportReady': { en: "Here's your report.", id: 'Ini laporanmu.' },
+  'ai.buildingReport': { en: 'Building your report…', id: 'Menyiapkan laporan…' },
+  'ai.reportEmpty': {
+    en: 'No transactions in that period, so there was nothing to report.',
+    id: 'Tidak ada transaksi pada periode itu, jadi tidak ada yang bisa dilaporkan.',
+  },
+  'ai.reportFailed': {
+    en: "Sorry, I couldn't build that report. Please try again.",
+    id: 'Maaf, laporannya gagal dibuat. Coba lagi ya.',
+  },
+  'ai.periodThisMonth': { en: 'This month', id: 'Bulan ini' },
+  'ai.periodLastMonth': { en: 'Last month', id: 'Bulan lalu' },
+  'ai.periodThisYear': { en: 'This year', id: 'Tahun ini' },
+  'ai.periodLast12': { en: 'Last 12 months', id: '12 bulan terakhir' },
+  'ai.periodCustom': { en: 'Custom range', id: 'Rentang khusus' },
+  'ai.reportCreate': { en: 'Create report', id: 'Buat laporan' },
+  'ai.reportFrom': { en: 'From date', id: 'Dari tanggal' },
+  'ai.reportTo': { en: 'To date', id: 'Sampai tanggal' },
   // ── Scan & import (receipt / transaction-history photos) ─────────────────
   'ai.scanTitleReceipt': { en: 'Review this receipt', id: 'Periksa struk ini' },
   'ai.scanTitleTxns': { en: 'Review {count} transactions', id: 'Periksa {count} transaksi' },

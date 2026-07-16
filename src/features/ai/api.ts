@@ -25,6 +25,15 @@ export interface ScanDocument {
   transactions: ScannedTransaction[]
   warnings: string[]
 }
+/** A file the assistant produced (PDF report). `data` is the base64 payload;
+ *  it is dropped when the chat is persisted (see saveChat), leaving a chip that
+ *  says the download expired. */
+export interface AiFile {
+  name: string
+  mime: string
+  data?: string
+}
+
 export interface AiResponse {
   text?: string
   limited?: boolean
@@ -33,6 +42,21 @@ export interface AiResponse {
   scan?: ScanDocument
   /** True when the assistant wrote a transaction — caches must refresh. */
   recorded?: boolean
+  /** Files generated this turn (PDF reports). */
+  files?: AiFile[]
+  /** mode 'report': the period held no transactions, so nothing was built. */
+  empty?: boolean
+}
+
+/** Build a PDF report for an explicit period. Deterministic server path — no
+ *  LLM, not metered — so it never touches the monthly assistant cap. */
+export async function requestReport(input: {
+  book_id: string
+  start: string
+  end: string
+  lang: string
+}): Promise<AiResponse> {
+  return callAi({ mode: 'report', ...input })
 }
 
 export type ChatMsg = {
@@ -42,6 +66,8 @@ export type ChatMsg = {
   kind?: 'limit' | 'error'
   /** Receipt photo (data URL) shown in the bubble. Not persisted — see saveChat. */
   image?: string
+  /** Files attached to this reply (PDF reports). Payload not persisted. */
+  files?: AiFile[]
 }
 
 // Keep the sent history short — the model only needs recent context, and every
@@ -81,10 +107,15 @@ export function saveChat(bookId: string | null, messages: ChatMsg[]) {
       sessionStorage.removeItem(chatKey(bookId))
       return
     }
-    // Photos are hundreds of KB of base64 — persisting them would blow the
-    // ~5MB sessionStorage budget after a few scans. Keep the text only; a
-    // restored conversation shows a "photo" placeholder instead.
-    const slim = messages.slice(-CHAT_CAP).map((m) => (m.image ? { ...m, image: undefined } : m))
+    // Photos and file payloads are hundreds of KB of base64 — persisting them
+    // would blow the ~5MB sessionStorage budget after a few uses. Keep the text
+    // (and file names, so a chip can still render as expired); a restored
+    // conversation shows placeholders instead.
+    const slim = messages.slice(-CHAT_CAP).map((m) => ({
+      ...m,
+      ...(m.image ? { image: undefined } : {}),
+      ...(m.files ? { files: m.files.map((f) => ({ name: f.name, mime: f.mime })) } : {}),
+    }))
     sessionStorage.setItem(chatKey(bookId), JSON.stringify(slim))
   } catch {
     /* private mode — ignore */

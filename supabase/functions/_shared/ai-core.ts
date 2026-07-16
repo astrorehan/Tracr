@@ -14,6 +14,7 @@
 // The tool loop, tool schema, validation, and document extraction are identical
 // across both — that's the whole point of sharing them.
 import OpenAI from 'npm:openai'
+import { buildReportPdf, type ReportData } from './report-pdf.ts'
 
 // --- money formatting (mirror of src/lib/currencies.ts minor-unit places) ---
 const DECIMALS: Record<string, number> = {
@@ -99,6 +100,12 @@ const ACCOUNT_TYPES = [
 ] as const
 const LIABILITY_TYPES = new Set(['credit_card', 'loan'])
 
+/** Mirrors ACCOUNT_COLORS in src/features/accounts/meta.ts — bot-created tags
+ *  cycle through the same muted palette the app's tag form offers. */
+const TAG_COLORS = [
+  '#5b7290', '#4f8a8b', '#6b8e6b', '#8a5f7e', '#a87b3f', '#c2603f', '#8a7c66', '#6b7280',
+]
+
 // --- the tools the model is allowed to call (OpenAI function schema) ---
 // deno-lint-ignore no-explicit-any
 export const tools: any[] = [
@@ -124,14 +131,16 @@ export const tools: any[] = [
     function: {
       name: 'spending_summary',
       description:
-        'Totals for a date range grouped by category, by month, or by account. ' +
-        'Use group_by="category" to find where money went.',
+        'Totals for a date range grouped by category, month, account, or tag. ' +
+        'Use group_by="category" to find where money went. group_by="tag" answers ' +
+        '"how much did I spend on <tag>?" — a transaction can carry several tags, ' +
+        'so tag rows overlap and must never be added together.',
       parameters: {
         type: 'object',
         properties: {
           start: { type: 'string', description: 'Start date, inclusive, YYYY-MM-DD.' },
           end: { type: 'string', description: 'End date, inclusive, YYYY-MM-DD.' },
-          group_by: { type: 'string', enum: ['category', 'month', 'account'] },
+          group_by: { type: 'string', enum: ['category', 'month', 'account', 'tag'] },
           type: { type: 'string', enum: ['expense', 'income'], description: 'Defaults to expense.' },
         },
         required: ['start', 'end', 'group_by'],
@@ -242,6 +251,38 @@ export const tools: any[] = [
   {
     type: 'function',
     function: {
+      name: 'list_tags',
+      description:
+        "The user's tags — free labels that cut across categories (e.g. a " +
+        '"bali trip" tag on transport, food and hotel spending), with how many ' +
+        'transactions carry each. Call before create_tag or before tagging ' +
+        'anything so you reuse an existing tag instead of near-duplicating it.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'create_tag',
+      description:
+        'Create a tag the user can put on any transaction. Call ONLY when the ' +
+        'user asked for a tag and list_tags shows nothing close — if the name ' +
+        'already exists the existing tag is returned instead of a duplicate. To ' +
+        'put a tag ON a transaction, pass tags to record_transaction or ' +
+        'add_tags to update_transaction instead; missing tags are created there ' +
+        'automatically.',
+      parameters: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'Short label, e.g. "bali trip" or "work".' },
+        },
+        required: ['name'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'create_account',
       description:
         'Create a wallet/account (a place money sits, e.g. a bank account, cash, an ' +
@@ -296,6 +337,7 @@ export const tools: any[] = [
           type: { type: 'string', enum: ['expense', 'income', 'transfer'] },
           account_name: { type: 'string' },
           category_name: { type: 'string' },
+          tag_name: { type: 'string', description: 'Only transactions carrying this tag.' },
           limit: { type: 'integer', description: '1–20, default 10.' },
         },
       },
@@ -320,6 +362,16 @@ export const tools: any[] = [
           category_name: { type: 'string' },
           payee: { type: 'string' },
           note: { type: 'string' },
+          add_tags: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Tag names to put on it. Tags that do not exist yet are created.',
+          },
+          remove_tags: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Tag names to take off it.',
+          },
         },
         required: ['id'],
       },
@@ -450,8 +502,36 @@ export const tools: any[] = [
           category_name: { type: 'string', description: 'Category name if the user gave/agreed one.' },
           payee: { type: 'string', description: 'Merchant / store name if known.' },
           note: { type: 'string', description: 'Short description, e.g. main items bought.' },
+          tags: {
+            type: 'array',
+            items: { type: 'string' },
+            description:
+              'Tag names to put on it, ONLY if the user asked for them. ' +
+              'Tags that do not exist yet are created.',
+          },
         },
         required: ['type', 'amount', 'currency'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'generate_report',
+      description:
+        'Build a PDF financial report for a date range and send it to the user ' +
+        'as a file. It contains totals, spending by category and by tag, the ' +
+        'biggest transactions, and budget status — you do NOT need to fetch ' +
+        'those yourself first, and you must not re-list the whole report in ' +
+        'your reply. Call ONLY when the user asks for a report/PDF/export. If ' +
+        'they gave no period, use the current month and say so.',
+      parameters: {
+        type: 'object',
+        properties: {
+          start: { type: 'string', description: 'Start date, inclusive, YYYY-MM-DD.' },
+          end: { type: 'string', description: 'End date, inclusive, YYYY-MM-DD.' },
+        },
+        required: ['start', 'end'],
       },
     },
   },
@@ -510,6 +590,15 @@ const isDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Dat
 const baseSnapshot = (minor: number, currency: string, baseCurrency: string) =>
   currency === baseCurrency ? { base_amount: minor, fx_rate: 1 } : { base_amount: null, fx_rate: null }
 
+/** A file a tool produced for the user (today: the PDF report). Each channel
+ *  decides how to deliver it — the web handler base64s it into the JSON
+ *  response, the bot transports upload it to their platform. */
+export interface AgentFile {
+  filename: string
+  mime: string
+  bytes: Uint8Array
+}
+
 /** Everything runTool needs beyond the call itself. `onRecorded` lets the
  *  request handler flag the response so the client can refresh its caches.
  *
@@ -525,7 +614,12 @@ export interface ToolCtx {
   /** How the row is stamped in transactions.source — must be a value of the
    *  transaction_source enum ('web' | 'whatsapp' | 'telegram' | 'import'). */
   source?: string
+  /** Report/section language. Defaults to 'en'. */
+  lang?: 'en' | 'id'
   onRecorded: () => void
+  /** Hand a produced file to the channel. Assigned by runAgentLoop (like
+   *  onRecorded); returns false when the channel refuses it (cap reached). */
+  onFile?: (file: AgentFile) => boolean
 }
 
 // Dispatch one model tool call and shape the result for the model. Money
@@ -553,11 +647,19 @@ export async function runTool(ctx: ToolCtx, name: string, args: Record<string, u
   }
 
   if (name === 'spending_summary') {
-    const { data, error } = await supabase.rpc('ai_spending_summary', {
-      p_book_id: bookId, p_start: start, p_end: end,
-      p_type: (args.type as string) ?? 'expense',
-      p_group_by: (args.group_by as string) ?? 'category',
-    })
+    // Tag grouping is its own RPC (it joins the tag tables); the result shape
+    // is identical so both paths share the formatting below.
+    const byTag = args.group_by === 'tag'
+    const { data, error } = byTag
+      ? await supabase.rpc('ai_tag_summary', {
+          p_book_id: bookId, p_start: start, p_end: end,
+          p_type: (args.type as string) ?? 'expense',
+        })
+      : await supabase.rpc('ai_spending_summary', {
+          p_book_id: bookId, p_start: start, p_end: end,
+          p_type: (args.type as string) ?? 'expense',
+          p_group_by: (args.group_by as string) ?? 'category',
+        })
     if (error) return { error: error.message }
     return {
       rows: fmtRows(data, (r) => ({
@@ -566,6 +668,9 @@ export async function runTool(ctx: ToolCtx, name: string, args: Record<string, u
         total: formatMoney(Number(r.total_minor), String(r.currency)),
         transactions: r.txn_count,
       })),
+      ...(byTag
+        ? { note: 'a transaction can carry several tags, so these rows overlap — never sum them' }
+        : {}),
     }
   }
 
@@ -639,6 +744,9 @@ export async function runTool(ctx: ToolCtx, name: string, args: Record<string, u
   }
 
   if (name === 'net_worth') return netWorth(ctx)
+  if (name === 'list_tags') return listTags(ctx)
+  if (name === 'create_tag') return createTag(ctx, args)
+  if (name === 'generate_report') return generateReport(ctx, args)
   if (name === 'create_category') return createCategory(ctx, args)
   if (name === 'create_account') return createAccount(ctx, args)
   if (name === 'record_transaction') return recordTransaction(ctx, args)
@@ -691,6 +799,23 @@ export async function searchTransactions(ctx: ToolCtx, args: Record<string, unkn
     const ids = (cats ?? []).map((c: Row) => c.id)
     if (!ids.length) return { rows: [], note: `no category matching "${categoryName}"` }
     query = query.in('category_id', ids)
+  }
+
+  const tagName = String(args.tag_name ?? '').trim()
+  if (tagName) {
+    const { data: tagRows } = await supabase
+      .from('tags').select('id').eq('book_id', bookId).ilike('name', `%${tagName}%`).limit(1)
+    if (!tagRows?.length) return { rows: [], note: `no tag matching "${tagName}" — check list_tags` }
+    // Two steps because PostgREST has no subqueries: tag → its transaction ids.
+    const { data: joins } = await supabase
+      .from('transaction_tags')
+      .select('transaction_id')
+      .eq('book_id', bookId)
+      .eq('tag_id', tagRows[0].id)
+      .limit(500)
+    const txIds = (joins ?? []).map((j: Row) => j.transaction_id)
+    if (!txIds.length) return { rows: [], note: `nothing is tagged "${tagName}" yet` }
+    query = query.in('id', txIds)
   }
 
   const text = String(args.query ?? '').trim()
@@ -813,10 +938,42 @@ export async function updateTransaction(ctx: ToolCtx, args: Record<string, unkno
     }
   }
 
-  if (Object.keys(patch).length === 0) return { error: 'nothing to change' }
+  // Tag changes ride along (and may be the only change). Adds create missing
+  // tags; removes silently skip names that aren't on the book at all.
+  const addRes = await resolveTagIds(ctx, args.add_tags)
+  if ('error' in addRes) return addRes
+  const removeNames = (Array.isArray(args.remove_tags) ? args.remove_tags : [])
+    .map((n) => String(n ?? '').trim().toLowerCase())
+    .filter(Boolean)
 
-  const { error } = await supabase.from('transactions').update(patch).eq('id', existing.id).eq('book_id', bookId)
-  if (error) return { error: error.message }
+  if (Object.keys(patch).length === 0 && addRes.ids.length === 0 && removeNames.length === 0) {
+    return { error: 'nothing to change' }
+  }
+
+  if (Object.keys(patch).length > 0) {
+    const { error } = await supabase.from('transactions').update(patch).eq('id', existing.id).eq('book_id', bookId)
+    if (error) return { error: error.message }
+  }
+
+  const tagErr = await attachTags(ctx, String(existing.id), addRes.ids)
+  let removed = 0
+  if (removeNames.length > 0) {
+    const { data: tagRows } = await supabase
+      .from('tags').select('id, name').eq('book_id', bookId)
+    const removeIds = (tagRows ?? [])
+      .filter((t: Row) => removeNames.includes(String(t.name).toLowerCase()))
+      .map((t: Row) => t.id)
+    if (removeIds.length > 0) {
+      const { error: delErr } = await supabase
+        .from('transaction_tags')
+        .delete()
+        .eq('transaction_id', existing.id)
+        .eq('book_id', bookId)
+        .in('tag_id', removeIds)
+      if (delErr) return { error: delErr.message }
+      removed = removeIds.length
+    }
+  }
 
   ctx.onRecorded()
   const updated = await loadOwnTransaction(ctx, String(existing.id))
@@ -828,6 +985,11 @@ export async function updateTransaction(ctx: ToolCtx, args: Record<string, unkno
       type: updated.type,
       amount: formatMoney(Number(updated.amount), String(updated.currency)),
       note: updated.note,
+      ...(addRes.ids.length > 0 && !tagErr
+        ? { tags_added: addRes.ids.length, tags_created: addRes.created }
+        : {}),
+      ...(tagErr ? { tag_warning: `updated, but tagging failed: ${tagErr}` } : {}),
+      ...(removed > 0 ? { tags_removed: removed } : {}),
     },
   }
 }
@@ -1173,6 +1335,282 @@ export async function netWorth(ctx: ToolCtx): Promise<unknown> {
   }
 }
 
+// --- tags --------------------------------------------------------------------
+
+/** Tags in this book, with how many transactions carry each. */
+export async function listTags(ctx: ToolCtx): Promise<unknown> {
+  const { supabase, bookId } = ctx
+
+  const { data: tags, error } = await supabase
+    .from('tags').select('id, name').eq('book_id', bookId).order('name')
+  if (error) return { error: error.message }
+  if (!tags?.length) return { rows: [], note: 'no tags yet' }
+
+  // Counted locally: PostgREST aggregates aren't enabled, and a personal ledger
+  // stays well within this cap.
+  const { data: joins } = await supabase
+    .from('transaction_tags').select('tag_id').eq('book_id', bookId).limit(5000)
+  const counts = new Map<string, number>()
+  for (const j of joins ?? []) {
+    counts.set(String(j.tag_id), (counts.get(String(j.tag_id)) ?? 0) + 1)
+  }
+
+  return {
+    rows: (tags as Row[]).map((t) => ({
+      name: t.name,
+      transactions: counts.get(String(t.id)) ?? 0,
+    })),
+  }
+}
+
+/** Create a tag, or hand back the existing one with that name (same dedupe
+ *  idea as createCategory — the check is what keeps the list clean, the prompt
+ *  rule only makes the model try). App palette colors are cycled so bot-created
+ *  tags don't all render in the fallback grey. */
+export async function createTag(ctx: ToolCtx, args: Record<string, unknown>): Promise<unknown> {
+  const { supabase, bookId, userId } = ctx
+
+  const name = String(args.name ?? '').trim().slice(0, 40)
+  if (!name) return { error: 'name is required' }
+
+  const { data: existing, error: exErr } = await supabase
+    .from('tags').select('name').eq('book_id', bookId).ilike('name', name).limit(1)
+  if (exErr) return { error: exErr.message }
+  if (existing?.[0]) {
+    return {
+      ok: true,
+      created: false,
+      name: existing[0].name,
+      note: 'a tag with this name already exists; use it as-is',
+    }
+  }
+
+  const { count } = await supabase
+    .from('tags').select('id', { count: 'exact', head: true }).eq('book_id', bookId)
+  const { error: insErr } = await supabase.from('tags').insert({
+    user_id: userId,
+    book_id: bookId,
+    name,
+    color: TAG_COLORS[(count ?? 0) % TAG_COLORS.length],
+  })
+  if (insErr) return { error: insErr.message }
+
+  ctx.onRecorded()
+  return { ok: true, created: true, name }
+}
+
+/** Tag names → ids, creating the ones that don't exist yet. Dedupes
+ *  case-insensitively and caps the list so a hallucinated 50-tag array can't
+ *  flood the book. Creating before the transaction insert is deliberate: a bad
+ *  tag list should fail the whole call, and a stray created tag is harmless. */
+async function resolveTagIds(
+  ctx: ToolCtx,
+  names: unknown,
+): Promise<{ ids: string[]; created: string[] } | { error: string }> {
+  const { supabase, bookId, userId } = ctx
+
+  const raw = (Array.isArray(names) ? names : [])
+    .map((n) => String(n ?? '').trim().slice(0, 40))
+    .filter(Boolean)
+  const seen = new Set<string>()
+  const wanted: string[] = []
+  for (const n of raw) {
+    const k = n.toLowerCase()
+    if (!seen.has(k)) {
+      seen.add(k)
+      wanted.push(n)
+    }
+  }
+  if (wanted.length === 0) return { ids: [], created: [] }
+  if (wanted.length > 5) return { error: 'at most 5 tags per transaction' }
+
+  const { data: existing, error } = await supabase
+    .from('tags').select('id, name').eq('book_id', bookId)
+  if (error) return { error: error.message }
+  const byLower = new Map(
+    (existing ?? []).map((t: Row) => [String(t.name).toLowerCase(), String(t.id)]),
+  )
+
+  const ids: string[] = []
+  const created: string[] = []
+  let paletteAt = (existing ?? []).length
+  for (const name of wanted) {
+    const hit = byLower.get(name.toLowerCase())
+    if (hit) {
+      ids.push(hit)
+      continue
+    }
+    const { data: inserted, error: insErr } = await supabase
+      .from('tags')
+      .insert({
+        user_id: userId,
+        book_id: bookId,
+        name,
+        color: TAG_COLORS[paletteAt % TAG_COLORS.length],
+      })
+      .select('id')
+      .single()
+    if (insErr) return { error: insErr.message }
+    ids.push(String(inserted.id))
+    created.push(name)
+    paletteAt++
+  }
+  return { ids, created }
+}
+
+/** Put tags on one transaction (id must already be proven in-book). Returns an
+ *  error message or null — tagging failure never unwinds the transaction. */
+async function attachTags(ctx: ToolCtx, transactionId: string, tagIds: string[]): Promise<string | null> {
+  if (tagIds.length === 0) return null
+  const { error } = await ctx.supabase.from('transaction_tags').upsert(
+    tagIds.map((tag_id) => ({
+      transaction_id: transactionId,
+      tag_id,
+      user_id: ctx.userId,
+      book_id: ctx.bookId,
+    })),
+    { onConflict: 'transaction_id,tag_id', ignoreDuplicates: true },
+  )
+  return error ? error.message : null
+}
+
+// --- the PDF report ------------------------------------------------------------
+
+/** Fixed strings inside the PDF. The chat reply follows the conversation
+ *  language; the document follows the app language passed in ctx.lang. */
+const REPORT_L10N = {
+  en: {
+    title: 'Financial report',
+    summary: 'Summary',
+    income: 'Income',
+    spending: 'Spending',
+    net: 'Net',
+    transactions: 'transactions',
+    categories: 'Spending by category',
+    tags: 'Spending by tag',
+    top: 'Biggest transactions',
+    budgets: 'Budgets',
+    credit: 'Generated by Tracr',
+    empty: 'No transactions in this period.',
+  },
+  id: {
+    title: 'Laporan keuangan',
+    summary: 'Ringkasan',
+    income: 'Pemasukan',
+    spending: 'Pengeluaran',
+    net: 'Selisih',
+    transactions: 'transaksi',
+    categories: 'Pengeluaran per kategori',
+    tags: 'Pengeluaran per tag',
+    top: 'Transaksi terbesar',
+    budgets: 'Anggaran',
+    credit: 'Dibuat oleh Tracr',
+    empty: 'Tidak ada transaksi pada periode ini.',
+  },
+}
+
+const pctOf = (part: number, total: number | undefined) =>
+  total && total > 0 ? (part / total) * 100 : 0
+
+/** Gather the same aggregates the chat tools use, render them to a PDF, and
+ *  hand the file to the channel via ctx.onFile. The tool result the model sees
+ *  is a small confirmation — never the report content, and never the bytes. */
+export async function generateReport(ctx: ToolCtx, args: Record<string, unknown>): Promise<unknown> {
+  const { supabase, bookId } = ctx
+  if (!ctx.onFile) return { error: 'sending files is not supported on this channel' }
+
+  const start = String(args.start ?? '').trim()
+  const end = String(args.end ?? '').trim()
+  if (!isDate(start) || !isDate(end)) return { error: 'start and end must be YYYY-MM-DD' }
+  if (start > end) return { error: 'start must be on or before end' }
+  // Bound the query (and the document): three years is plenty for a personal report.
+  if (Date.parse(end) - Date.parse(start) > 1100 * 86_400_000) {
+    return { error: 'that period is too long — offer the user up to three years' }
+  }
+
+  const L = REPORT_L10N[ctx.lang === 'id' ? 'id' : 'en']
+
+  const [totalsRes, catRes, tagsRes, topRes, budgetRes, bookRes] = await Promise.all([
+    supabase.rpc('ai_period_totals', { p_book_id: bookId, p_start: start, p_end: end }),
+    supabase.rpc('ai_spending_summary', {
+      p_book_id: bookId, p_start: start, p_end: end, p_type: 'expense', p_group_by: 'category',
+    }),
+    supabase.rpc('ai_tag_summary', { p_book_id: bookId, p_start: start, p_end: end, p_type: 'expense' }),
+    supabase.rpc('ai_top_transactions', {
+      p_book_id: bookId, p_start: start, p_end: end, p_type: 'expense', p_limit: 10,
+    }),
+    supabase.rpc('ai_budget_status', { p_book_id: bookId, p_asof: end }),
+    supabase.from('books').select('name').eq('id', bookId).maybeSingle(),
+  ])
+  if (totalsRes.error) return { error: totalsRes.error.message }
+
+  const totals = (totalsRes.data ?? []) as Row[]
+  if (totals.length === 0) {
+    return { error: 'no transactions in that period — tell the user instead of sending an empty report' }
+  }
+
+  // Shares are computed within each row's own currency (there is no FX here),
+  // against that currency's period spending total.
+  const expenseByCurrency = new Map<string, number>()
+  for (const t of totals) expenseByCurrency.set(String(t.currency), Number(t.expense_minor))
+
+  const toBarRow = (r: Row) => ({
+    name: String(r.bucket ?? ''),
+    amount: formatMoney(Number(r.total_minor), String(r.currency)),
+    pct: pctOf(Number(r.total_minor), expenseByCurrency.get(String(r.currency))),
+  })
+
+  let bytes: Uint8Array
+  try {
+    bytes = await buildReportPdf({
+      title: L.title,
+      bookName: String(bookRes?.data?.name ?? 'Tracr'),
+      period: `${start} – ${end}`,
+      generated: new Date().toISOString().slice(0, 10),
+      summary: totals.map((t) => ({
+        currency: String(t.currency),
+        income: formatMoney(Number(t.income_minor), String(t.currency)),
+        spending: formatMoney(Number(t.expense_minor), String(t.currency)),
+        net: formatMoney(Number(t.net_minor), String(t.currency)),
+        positive: Number(t.net_minor) >= 0,
+        count: Number(t.txn_count),
+      })),
+      categories: ((catRes.data ?? []) as Row[]).slice(0, 12).map(toBarRow),
+      tags: ((tagsRes.data ?? []) as Row[]).slice(0, 12).map(toBarRow),
+      top: ((topRes.data ?? []) as Row[]).map((r) => ({
+        date: String(r.occurred_on ?? ''),
+        name: [r.note, r.category].filter(Boolean).join(' · ') || String(r.account ?? ''),
+        amount: formatMoney(Number(r.amount_minor), String(r.currency)),
+      })),
+      budgets: ((budgetRes.data ?? []) as Row[]).map((r) => ({
+        name: `${r.category} (${r.period})`,
+        detail: `${formatMoney(Number(r.spent_minor), String(r.currency))} / ${
+          formatMoney(Number(r.limit_minor), String(r.currency))
+        }`,
+        pct: Number(r.pct ?? 0),
+      })),
+      labels: L,
+    } satisfies ReportData)
+  } catch (e) {
+    console.error('report build failed', e)
+    return { error: 'building the PDF failed — apologize and offer to try again' }
+  }
+
+  const filename = `tracr-report-${start}-to-${end}.pdf`
+  if (!ctx.onFile({ filename, mime: 'application/pdf', bytes })) {
+    return { error: 'a report was already made for this message — do not call this again' }
+  }
+
+  return {
+    ok: true,
+    file_sent: filename,
+    period: `${start} to ${end}`,
+    note:
+      'The PDF is delivered to the user automatically with your reply. Give a one-line ' +
+      'confirmation of what it covers; do NOT restate the report contents.',
+  }
+}
+
 /** Create a category, or hand back the existing one with the same name. The
  *  model is told to prefer existing categories, but "prefer" is a prompt rule —
  *  the case-insensitive dedupe here is what actually stops the list filling up
@@ -1343,10 +1781,15 @@ export async function recordTransaction(ctx: ToolCtx, args: Record<string, unkno
   // Optional category by name, matching the transaction kind.
   const categoryId = await resolveCategoryId(ctx, String(args.category_name ?? ''), type)
 
+  // Optional tags, resolved (and created) up front so a bad list fails the call
+  // before anything is written.
+  const tagRes = await resolveTagIds(ctx, args.tags)
+  if ('error' in tagRes) return tagRes
+
   const payee = String(args.payee ?? '').trim().slice(0, 120) || null
   const note = String(args.note ?? '').trim().slice(0, 500) || null
 
-  const { error: insErr } = await supabase.from('transactions').insert({
+  const { data: inserted, error: insErr } = await supabase.from('transactions').insert({
     user_id: userId,
     book_id: bookId,
     account_id: account.id,
@@ -1359,8 +1802,10 @@ export async function recordTransaction(ctx: ToolCtx, args: Record<string, unkno
     note,
     payee,
     source: ctx.source ?? 'web',
-  })
+  }).select('id').single()
   if (insErr) return { error: insErr.message }
+
+  const tagErr = await attachTags(ctx, String(inserted.id), tagRes.ids)
 
   ctx.onRecorded()
   return {
@@ -1371,6 +1816,10 @@ export async function recordTransaction(ctx: ToolCtx, args: Record<string, unkno
       account: account.name,
       date,
       category_matched: categoryId != null,
+      ...(tagRes.ids.length > 0 && !tagErr
+        ? { tags: tagRes.ids.length, tags_created: tagRes.created }
+        : {}),
+      ...(tagErr ? { tag_warning: `saved, but tagging failed: ${tagErr}` } : {}),
     },
   }
 }
@@ -1545,6 +1994,18 @@ export function buildSystemPrompt(opts: {
     `- Accounts: create_account ONLY when the user has asked for a new account and ` +
     `confirmed its name, type and currency. If you cannot work out which account a ` +
     `transaction belongs to, ask — never invent a new account to hold it.\n` +
+    `- Tags: free labels that group spending ACROSS categories (a "bali trip" tag ` +
+    `can sit on food, transport and hotel rows). Only tag when the user asks. ` +
+    `Check list_tags first and reuse the closest existing tag; tags you pass to ` +
+    `record_transaction or update_transaction are created automatically, so ` +
+    `create_tag alone is only for "make me a tag". "How much did I spend on <tag>?" ` +
+    `is spending_summary with group_by="tag"; tag rows overlap, never add them up.\n` +
+    `- Reports: generate_report builds a PDF for a date range and it is delivered ` +
+    `to the user automatically as a file. Use it when the user asks for a ` +
+    `report/rekap/PDF/export; if no period was given use the current month and say ` +
+    `so. After it succeeds, confirm in one line what the file covers — never paste ` +
+    `the report's numbers into the chat, and never call it more than once per ` +
+    `request.\n` +
     `- Net worth: net_worth already subtracts debts and converts to the base ` +
     `currency. Quote its numbers as given; never add up the per-account balances ` +
     `yourself. If it returns a warning that accounts were left out, pass that on.\n` +
@@ -1597,6 +2058,8 @@ export function buildSystemPrompt(opts: {
 export interface AgentResult {
   text: string
   recorded: boolean
+  /** Files produced by tools this turn (PDF reports), for the channel to deliver. */
+  files: AgentFile[]
   timedOut?: boolean
 }
 
@@ -1618,6 +2081,14 @@ export async function runAgentLoop(opts: {
   ctx.onRecorded = () => {
     recorded = true
   }
+  // Collect tool-produced files; two per turn is already generous, and the cap
+  // stops a looping model from flooding the channel with attachments.
+  const files: AgentFile[] = []
+  ctx.onFile = (file) => {
+    if (files.length >= 2) return false
+    files.push(file)
+    return true
+  }
 
   for (let step = 0; step < maxSteps; step++) {
     const res = await client.chat.completions.create({
@@ -1636,7 +2107,7 @@ export async function runAgentLoop(opts: {
     const calls = msg?.tool_calls ?? []
 
     if (calls.length === 0) {
-      return { text: msg?.content ?? '', recorded }
+      return { text: msg?.content ?? '', recorded, files }
     }
 
     // Echo the assistant's tool-call turn, then answer each call.
@@ -1655,5 +2126,5 @@ export async function runAgentLoop(opts: {
     }
   }
   // Ran out of tool-call rounds without a final answer.
-  return { text: '', recorded, timedOut: true }
+  return { text: '', recorded, files, timedOut: true }
 }
