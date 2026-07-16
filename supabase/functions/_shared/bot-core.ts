@@ -21,7 +21,13 @@
 //   transport did not resolve for the authenticated sender.
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import OpenAI from 'npm:openai'
-import { buildSystemPrompt, extractDocument, runAgentLoop, type ToolCtx } from './ai-core.ts'
+import {
+  buildSystemPrompt,
+  extractDocument,
+  runAgentLoop,
+  type AgentFile,
+  type ToolCtx,
+} from './ai-core.ts'
 
 export type BotChannel = 'whatsapp' | 'telegram'
 
@@ -112,7 +118,14 @@ export async function consumeBotLinkToken(
   return { ok: true, bookName: book?.name ?? 'your ledger' }
 }
 
-/** Run one inbound message end to end and return the reply text to send.
+/** What a turn produced: the reply text, plus any files a tool made (PDF
+ *  reports) for the transport to upload its own way. */
+export interface BotTurnResult {
+  text: string
+  files: AgentFile[]
+}
+
+/** Run one inbound message end to end and return the reply to send.
  *
  *  `link` MUST be the row resolved for the authenticated sender — it is the only
  *  thing scoping the service-role queries underneath. Never fabricate one.
@@ -129,8 +142,9 @@ export async function runBotTurn(opts: {
   /** Message text, or an image caption. May be empty for a bare photo. */
   text: string
   imageDataUrls?: string[]
-}): Promise<string> {
+}): Promise<BotTurnResult> {
   const { admin, channel, chatId, link, text, imageDataUrls = [] } = opts
+  const plain = (message: string): BotTurnResult => ({ text: message, files: [] })
 
   // --- meter (service-role variant; ai_try_consume reads auth.uid()) ---------
   const monthlyLimit = Number(Deno.env.get('AI_MONTHLY_LIMIT') ?? '50')
@@ -139,15 +153,15 @@ export async function runBotTurn(opts: {
   })
   if (capErr) {
     console.error('meter failed', capErr)
-    return 'Something went wrong on my side. Please try again in a bit.'
+    return plain('Something went wrong on my side. Please try again in a bit.')
   }
   if (!allowed) {
-    return "You've reached this month's assistant limit. It resets at the start of next month."
+    return plain("You've reached this month's assistant limit. It resets at the start of next month.")
   }
 
   // --- LLM config ------------------------------------------------------------
   const apiKey = Deno.env.get('LLM_API_KEY')
-  if (!apiKey) return 'The assistant is not configured yet.'
+  if (!apiKey) return plain('The assistant is not configured yet.')
   const baseURL = Deno.env.get('LLM_BASE_URL') ?? 'https://api.deepseek.com'
   const model = Deno.env.get('LLM_MODEL') ?? 'deepseek-v4-flash'
   const disableThinking = (Deno.env.get('LLM_DISABLE_THINKING') ?? 'true') === 'true'
@@ -188,14 +202,14 @@ export async function runBotTurn(opts: {
     } catch (e) {
       const notConfigured = e instanceof Error && e.message === 'vision-not-configured'
       console.error('scan failed', e)
-      return notConfigured
+      return plain(notConfigured
         ? "Photo reading isn't enabled yet. Please type the amount instead."
-        : "I couldn't read that photo. Try a clearer one, or type the amount."
+        : "I couldn't read that photo. Try a clearer one, or type the amount.")
     }
   } else if (text) {
     messages.push({ role: 'user', content: text })
   } else {
-    return 'Send me a message or a photo of a receipt and I can log it for you.'
+    return plain('Send me a message or a photo of a receipt and I can log it for you.')
   }
 
   // --- shared agent loop (service-role, hard-scoped by `link`) ---------------
@@ -217,14 +231,16 @@ export async function runBotTurn(opts: {
   }
 
   let replyText: string
+  let files: AgentFile[]
   try {
     const result = await runAgentLoop({ client, model, messages, ctx, disableThinking })
     replyText = result.timedOut || !result.text
       ? 'Sorry, that took too long. Please try again.'
       : result.text
+    files = result.files
   } catch (e) {
     console.error('agent loop failed', e)
-    return 'Something went wrong reading that. Please try again.'
+    return plain('Something went wrong reading that. Please try again.')
   }
 
   // --- persist the trimmed history ------------------------------------------
@@ -237,5 +253,5 @@ export async function runBotTurn(opts: {
     channel, chat_id: chatId, turns: nextTurns, updated_at: new Date().toISOString(),
   })
 
-  return replyText
+  return { text: replyText, files }
 }

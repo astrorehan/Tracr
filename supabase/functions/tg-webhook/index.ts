@@ -40,7 +40,7 @@
 // (LLM_* / GEMINI_* / AI_MONTHLY_LIMIT are already set for ai-analysis.)
 // SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are injected by the platform.
 import { encodeBase64 } from 'jsr:@std/encoding@1/base64'
-import { MAX_IMAGE_CHARS } from '../_shared/ai-core.ts'
+import { MAX_IMAGE_CHARS, type AgentFile } from '../_shared/ai-core.ts'
 import { renderTelegramHtml, stripMarkdown } from '../_shared/telegram-format.ts'
 import {
   adminClient,
@@ -103,6 +103,16 @@ async function sendText(token: string, chatId: string, body: string): Promise<vo
  *  expires by itself after ~5s, so this is fire-and-forget. */
 function sendTyping(token: string, chatId: string): void {
   post(token, 'sendChatAction', { chat_id: chatId, action: 'typing' }).then(() => {}, () => {})
+}
+
+/** Upload a tool-produced file (PDF report) as a Telegram document. Multipart,
+ *  not JSON — the bytes go straight up, no URL hosting step. */
+async function sendDocument(token: string, chatId: string, file: AgentFile): Promise<void> {
+  const form = new FormData()
+  form.append('chat_id', chatId)
+  form.append('document', new Blob([file.bytes], { type: file.mime }), file.filename)
+  const res = await fetch(`${API(token)}/sendDocument`, { method: 'POST', body: form })
+  if (!res.ok) console.error('tg sendDocument failed', res.status, await res.text().catch(() => ''))
 }
 
 interface PhotoSize {
@@ -295,5 +305,8 @@ async function handleUpdate(update: TgUpdate): Promise<void> {
     sendTyping(botToken, chat)
   }
 
-  await reply(await runBotTurn({ admin, channel: CHANNEL, chatId: chat, link, text: turnText, imageDataUrls }))
+  const turn = await runBotTurn({ admin, channel: CHANNEL, chatId: chat, link, text: turnText, imageDataUrls })
+  await reply(turn.text)
+  // Files after the text so the reply reads before the download card lands.
+  for (const file of turn.files) await sendDocument(botToken, chat, file)
 }

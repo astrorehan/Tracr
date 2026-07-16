@@ -27,6 +27,7 @@
 //   (LLM_* / GEMINI_* / AI_MONTHLY_LIMIT already set for ai-analysis)
 // SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are injected by the platform.
 import { encodeBase64 } from 'jsr:@std/encoding@1/base64'
+import { type AgentFile } from '../_shared/ai-core.ts'
 import {
   adminClient,
   consumeBotLinkToken,
@@ -78,6 +79,41 @@ async function sendText(phoneId: string, token: string, to: string, body: string
     }),
   })
   if (!res.ok) console.error('wa send failed', res.status, await res.text().catch(() => ''))
+}
+
+/** Deliver a tool-produced file (PDF report): upload the bytes to Meta's media
+ *  endpoint, then send a document message referencing the returned media id. */
+async function sendDocument(phoneId: string, token: string, to: string, file: AgentFile): Promise<void> {
+  const form = new FormData()
+  form.append('messaging_product', 'whatsapp')
+  form.append('type', file.mime)
+  form.append('file', new Blob([file.bytes], { type: file.mime }), file.filename)
+  const upload = await fetch(`${GRAPH}/${phoneId}/media`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  })
+  if (!upload.ok) {
+    console.error('wa media upload failed', upload.status, await upload.text().catch(() => ''))
+    return
+  }
+  const { id } = await upload.json() as { id?: string }
+  if (!id) {
+    console.error('wa media upload returned no id')
+    return
+  }
+
+  const res = await fetch(`${GRAPH}/${phoneId}/messages`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to,
+      type: 'document',
+      document: { id, filename: file.filename },
+    }),
+  })
+  if (!res.ok) console.error('wa send document failed', res.status, await res.text().catch(() => ''))
 }
 
 /** Two authed calls: media id → media URL → bytes. Returns a data: URL that
@@ -223,5 +259,7 @@ async function handleMessage(value: WaValue, message: WaMessage): Promise<void> 
     return
   }
 
-  await reply(await runBotTurn({ admin, channel: CHANNEL, chatId: from, link, text, imageDataUrls }))
+  const turn = await runBotTurn({ admin, channel: CHANNEL, chatId: from, link, text, imageDataUrls })
+  await reply(turn.text)
+  for (const file of turn.files) await sendDocument(phoneId, waToken, from, file)
 }

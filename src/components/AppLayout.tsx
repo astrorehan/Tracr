@@ -38,6 +38,24 @@ const NAV: { to: string; label: MsgKey; icon: IconType }[] = [
   { to: '/settings', label: 'nav.settings', icon: Settings },
 ]
 
+// Mobile dock slots, left to right. `null` is the center slot the raised
+// Record button sits over.
+const MOBILE_NAV: ({ to: string; label: MsgKey; icon: IconType } | null)[] = [
+  { to: '/', label: 'nav.home', icon: LayoutDashboard },
+  { to: '/accounts', label: 'nav.accounts', icon: Wallet },
+  null,
+  { to: '/transactions', label: 'nav.activity', icon: ArrowLeftRight },
+  { to: '/settings', label: 'nav.settings', icon: Settings },
+]
+
+function mobileSlotFor(pathname: string) {
+  return MOBILE_NAV.findIndex(
+    (item) =>
+      item !== null &&
+      (item.to === '/' ? pathname === '/' : pathname.startsWith(item.to)),
+  )
+}
+
 export function AppLayout() {
   const [addOpen, setAddOpen] = useState(false)
   const { profile } = useAuth()
@@ -46,6 +64,7 @@ export function AppLayout() {
   const { t } = useT()
   const { pathname } = useLocation()
   const isHome = pathname === '/'
+  const activeSlot = mobileSlotFor(pathname)
 
   // Refresh FX rates from the free live sources once per session.
   useLiveRatesSync()
@@ -141,27 +160,48 @@ export function AppLayout() {
       </div>
 
       {/* ───────────────────────── Mobile bottom tab bar ─────────────────────────
-          Solid full-width bar (GoPay style): 5 slots, labels always on, active in
-          brand color, raised gradient Record button. No backdrop-blur. */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] sm:hidden print:hidden">
-        <div className="grid grid-cols-5 items-end px-1 pt-1.5">
-          <MobileNavLink to="/" label="nav.home" icon={LayoutDashboard} />
-          <MobileNavLink to="/accounts" label="nav.accounts" icon={Wallet} />
+          Floating pill dock: 5 slots, icons only, a gradient indicator that
+          slides between them, and the raised gradient Record button in the
+          middle slot. */}
+      {/* Geometry is px, never rem: the text-size setting scales the root font
+          size, which would otherwise inflate the whole bar on the larger steps. */}
+      <nav
+        className="dock-shadow fixed inset-x-[16px] z-40 rounded-[24px] border border-border bg-surface sm:hidden print:hidden"
+        style={{ bottom: 'calc(12px + env(safe-area-inset-bottom))' }}
+      >
+        {/* No horizontal padding on the grid: each column is exactly a fifth of
+            the bar, which is what the indicator's `w-1/5` + translate assumes. */}
+        <div className="relative grid grid-cols-5 py-[5px]">
+          {/* Sliding active indicator. Parked under the center slot and faded
+              out when no tab matches, so it never animates in from a corner.
+              Decelerating ease only — no overshoot past the target slot. */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-y-[5px] left-0 w-1/5 px-[12px] transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,0.61,0.36,1)]"
+            style={{
+              transform: `translateX(${(activeSlot < 0 ? 2 : activeSlot) * 100}%)`,
+              opacity: activeSlot < 0 ? 0 : 1,
+            }}
+          >
+            <span className="brand-gradient block h-full w-full rounded-[14px] shadow-sm shadow-primary/40" />
+          </span>
 
-          {/* Spacer column — the Record button is absolutely centered on the bar's
-              top edge below, so it straddles the border (half out, half in). */}
-          <div aria-hidden />
-
-          <MobileNavLink to="/transactions" label="nav.activity" icon={ArrowLeftRight} />
-          <MobileNavLink to="/settings" label="nav.settings" icon={Settings} />
+          {MOBILE_NAV.map((item, i) =>
+            item ? (
+              <MobileNavLink key={item.to} {...item} />
+            ) : (
+              // Spacer column — the Record button is absolutely centered over it.
+              <div key={`slot-${i}`} aria-hidden className="h-[40px]" />
+            ),
+          )}
         </div>
 
         <button
           onClick={() => setAddOpen(true)}
-          className="brand-gradient pressable absolute left-1/2 top-0 flex h-[72px] w-[72px] -translate-x-1/2 -translate-y-[18px] items-center justify-center rounded-[22px] text-white shadow-lg shadow-primary/40 transition-transform hover:scale-105 active:scale-95"
+          className="fab-record pressable group absolute left-1/2 top-0 flex h-[60px] w-[60px] -translate-x-1/2 -translate-y-[17px] items-center justify-center rounded-[19px] text-white ring-[3px] ring-surface transition-transform duration-300 hover:scale-105 active:scale-95"
           aria-label={t('layout.recordTransaction')}
         >
-          <Plus className="h-8 w-8 stroke-[2.5]" />
+          <Plus className="h-[28px] w-[28px] stroke-[2.75] transition-transform duration-300 group-active:rotate-90" />
         </button>
       </nav>
 
@@ -192,29 +232,24 @@ function SidebarLink({ to, label, icon: Icon }: { to: string; label: MsgKey; ico
   )
 }
 
+// Icon-only dock tab. `relative` keeps it painting above the absolutely
+// positioned indicator that slides in behind it.
 function MobileNavLink({ to, label, icon: Icon }: { to: string; label: MsgKey; icon: IconType }) {
   const { t } = useT()
   return (
-    <NavLink to={to} end={to === '/'} className="flex w-full flex-col items-center gap-1 py-2">
+    <NavLink
+      to={to}
+      end={to === '/'}
+      aria-label={t(label)}
+      className="relative flex h-[40px] w-full items-center justify-center"
+    >
       {({ isActive }) => (
-        <>
-          <span
-            className={cn(
-              'flex items-center justify-center rounded-full px-5 py-1 transition-colors duration-200',
-              isActive ? 'bg-primary-soft text-primary' : 'text-muted-foreground',
-            )}
-          >
-            <Icon className="h-[22px] w-[22px] transition-transform duration-200 active:scale-90" />
-          </span>
-          <span
-            className={cn(
-              'text-[11px] font-semibold transition-colors duration-200',
-              isActive ? 'text-primary' : 'text-muted-foreground',
-            )}
-          >
-            {t(label)}
-          </span>
-        </>
+        <Icon
+          className={cn(
+            'h-[21px] w-[21px] transition-[color,transform] duration-300 ease-[cubic-bezier(0.22,0.61,0.36,1)] active:scale-90',
+            isActive ? 'scale-105 text-white' : 'text-muted-foreground',
+          )}
+        />
       )}
     </NavLink>
   )

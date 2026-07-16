@@ -43,10 +43,12 @@
 //   AI_MONTHLY_LIMIT      (default '50')
 // SUPABASE_URL / SUPABASE_ANON_KEY are injected by the platform.
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { encodeBase64 } from 'jsr:@std/encoding@1/base64'
 import OpenAI from 'npm:openai'
 import {
   buildSystemPrompt,
   extractDocument,
+  generateReport,
   MAX_IMAGE_CHARS,
   MAX_IMAGES,
   MAX_TOTAL_IMAGE_CHARS,
@@ -91,10 +93,13 @@ Deno.serve(async (req) => {
   if (!user) return json({ error: 'unauthorized' }, 401)
 
   let body: {
-    mode?: 'insights' | 'chat' | 'scan'
+    mode?: 'insights' | 'chat' | 'scan' | 'report'
     book_id?: string
     lang?: string
     question?: string
+    /** Report period (mode 'report' only), YYYY-MM-DD. */
+    start?: string
+    end?: string
     /** Receipt photo as a data URL (image/jpeg|png|webp). Chat mode only. */
     image?: string
     /** Receipt, statement, or e-wallet history images for structured extraction. */
@@ -111,6 +116,42 @@ Deno.serve(async (req) => {
   if (!bookId) return json({ error: 'book_id required' }, 400)
   const mode = body.mode === 'chat' || body.mode === 'scan' ? body.mode : 'insights'
   const language = body.lang === 'id' ? 'Indonesian' : 'English'
+
+  // A report is deterministic — it is built from the same aggregate RPCs the app
+  // uses, so it needs NEITHER the LLM NOR a metered turn. The browser resolves
+  // the period from a picker and posts explicit dates; we render and return the
+  // file. (The bots reach the same builder through the generate_report tool,
+  // because a chat has no period picker.)
+  if (body.mode === 'report') {
+    const { data: rProfile } = await supabase
+      .from('profiles').select('base_currency').eq('id', user.id).single()
+    let file: { filename: string; mime: string; bytes: Uint8Array } | undefined
+    const ctx: ToolCtx = {
+      supabase,
+      bookId,
+      userId: user.id,
+      baseCurrency: rProfile?.base_currency ?? 'IDR',
+      source: 'web',
+      lang: body.lang === 'id' ? 'id' : 'en',
+      onRecorded: () => {},
+      onFile: (f) => {
+        file = f
+        return true
+      },
+    }
+    const result = await generateReport(ctx, {
+      start: String(body.start ?? ''),
+      end: String(body.end ?? ''),
+    })
+    if (file) {
+      return json({ files: [{ name: file.filename, mime: file.mime, data: encodeBase64(file.bytes) }] })
+    }
+    // generateReport only ever declines with an { error } string; the one the
+    // user will actually hit is an empty period, which we flag for a clean
+    // client-side message instead of leaking the model-facing text.
+    const err = (result as { error?: string }).error ?? 'could not build the report'
+    return json({ empty: /no transactions/i.test(err), error: err }, 200)
+  }
 
   const images = Array.isArray(body.images)
     ? body.images.filter((item): item is string => typeof item === 'string')
@@ -216,6 +257,7 @@ Deno.serve(async (req) => {
     userId: user.id,
     baseCurrency,
     source: 'web',
+    lang: body.lang === 'id' ? 'id' : 'en',
     onRecorded: () => {},
   }
 
@@ -227,7 +269,18 @@ Deno.serve(async (req) => {
         200,
       )
     }
-    return json({ text: result.text, ...(result.recorded ? { recorded: true } : {}) })
+    // Tool-produced files (PDF reports) ride along base64'd — a report is
+    // ~30–100KB, comfortably inside a JSON response.
+    const files = result.files.map((f) => ({
+      name: f.filename,
+      mime: f.mime,
+      data: encodeBase64(f.bytes),
+    }))
+    return json({
+      text: result.text,
+      ...(result.recorded ? { recorded: true } : {}),
+      ...(files.length > 0 ? { files } : {}),
+    })
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500)
   }
