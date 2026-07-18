@@ -114,8 +114,10 @@ export function AppLayout() {
 
       {/* ───────────────────────── Main column ───────────────────────── */}
       <div className="relative z-10 flex min-w-0 flex-1 flex-col">
-        {/* Floating top right controls */}
-        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 sm:gap-3 sm:right-6 lg:right-8 print:hidden">
+        {/* Floating top right controls — desktop only. On mobile the home hero
+            carries its own copy of these, and on other routes the bottom dock
+            covers navigation, so the floating pill was just overlapping content. */}
+        <div className="fixed top-4 right-4 z-50 hidden items-center gap-2 sm:flex sm:gap-3 sm:right-6 lg:right-8 print:hidden">
           <div className="bg-surface/80 backdrop-blur rounded-xl border border-border flex items-center p-1 shadow-sm gap-1">
             <NotificationBell />
             <button
