@@ -157,21 +157,34 @@ export interface CategorySlice {
 const UNCATEGORIZED = '#94a3b8'
 
 /**
+ * Multiplier from a transaction's native amount into some other currency, or
+ * null to leave it out. Lets a caller group in the base currency without this
+ * module knowing anything about rates.
+ */
+export type AmountRatio = (tx: Transaction) => number | null
+
+/**
  * Spend (or income) grouped by category, ranked high→low, with % of total.
  * Split transactions are expanded into their per-category contributions.
+ * Pass `ratioOf` to value everything in one currency; omit it to group by
+ * native amounts (fine for single-currency books).
  */
 export function categoryBreakdown(
   txns: Transaction[],
   categories: Category[],
   kind: 'expense' | 'income',
   splitsByTx: Record<string, TransactionSplit[]> = {},
+  ratioOf?: AmountRatio,
 ): CategorySlice[] {
   const byId = new Map<string, number>()
   let uncategorized = 0
   let total = 0
   for (const tx of txns) {
     if (tx.type !== kind) continue
-    for (const { categoryId, amount } of categoryContributions(tx, splitsByTx)) {
+    const ratio = ratioOf ? ratioOf(tx) : 1
+    if (ratio == null) continue // can't value it — better absent than wrong
+    for (const { categoryId, amount: native } of categoryContributions(tx, splitsByTx)) {
+      const amount = ratio === 1 ? native : Math.round(native * ratio)
       total += amount
       if (categoryId) byId.set(categoryId, (byId.get(categoryId) ?? 0) + amount)
       else uncategorized += amount

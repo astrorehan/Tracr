@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ComponentType } from 'react'
 import { Link } from 'react-router-dom'
-import { format, subMonths } from 'date-fns'
+import { format } from 'date-fns'
 import {
   Wallet,
   Plus,
@@ -22,7 +22,6 @@ import { Card } from '@/components/ui/Card'
 import { IconChip, ListRow } from '@/components/ui/list'
 import { AnimatedNumber } from '@/components/ui/AnimatedNumber'
 import { EmptyState, Skeleton } from '@/components/ui/States'
-import { pctChange } from '@/features/reports/reports'
 import { formatMoney } from '@/lib/money'
 import { getCurrency } from '@/lib/currencies'
 import { useAuth } from '@/features/auth/useAuth'
@@ -35,8 +34,12 @@ import { accountTypeMeta } from '@/features/accounts/meta'
 import type { Account } from '@/types/db'
 import { useCategories } from '@/features/categories/api'
 import { useTransactions } from '@/features/transactions/api'
-import { useFxRates } from '@/features/fx/api'
-import { buildRateTable, convertMinor } from '@/features/fx/fx'
+import { useWalletHealth } from '@/features/health/useWalletHealth'
+import { TodayCard } from '@/features/health/TodayCard'
+import { MoneyFlowCard, NetStrip } from '@/features/health/MoneyFlowCard'
+import { WalletScoreCard } from '@/features/health/WalletScoreCard'
+import { UpcomingBillsCard } from '@/features/health/UpcomingBillsCard'
+import { AttentionCard } from '@/features/health/AttentionCard'
 import { TransactionRow } from '@/features/transactions/TransactionRow'
 import { TransactionForm } from '@/features/transactions/TransactionForm'
 import { AiHomeCard } from '@/features/ai/AiHomeCard'
@@ -67,7 +70,12 @@ export function DashboardPage() {
   const { data: balances = {}, isLoading: lb } = useBalances()
   const { data: categories = [] } = useCategories()
   const { data: transactions = [], isLoading: lt } = useTransactions({ limit: 500 })
-  const { data: fxRates = [] } = useFxRates()
+
+  // Every derived figure — net worth, this month's flow, the allowance, the
+  // health score — comes from one hook so the home screen can't contradict
+  // itself or the Reports page.
+  const health = useWalletHealth()
+  const { money, month, prevMonth, allowance, bills } = health
 
   const accountMap = useMemo(() => indexById(accounts), [accounts])
   const categoryMap = useMemo(() => indexById(categories), [categories])
@@ -82,57 +90,11 @@ export function DashboardPage() {
     return totals
   }, [accounts, balances])
 
-  // All money, converted to the base currency at the latest known rates (display
-  // only). Tracks currencies we can't convert so we prompt for a rate instead of
-  // showing a wrong total.
-  const money = useMemo(() => {
-    const table = buildRateTable(fxRates, base)
-    let total = 0
-    let assets = 0
-    let debts = 0
-    const missing = new Set<string>()
-    for (const a of accounts) {
-      if (a.exclude_from_stats) continue
-      const bal = balances[a.id] ?? a.opening_balance
-      const converted = convertMinor(bal, a.currency, base, table)
-      if (converted == null) {
-        missing.add(a.currency)
-        continue
-      }
-      total += converted
-      if (a.is_liability) debts += Math.abs(converted)
-      else assets += converted
-    }
-    return { total, assets, debts, missing: [...missing] }
-  }, [accounts, balances, fxRates, base])
-
-  // This month's in/out/kept in base currency, with last month as the baseline
-  // for the ▲/▼ vs-last-month chips.
-  const month = useMemo(() => {
-    const cur = format(new Date(), 'yyyy-MM')
-    const prev = format(subMonths(new Date(), 1), 'yyyy-MM')
-    let spent = 0
-    let earned = 0
-    let prevSpent = 0
-    let prevEarned = 0
-    for (const tx of transactions) {
-      if (tx.currency !== base) continue
-      const key = format(new Date(tx.occurred_at), 'yyyy-MM')
-      if (key === cur) {
-        if (tx.type === 'expense') spent += tx.amount
-        else if (tx.type === 'income') earned += tx.amount
-      } else if (key === prev) {
-        if (tx.type === 'expense') prevSpent += tx.amount
-        else if (tx.type === 'income') prevEarned += tx.amount
-      }
-    }
-    return { spent, earned, net: earned - spent, prevSpent, prevEarned }
-  }, [transactions, base])
-
+  const monthName = format(new Date(), 'MMMM', { locale: dateLocale() })
   const recent = transactions.slice(0, 6)
   const otherCurrencies = Object.entries(totalsByCurrency).filter(([c]) => c !== base)
   const symbol = getCurrency(base).symbol
-  const loading = la || lb || lt
+  const loading = la || lb || lt || health.isLoading
 
   if (loading) return <DashboardSkeleton />
 
@@ -240,7 +202,7 @@ export function DashboardPage() {
               >
                 <BarChart3 className="h-4 w-4" />
                 {t('dash.spentIn', {
-                  amount: formatMoney(month.spent, base, { signDisplay: 'never' }),
+                  amount: formatMoney(month.expense, base, { signDisplay: 'never' }),
                   month: format(new Date(), 'MMMM', { locale: dateLocale() }),
                 })}
                 <ChevronRight className="h-3.5 w-3.5" />
@@ -296,8 +258,14 @@ export function DashboardPage() {
         </div>
       </section>
 
-      {/* ───────── Content sheet — slides up over the hero ───────── */}
+      {/* ───────── Content sheet — slides up over the hero ─────────
+          Order answers the three questions in the order people actually ask
+          them: what can I spend today, is anything wrong, how am I doing. */}
       <div className="relative z-10 -mt-5 space-y-5 rounded-t-[26px] bg-background px-4 pb-2 pt-5 sm:mt-6 sm:rounded-none sm:bg-transparent sm:px-0 sm:pt-0">
+        <TodayCard allowance={allowance} base={base} />
+
+        <AttentionCard />
+
         {/* Quick actions */}
         <Card className="grid grid-cols-4 gap-x-1 gap-y-4 p-4">
           <QuickTile label={t('dash.record')} icon={Plus} chip="blue" onClick={() => setAddOpen(true)} />
@@ -310,28 +278,15 @@ export function DashboardPage() {
           <QuickTile label={t('section.tags')} icon={Tag} chip="violet" to="/tags" />
         </Card>
 
-        {/* This month — In / Out / Kept */}
-        <section className="card-surface grid grid-cols-3 divide-x divide-border overflow-hidden rounded-[20px]">
-          <MonthCell
-            label={t('dash.moneyIn')}
-            amount={month.earned}
-            format={(v) => formatMoney(v, base, { signDisplay: 'never' })}
-            delta={deltaOf(month.earned, month.prevEarned, true)}
-          />
-          <MonthCell
-            label={t('dash.moneyOut')}
-            amount={month.spent}
-            format={(v) => formatMoney(v, base, { signDisplay: 'never' })}
-            delta={deltaOf(month.spent, month.prevSpent, false)}
-          />
-          <MonthCell
-            label={t('dash.kept')}
-            amount={month.net}
-            format={(v) => formatMoney(v, base, { signDisplay: 'always' })}
-            valueClass={month.net >= 0 ? 'text-positive' : 'text-negative'}
-            delta={deltaOf(month.net, month.prevEarned - month.prevSpent, true)}
-          />
-        </section>
+        {/* This month — a card each for what came in and what went out, so both
+            can show where it came from / what it went on, then their net. */}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <MoneyFlowCard kind="income" flow={health.inflow} base={base} month={monthName} />
+          <MoneyFlowCard kind="expense" flow={health.outflow} base={base} month={monthName} />
+        </div>
+        <NetStrip net={month.net} prevNet={prevMonth.net} base={base} />
+
+        <WalletScoreCard score={health.score} runway={health.runway} tip={health.tip} />
 
         {/* Assistant — chat about your money */}
         <AiHomeCard />
@@ -344,6 +299,8 @@ export function DashboardPage() {
             On desktop this is the second grid column; below lg it stacks under the
             primary column (opaque bg so it clears the mobile fixed hero). */}
         <aside className="relative z-10 space-y-5 bg-background px-4 pb-6 pt-1 sm:bg-transparent sm:px-0 sm:pt-0 lg:mt-16">
+          <UpcomingBillsCard bills={bills} spendable={money.spendable} base={base} />
+
           <AccountsPanel accounts={accounts} balances={balances} hidden={hidden} />
 
           {/* Recent activity */}
@@ -526,61 +483,6 @@ function AccountsPanel({
   )
 }
 
-interface Delta {
-  pct: number
-  /** Whether this direction of change is good (drives the chip color). */
-  good: boolean
-}
-
-function deltaOf(cur: number, prev: number, higherIsBetter: boolean): Delta | undefined {
-  const pct = pctChange(cur, prev)
-  if (pct == null) return undefined
-  return { pct, good: higherIsBetter ? pct >= 0 : pct <= 0 }
-}
-
-/** One column of the this-month strip: label, number, vs-last-month chip. */
-function MonthCell({
-  label,
-  amount,
-  format: fmt,
-  valueClass,
-  delta,
-}: {
-  label: string
-  amount: number
-  format: (value: number) => string
-  valueClass?: string
-  delta?: Delta
-}) {
-  const { t } = useT()
-  return (
-    <div className="px-3 py-3.5 sm:px-4">
-      <p className="text-xs font-semibold text-muted-foreground">{label}</p>
-      <p
-        className={cn(
-          'mt-1 truncate font-numeric text-base font-extrabold leading-tight sm:text-lg',
-          valueClass ?? 'text-foreground',
-        )}
-      >
-        <AnimatedNumber value={amount} format={fmt} />
-      </p>
-      {delta && (
-        <p className="mt-0.5 truncate text-xs font-semibold">
-          <span className={delta.good ? 'text-positive' : 'text-negative'}>
-            {delta.pct >= 0 ? '▲' : '▼'} {Math.abs(delta.pct).toFixed(0)}%
-          </span>{' '}
-          <span className="font-medium text-muted-foreground">{t('dash.vs', { month: prevMonthName() })}</span>
-        </p>
-      )}
-    </div>
-  )
-}
-
-/** "May", "April" — deltas name the month they compare against. */
-function prevMonthName() {
-  return format(subMonths(new Date(), 1), 'MMM', { locale: dateLocale() })
-}
-
 function greetingKey(): MsgKey {
   const h = new Date().getHours()
   if (h < 12) return 'greeting.morning'
@@ -595,6 +497,8 @@ function DashboardSkeleton() {
     <div className="mx-auto max-w-2xl" aria-busy="true" aria-label={t('dash.loadingHome')}>
       <Skeleton className="h-52 rounded-none sm:mt-6 sm:h-44 sm:rounded-[24px]" />
       <div className="-mt-5 space-y-5 rounded-t-[26px] bg-background px-4 pb-2 pt-5 sm:mt-6 sm:rounded-none sm:bg-transparent sm:px-0 sm:pt-0">
+        <Skeleton className="h-44 rounded-[20px]" /> {/* today's allowance */}
+        <Skeleton className="h-[72px] rounded-[20px]" /> {/* needs attention */}
         <div className="grid grid-cols-4 gap-x-1 gap-y-4 rounded-[20px] border border-border bg-surface p-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="flex flex-col items-center gap-2 py-1">
@@ -603,7 +507,13 @@ function DashboardSkeleton() {
             </div>
           ))}
         </div>
-        <Skeleton className="h-24 rounded-[20px]" />
+        {/* money in / money out, then their net */}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Skeleton className="h-56 rounded-[20px]" />
+          <Skeleton className="h-56 rounded-[20px]" />
+        </div>
+        <Skeleton className="h-12 rounded-[20px]" />
+        <Skeleton className="h-52 rounded-[20px]" /> {/* wallet health */}
         <div className="space-y-2">
           <Skeleton className="h-4 w-32" />
           <Skeleton className="h-64 rounded-[20px]" />

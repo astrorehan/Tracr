@@ -407,6 +407,174 @@ export const MESSAGES = {
   },
   'dash.loadingHome': { en: 'Loading home', id: 'Memuat beranda' },
 
+  // ── Home: today's allowance ──────────────────────────────────────────────
+  // Copy rule: going over is stated as a fact plus a way forward, never as a
+  // telling-off. No "you overspent", no red words.
+  'today.title': { en: 'Safe to spend today', id: 'Aman dipakai hari ini' },
+  'today.overTitle': { en: 'Past this month’s plan', id: 'Lewat dari rencana bulan ini' },
+  'today.ofDaily': { en: 'of your {amount} for today', id: 'dari jatah {amount} hari ini' },
+  'today.spentBody': {
+    en: 'Today’s share is used up — {amount} over. Tomorrow starts fresh.',
+    id: 'Jatah hari ini sudah habis — lewat {amount}. Besok mulai lagi dari nol.',
+  },
+  'today.overBody': {
+    en: 'Spending eased off for the rest of the month gets this back on track.',
+    id: 'Kalau agak direm sampai akhir bulan, ini bisa balik ke jalur.',
+  },
+  'today.daysLeft': { en: '{n} days left', id: 'sisa {n} hari' },
+  'today.spentToday': { en: '{amount} out today', id: 'Keluar hari ini {amount}' },
+  'today.nothingYet': { en: 'Nothing spent yet today', id: 'Belum ada pengeluaran hari ini' },
+  'today.usually': { en: 'usually {amount}/day', id: 'biasanya {amount}/hari' },
+  'today.leftForDays': { en: '{amount} for the last {n} days', id: '{amount} buat {n} hari terakhir' },
+  'today.overByMonth': { en: '{amount} past the month’s plan', id: 'Lewat {amount} dari rencana bulan ini' },
+  'today.tightTitle': { en: 'Ready-to-spend money is low', id: 'Uang siap pakai menipis' },
+  'today.tightBody': {
+    en: 'That’s well under your usual {avg} a day — most of your money is sitting somewhere you can’t spend from directly.',
+    id: 'Itu jauh di bawah kebiasaanmu {avg} per hari — sebagian besar uangmu ada di tempat yang tidak bisa langsung dipakai.',
+  },
+  'today.tightFooter': { en: '{amount} out today', id: 'Keluar hari ini {amount}' },
+  'today.tightNote': {
+    en: 'Cash, bank and e-wallet balances only. Investments aren’t counted here because you can’t spend them today.',
+    id: 'Hanya saldo tunai, bank, dan e-wallet. Investasi tidak dihitung di sini karena belum bisa dipakai hari ini.',
+  },
+  'today.moveMoney': { en: 'Top up', id: 'Isi saldo' },
+  'today.setBudget': { en: 'Set a limit', id: 'Atur batas' },
+  'today.cashBasis': {
+    en: 'Worked out from the cash you can spend, minus the bills due before month end. Set a monthly limit and we’ll use that instead.',
+    id: 'Dihitung dari uang yang bisa kamu pakai, dikurangi tagihan sebelum akhir bulan. Atur batas bulanan, nanti itu yang dipakai.',
+  },
+
+  // ── Home: money in / money out cards ─────────────────────────────────────
+  'flow.vsLast': { en: 'vs last month', id: 'vs bulan lalu' },
+  'flow.keptLabel': { en: 'Kept this month', id: 'Sisa bulan ini' },
+  'flow.count': { en: '{n} transactions', id: '{n} transaksi' },
+  'flow.otherCategories': { en: '{n} others', id: '{n} lainnya' },
+  'flow.uncategorized': { en: 'No category', id: 'Tanpa kategori' },
+  'flow.emptyIn': { en: 'Nothing came in yet this month.', id: 'Belum ada pemasukan bulan ini.' },
+  'flow.emptyOut': { en: 'Nothing went out yet this month.', id: 'Belum ada pengeluaran bulan ini.' },
+
+  // ── Home: wallet health ──────────────────────────────────────────────────
+  'score.title': { en: 'Wallet health', id: 'Kualitas dompet' },
+  'score.details': { en: 'Details', id: 'Rincian' },
+  'score.hideDetails': { en: 'Close', id: 'Tutup' },
+  'score.grade.great': { en: 'In great shape', id: 'Prima' },
+  'score.grade.good': { en: 'Healthy', id: 'Sehat' },
+  'score.grade.fair': { en: 'Getting by', id: 'Cukup' },
+  'score.grade.weak': { en: 'Needs care', id: 'Perlu perhatian' },
+  'score.runwayLine': {
+    en: 'Everything you’ve put aside lasts about {months} months at this rate.',
+    id: 'Semua simpananmu cukup sekitar {months} bulan dengan pola pengeluaran sekarang.',
+  },
+  'score.runwayDays': {
+    en: 'Everything you’ve put aside lasts about {n} days at this rate.',
+    id: 'Semua simpananmu cukup sekitar {n} hari dengan pola pengeluaran sekarang.',
+  },
+  'score.runwayUnknown': {
+    en: 'Keep recording for a couple of weeks and we can tell you how long your money lasts.',
+    id: 'Catat lagi beberapa minggu, nanti kami bisa bilang uangmu cukup berapa lama.',
+  },
+  'score.allSteady': { en: 'Everything’s steady. Keep it up.', id: 'Semua terjaga. Pertahankan.' },
+  'score.part.savings': { en: 'Money kept', id: 'Bagian yang disimpan' },
+  'score.part.runway': { en: 'Cash cushion', id: 'Ketahanan dana' },
+  'score.part.debt': { en: 'Debt load', id: 'Beban utang' },
+  'score.part.card': { en: 'Card usage', id: 'Pemakaian kartu' },
+  'score.part.budget': { en: 'Sticking to limits', id: 'Disiplin batas' },
+  'score.part.habit': { en: 'Recording habit', id: 'Rajin mencatat' },
+  'score.unmeasuredNote': {
+    en: 'A dash means there isn’t enough set up yet to judge that one — it doesn’t count against you.',
+    id: 'Tanda — berarti datanya belum cukup untuk dinilai, dan itu tidak mengurangi skormu.',
+  },
+  'score.tip.savings': {
+    en: 'You’re keeping {pct}% of what comes in. Aiming for 20% builds a cushion fast.',
+    id: 'Kamu menyimpan {pct}% dari pemasukan. Coba ke 20% biar cadangan cepat terkumpul.',
+  },
+  'score.tip.savingsNegative': {
+    en: 'More went out than came in this month. Finding one thing to trim is the easiest place to start.',
+    id: 'Bulan ini pengeluaranmu lebih besar dari pemasukan. Paling gampang mulai dari memangkas satu pos.',
+  },
+  'score.tip.runway': {
+    en: 'Your savings cover about {months} months. Three is a comfortable place to get to.',
+    id: 'Simpananmu cukup sekitar {months} bulan. Tiga bulan sudah terasa lega.',
+  },
+  'score.tip.runwayDays': {
+    en: 'Your savings cover about {n} days. Getting to one month’s worth is a solid first target.',
+    id: 'Simpananmu cukup sekitar {n} hari. Target pertama yang masuk akal: satu bulan pengeluaran.',
+  },
+  'score.tip.debt': {
+    en: 'Debts are {pct}% of what you own. Paying down the priciest one first helps most.',
+    id: 'Utangmu {pct}% dari asetmu. Lunasi dulu yang bunganya paling besar.',
+  },
+  'score.tip.card': {
+    en: 'Your cards are {pct}% used. Under 30% is the comfortable zone.',
+    id: 'Kartumu terpakai {pct}%. Di bawah 30% paling aman.',
+  },
+  'score.tip.budget': {
+    en: '{n} of your limits went past this period. Worth a look at whether they’re realistic.',
+    id: '{n} batas kamu lewat periode ini. Coba cek, angkanya realistis atau belum.',
+  },
+  'score.tip.habit': {
+    en: 'You recorded on {n} of the last 14 days. The more you log, the truer these numbers get.',
+    id: 'Kamu mencatat {n} hari dari 14 hari terakhir. Makin rajin, makin akurat angkanya.',
+  },
+
+  // ── Home: bills ahead ────────────────────────────────────────────────────
+  'bills.title': { en: 'Due in the next 2 weeks', id: 'Tagihan 2 minggu ke depan' },
+  'bills.afterPaying': { en: '{amount} left once these are paid', id: 'Sisa {amount} setelah ini dibayar' },
+  'bills.overdueCount': { en: '{n} late', id: '{n} telat' },
+  'bills.overdueBy': { en: '{n} days late', id: 'Telat {n} hari' },
+  'bills.dueToday': { en: 'Due today', id: 'Jatuh tempo hari ini' },
+  'bills.dueTomorrow': { en: 'Due tomorrow', id: 'Jatuh tempo besok' },
+  'bills.dueInDays': { en: 'In {n} days', id: '{n} hari lagi' },
+  'bills.andMore': { en: '+{n} more', id: '+{n} lagi' },
+  'bills.partialTotal': {
+    en: 'One bill is in a currency we have no rate for, so it’s left out of the total.',
+    id: 'Ada tagihan dalam mata uang yang kursnya belum ada, jadi belum masuk total.',
+  },
+  'bills.clearTitle': { en: 'Nothing due soon', id: 'Tidak ada tagihan dekat' },
+  'bills.clearBody': { en: 'The next two weeks are clear.', id: 'Dua minggu ke depan aman.' },
+
+  // ── Home: needs attention ────────────────────────────────────────────────
+  'attention.title': { en: 'Worth a look', id: 'Perlu perhatian' },
+  'attention.andMore': { en: '+{n} more', id: '+{n} lagi' },
+  'attention.clearTitle': { en: 'All clear', id: 'Semuanya aman' },
+  'attention.clearBody': {
+    en: 'No bills late, no limits blown.',
+    id: 'Tidak ada tagihan telat, tidak ada batas yang jebol.',
+  },
+
+  // ── Notifications ────────────────────────────────────────────────────────
+  'notif.title': { en: 'Notifications', id: 'Notifikasi' },
+  'notif.ariaUnread': { en: 'Notifications ({n} unread)', id: 'Notifikasi ({n} belum dibaca)' },
+  'notif.markAllRead': { en: 'Mark all read', id: 'Tandai sudah dibaca' },
+  'notif.emptyTitle': { en: 'You’re all caught up', id: 'Semua sudah beres' },
+  'notif.emptyBody': {
+    en: 'Bill and limit alerts show up here.',
+    id: 'Peringatan tagihan dan batas muncul di sini.',
+  },
+  'notif.bill.overdue': { en: '{n}d late · {amount}', id: 'Telat {n} hari · {amount}' },
+  'notif.bill.today': { en: 'Due today · {amount}', id: 'Jatuh tempo hari ini · {amount}' },
+  'notif.bill.tomorrow': { en: 'Due tomorrow · {amount}', id: 'Jatuh tempo besok · {amount}' },
+  'notif.bill.inDays': { en: 'In {n} days · {amount}', id: '{n} hari lagi · {amount}' },
+  'notif.budget.over': { en: '{name} is over its limit', id: 'Pengeluaran {name} lewat batas' },
+  'notif.budget.near': { en: '{name} is close to its limit', id: 'Pengeluaran {name} hampir kena batas' },
+  'notif.budget.overAll': { en: 'Overall spending is over its limit', id: 'Total pengeluaran lewat batas' },
+  'notif.budget.nearAll': {
+    en: 'Overall spending is close to its limit',
+    id: 'Total pengeluaran hampir kena batas',
+  },
+  'notif.budget.body': { en: '{spent} of {limit} · {pct}%', id: '{spent} dari {limit} · {pct}%' },
+  'notif.push.title': { en: 'Push reminders', id: 'Pengingat push' },
+  'notif.push.turnOn': { en: 'Turn on', id: 'Nyalakan' },
+  'notif.push.turnOff': { en: 'On · turn off', id: 'Aktif · matikan' },
+  'notif.push.body': {
+    en: 'Get bill & limit alerts on this device, even when Tracr is closed.',
+    id: 'Dapat peringatan tagihan & batas di perangkat ini, bahkan saat Tracr ditutup.',
+  },
+  'notif.push.blocked': {
+    en: 'Notifications are blocked for this site — re-enable them in your browser settings.',
+    id: 'Notifikasi diblokir untuk situs ini — aktifkan lagi di pengaturan browser.',
+  },
+
   // ── Transactions list ─────────────────────────────────────────────────────
   'tx.clearAll': { en: 'Clear all', id: 'Hapus pilihan' },
   'tx.selectAll': { en: 'Select all', id: 'Pilih semua' },
