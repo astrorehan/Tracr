@@ -15,7 +15,6 @@ import {
   Moon,
   Sun,
   ChevronRight,
-  ListOrdered,
   type LucideProps,
 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
@@ -27,7 +26,7 @@ import { getCurrency } from '@/lib/currencies'
 import { useAuth } from '@/features/auth/useAuth'
 import { useTheme } from '@/features/settings/theme-context'
 import { useT } from '@/features/settings/language-context'
-import { dateLocale, type MsgKey } from '@/i18n'
+import { dateLocale } from '@/i18n'
 import { NotificationBell } from '@/features/notifications/NotificationBell'
 import { CreditChip } from '@/features/billing/CreditChip'
 import { useAccounts, useBalances } from '@/features/accounts/api'
@@ -66,7 +65,6 @@ export function DashboardPage() {
   const { theme, toggle } = useTheme()
   const { t } = useT()
   const base = profile?.base_currency ?? 'IDR'
-  const firstName = profile?.display_name?.split(' ')[0]
 
   const [addOpen, setAddOpen] = useState(false)
   const [hidden, setHidden] = useHiddenBalance()
@@ -142,11 +140,7 @@ export function DashboardPage() {
       <section className="brand-hero relative z-10 overflow-hidden px-4 pb-7 pt-4 text-white max-sm:bg-none sm:mt-6 sm:rounded-[24px] sm:px-6 sm:pb-6 sm:pt-5">
         <div className="relative z-10">
           {/* Mobile top bar — the shared header is hidden on home/mobile */}
-          <div className="mb-4 flex items-center justify-between gap-3 sm:hidden">
-            <p className="truncate text-base font-bold">
-              {t(greetingKey())}
-              {firstName ? `, ${firstName}` : ''} 👋
-            </p>
+          <div className="mb-4 flex items-center justify-end gap-3 sm:hidden">
             <div className="flex shrink-0 items-center gap-2">
               <CreditChip variant="onDark" />
               <NotificationBell variant="onDark" />
@@ -213,21 +207,6 @@ export function DashboardPage() {
                   month: format(new Date(), 'MMMM', { locale: dateLocale() }),
                 })}
                 <ChevronRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
-
-            <div className="flex shrink-0 flex-col gap-2">
-              <button
-                onClick={() => setAddOpen(true)}
-                className="pressable flex items-center gap-1.5 rounded-xl bg-white px-3.5 py-2 text-xs font-bold text-primary"
-              >
-                <Plus className="h-4 w-4 stroke-[2.6]" /> {t('dash.record')}
-              </button>
-              <Link
-                to="/transactions"
-                className="pressable flex items-center gap-1.5 rounded-xl border border-white/30 bg-white/12 px-3.5 py-2 text-xs font-bold text-white"
-              >
-                <ListOrdered className="h-4 w-4" /> {t('dash.history')}
               </Link>
             </div>
           </div>
@@ -494,13 +473,6 @@ function AccountsPanel({
       </div>
     </Card>
   )
-}
-
-function greetingKey(): MsgKey {
-  const h = new Date().getHours()
-  if (h < 12) return 'greeting.morning'
-  if (h < 18) return 'greeting.afternoon'
-  return 'greeting.evening'
 }
 
 /** Mirrors the home layout so loading → loaded swaps without layout shift. */

@@ -55,15 +55,18 @@ export function TodayCard({ allowance, base }: { allowance: DailyAllowance; base
             <AnimatedNumber value={bigNumber} format={money} />
           </p>
 
-          <p className="mt-2 text-xs font-medium leading-relaxed text-muted-foreground">
-            {mood === 'tight'
-              ? t('today.tightBody', { avg: money(avgPerDay) })
-              : mood === 'over'
+          {/* The tight state already says everything with the title, colour
+              and number — a paragraph explaining "why" here was detail
+              nobody needed to re-read every day. */}
+          {mood !== 'tight' && (
+            <p className="mt-2 text-xs font-medium leading-relaxed text-muted-foreground">
+              {mood === 'over'
                 ? t('today.overBody')
                 : mood === 'spent'
                   ? t('today.spentBody', { amount: money(Math.abs(leftToday)) })
                   : t('today.ofDaily', { amount: money(perDay) })}
-          </p>
+            </p>
+          )}
         </div>
 
         <span className={cn('shrink-0 rounded-full px-2.5 py-1 text-xs font-bold', tone.chip)}>
@@ -95,17 +98,24 @@ export function TodayCard({ allowance, base }: { allowance: DailyAllowance; base
         </>
       )}
 
-      <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-3">
-        <p className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-          <CalendarDays className="h-3.5 w-3.5 shrink-0" />
-          <span className="truncate">
-            {mood === 'tight'
-              ? t('today.tightFooter', { amount: money(spentToday) })
-              : available >= 0
+      <div
+        className={cn(
+          'mt-4 flex items-center gap-3 border-t border-border pt-3',
+          mood === 'tight' ? 'justify-end' : 'justify-between',
+        )}
+      >
+        {/* "Keluar hari ini" was redundant with the number above it in tight
+            mode — dropped along with the rest of the tight-state detail. */}
+        {mood !== 'tight' && (
+          <p className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+            <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">
+              {available >= 0
                 ? t('today.leftForDays', { amount: money(available), n: daysLeft })
                 : t('today.overByMonth', { amount: money(Math.abs(available)) })}
-          </span>
-        </p>
+            </span>
+          </p>
+        )}
         {basis === 'cash' && (
           <Link
             to={mood === 'tight' ? '/accounts' : '/budgets'}
@@ -117,9 +127,9 @@ export function TodayCard({ allowance, base }: { allowance: DailyAllowance; base
         )}
       </div>
 
-      {basis === 'cash' && (
+      {basis === 'cash' && mood !== 'tight' && (
         <p className="mt-2 text-[11px] font-medium leading-relaxed text-muted-foreground">
-          {t(mood === 'tight' ? 'today.tightNote' : 'today.cashBasis')}
+          {t('today.cashBasis')}
         </p>
       )}
     </Card>

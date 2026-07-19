@@ -62,9 +62,6 @@ export const MESSAGES = {
   'layout.goBack': { en: 'Go back', id: 'Kembali' },
   'layout.toggleTheme': { en: 'Toggle theme', id: 'Ganti tema' },
   'layout.profileSettings': { en: 'Profile & settings', id: 'Profil & pengaturan' },
-  'greeting.morning': { en: 'Good morning', id: 'Selamat pagi' },
-  'greeting.afternoon': { en: 'Good afternoon', id: 'Selamat siang' },
-  'greeting.evening': { en: 'Good evening', id: 'Selamat malam' },
 
   // ── Settings ─────────────────────────────────────────────────────────────
   'settings.preferences': { en: 'Preferences', id: 'Preferensi' },
@@ -379,7 +376,6 @@ export const MESSAGES = {
   'dash.owe': { en: 'owe {amount}', id: 'utang {amount}' },
   'dash.spentIn': { en: '{amount} spent in {month}', id: '{amount} keluar di {month}' },
   'dash.record': { en: 'Record', id: 'Catat' },
-  'dash.history': { en: 'History', id: 'Riwayat' },
   'dash.addRate': {
     en: 'Add a rate for {codes} to include it',
     id: 'Tambah kurs untuk {codes} biar ikut dihitung',
@@ -430,15 +426,6 @@ export const MESSAGES = {
   'today.leftForDays': { en: '{amount} for the last {n} days', id: '{amount} buat {n} hari terakhir' },
   'today.overByMonth': { en: '{amount} past the month’s plan', id: 'Lewat {amount} dari rencana bulan ini' },
   'today.tightTitle': { en: 'Ready-to-spend money is low', id: 'Uang siap pakai menipis' },
-  'today.tightBody': {
-    en: 'That’s well under your usual {avg} a day — most of your money is sitting somewhere you can’t spend from directly.',
-    id: 'Itu jauh di bawah kebiasaanmu {avg} per hari — sebagian besar uangmu ada di tempat yang tidak bisa langsung dipakai.',
-  },
-  'today.tightFooter': { en: '{amount} out today', id: 'Keluar hari ini {amount}' },
-  'today.tightNote': {
-    en: 'Cash, bank and e-wallet balances only. Investments aren’t counted here because you can’t spend them today.',
-    id: 'Hanya saldo tunai, bank, dan e-wallet. Investasi tidak dihitung di sini karena belum bisa dipakai hari ini.',
-  },
   'today.moveMoney': { en: 'Top up', id: 'Isi saldo' },
   'today.setBudget': { en: 'Set a limit', id: 'Atur batas' },
   'today.cashBasis': {
