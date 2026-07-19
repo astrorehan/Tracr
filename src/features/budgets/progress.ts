@@ -91,6 +91,8 @@ export interface BudgetStatus {
   level: BudgetLevel
   /** Linear projection of end-of-period spend from elapsed time. */
   projected: number
+  /** How far through the period `ref` sits, 0..1 — "on pace" would be pct === paceFrac*100. */
+  paceFrac: number
 }
 
 const NEAR_THRESHOLD = 80
@@ -113,5 +115,5 @@ export function budgetStatus(
   const frac = totalMs > 0 ? elapsed / totalMs : 1
   const projected = frac > 0 ? Math.round(spent / frac) : spent
 
-  return { spent, carry, limit, remaining, pct, level, projected }
+  return { spent, carry, limit, remaining, pct, level, projected, paceFrac: frac }
 }

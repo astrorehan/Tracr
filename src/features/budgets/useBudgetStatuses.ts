@@ -86,3 +86,12 @@ export function useBudgetStatuses(now: Date = new Date()) {
 export function overallMonthlyBudget(items: BudgetStatusItem[]): BudgetStatusItem | undefined {
   return items.find((i) => i.budget.category_id === null && i.budget.period === 'monthly')
 }
+
+/**
+ * The budget worth featuring on the home screen: the overall monthly cap if
+ * the user set one (it speaks for the whole month), otherwise whichever
+ * budget is furthest into its limit — the one where pace actually matters.
+ */
+export function featuredBudget(items: BudgetStatusItem[]): BudgetStatusItem | undefined {
+  return overallMonthlyBudget(items) ?? [...items].sort((a, b) => b.status.pct - a.status.pct)[0]
+}

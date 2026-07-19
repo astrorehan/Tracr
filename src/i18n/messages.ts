@@ -105,6 +105,8 @@ export const MESSAGES = {
     en: 'Note spending by chatting, even outside the app',
     id: 'Catat pengeluaran lewat chat, tanpa buka aplikasi',
   },
+  'settings.billing': { en: 'Credits & plan', id: 'Kredit & paket' },
+  'settings.billingDesc': { en: 'AI credit balance, plan, and history', id: 'Saldo kredit AI, paket, dan riwayat' },
   // ── Telegram bot ─────────────────────────────────────────────────────────
   'tg.title': { en: 'Telegram bot', id: 'Bot Telegram' },
   'tg.subtitle': {
@@ -517,6 +519,39 @@ export const MESSAGES = {
     id: 'Kamu mencatat {n} hari dari 14 hari terakhir. Makin rajin, makin akurat angkanya.',
   },
 
+  // ── Home: month-end forecast ─────────────────────────────────────────────
+  'forecast.title': { en: 'Where this month is headed', id: 'Perkiraan sampai akhir bulan' },
+  'forecast.shortBadge': { en: 'May run short', id: 'Berpotensi kurang' },
+  'forecast.shortBody': {
+    en: 'At this pace, spendable cash runs {amount} short before the month is out.',
+    id: 'Dengan pola sekarang, uang siap pakai diperkirakan kurang {amount} sebelum bulan berakhir.',
+  },
+  'forecast.upBody': {
+    en: 'Up from {amount} today, once scheduled income and bills settle.',
+    id: 'Naik dari {amount} hari ini, setelah pemasukan dan tagihan terjadwal selesai.',
+  },
+  'forecast.downBody': {
+    en: 'Down from {amount} today, at the usual daily pace.',
+    id: 'Turun dari {amount} hari ini, mengikuti pola pengeluaran biasa.',
+  },
+
+  // ── Home: budget pace ─────────────────────────────────────────────────────
+  'budgets.overallLabel': { en: 'Overall spending', id: 'Semua pengeluaran' },
+  'budgets.spentOfLimit': { en: '{spent} of {limit}', id: '{spent} dari {limit}' },
+  'budgets.justStarted': { en: 'Period just started', id: 'Periode baru mulai' },
+  'budgets.underPace': { en: '{pct}% under pace', id: '{pct}% di bawah jadwal' },
+  'budgets.overPace': { en: '{pct}% over pace', id: '{pct}% di atas jadwal' },
+
+  // ── Home: goals preview ───────────────────────────────────────────────────
+  'goals.title': { en: 'Savings goals', id: 'Target nabung' },
+  'goals.atRisk': { en: 'At risk', id: 'Terancam' },
+  'goals.needRate': { en: 'Needs {amount}/month to land on time', id: 'Butuh {amount}/bulan biar tepat waktu' },
+  'goals.remaining': { en: '{amount} to go', id: 'Kurang {amount}' },
+  'goals.suggestion': {
+    en: 'Leftover this month — put {amount} toward {name}?',
+    id: 'Sisa bulan ini — setor {amount} ke {name}?',
+  },
+
   // ── Home: bills ahead ────────────────────────────────────────────────────
   'bills.title': { en: 'Due in the next 2 weeks', id: 'Tagihan 2 minggu ke depan' },
   'bills.afterPaying': { en: '{amount} left once these are paid', id: 'Sisa {amount} setelah ini dibayar' },
@@ -608,6 +643,40 @@ export const MESSAGES = {
   'settings.size.md': { en: 'Default', id: 'Standar' },
   'settings.size.lg': { en: 'Large', id: 'Besar' },
   'settings.size.xl': { en: 'Larger', id: 'Lebih besar' },
+
+  // ── Billing / AI credits (migration 0034) ───────────────────────────────
+  'billing.title': { en: 'Credits & plan', id: 'Kredit & paket' },
+  'billing.chipAria': { en: '{n} credits left', id: '{n} kredit tersisa' },
+  'billing.planFree': { en: 'Free', id: 'Gratis' },
+  'billing.planPro': { en: 'Pro', id: 'Pro' },
+  'billing.currentPlan': { en: 'Current plan', id: 'Paket saat ini' },
+  'billing.subscriptionPool': { en: 'Monthly credits', id: 'Kredit bulanan' },
+  'billing.topupPool': { en: 'Top-up credits', id: 'Kredit top-up' },
+  'billing.resetsMonthly': { en: 'Resets on the 1st — unused credits don’t carry over', id: 'Reset tiap tanggal 1 — sisa kredit tidak terbawa ke bulan depan' },
+  'billing.topupNeverExpires': { en: 'Never expires', id: 'Tidak pernah hangus' },
+  'billing.usedOfGranted': { en: '{used} of {granted} used', id: '{used} dari {granted} terpakai' },
+  'billing.upgrade': { en: 'Upgrade to Pro', id: 'Upgrade ke Pro' },
+  'billing.comingSoon': { en: 'Coming soon', id: 'Segera hadir' },
+  'billing.upgradeComingSoon': {
+    en: 'Pro upgrades open soon — {credits} credits/month.',
+    id: 'Upgrade Pro segera dibuka — {credits} kredit/bulan.',
+  },
+  'billing.buyCredits': { en: 'Buy more credits', id: 'Beli kredit tambahan' },
+  'billing.packComingSoon': { en: 'Top-up opens soon', id: 'Top-up segera dibuka' },
+  'billing.buy': { en: 'Buy', id: 'Beli' },
+  'billing.buyError': { en: 'Payment failed to start. Please try again.', id: 'Pembayaran gagal dimulai. Coba lagi ya.' },
+  'billing.history': { en: 'History', id: 'Riwayat' },
+  'billing.historyEmpty': { en: 'No activity yet.', id: 'Belum ada aktivitas.' },
+  'billing.goToBilling': { en: 'Top up or upgrade', id: 'Top up atau upgrade' },
+  'billing.scanLimitNotice': {
+    en: 'Out of AI credits — enter it by hand, or top up.',
+    id: 'Kredit AI habis — isi manual, atau top up.',
+  },
+  'billing.ledger.monthly_grant': { en: 'Monthly credits granted', id: 'Kredit bulanan diberikan' },
+  'billing.ledger.consume': { en: 'Used 1 credit', id: 'Pakai 1 kredit' },
+  'billing.ledger.topup_purchase': { en: 'Top-up purchase', id: 'Pembelian top-up' },
+  'billing.ledger.expire': { en: 'Unused credits expired', id: 'Kredit tak terpakai hangus' },
+  'billing.ledger.admin_adjustment': { en: 'Balance adjustment', id: 'Penyesuaian saldo' },
 } satisfies Record<string, Entry>
 
 export type MsgKey = keyof typeof MESSAGES

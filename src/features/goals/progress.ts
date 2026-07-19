@@ -58,3 +58,47 @@ export function daysToTarget(targetDate: string | null, now: Date = new Date()):
   if (!targetDate) return null
   return differenceInCalendarDays(new Date(targetDate), now)
 }
+
+export interface GoalHealth {
+  progress: GoalProgress
+  /** Monthly deposit rate needed to land on the target date; null with no target date. */
+  neededMonthlyRate: number | null
+  /** True when the target date has a deposit pace that won't get there in time. */
+  atRisk: boolean
+}
+
+/** Tolerance below the required pace before a goal is flagged — avoids
+ *  flip-flopping the badge over a rounding-distance shortfall. */
+const AT_RISK_TOLERANCE = 0.9
+
+/**
+ * Folds a goal's progress and its target date into one verdict: is the
+ * current deposit pace actually going to land on time, and if not, what pace
+ * would? A goal with no target date is never "at risk" — there's nothing to
+ * be late against.
+ */
+export function goalHealth(
+  target: number,
+  targetDate: string | null,
+  contributions: GoalContribution[],
+  now: Date = new Date(),
+): GoalHealth {
+  const progress = goalProgress(target, contributions, now)
+  if (progress.complete || !targetDate) {
+    return { progress, neededMonthlyRate: null, atRisk: false }
+  }
+
+  const days = daysToTarget(targetDate, now)!
+  if (days <= 0) {
+    // Overdue and still short — the whole remainder is due "this instant".
+    return { progress, neededMonthlyRate: progress.remaining, atRisk: true }
+  }
+
+  const monthsLeft = days / MS_PER_MONTH
+  const neededMonthlyRate = progress.remaining / monthsLeft
+  return {
+    progress,
+    neededMonthlyRate,
+    atRisk: progress.monthlyRate < neededMonthlyRate * AT_RISK_TOLERANCE,
+  }
+}
