@@ -45,6 +45,9 @@ const BooksPage = lazy(() => import('./app/BooksPage').then((m) => ({ default: m
 const TelegramPage = lazy(() =>
   import('./app/TelegramPage').then((m) => ({ default: m.TelegramPage })),
 )
+const BillingPage = lazy(() =>
+  import('./app/BillingPage').then((m) => ({ default: m.BillingPage })),
+)
 const LegalPage = lazy(() => import('./app/LegalPage').then((m) => ({ default: m.LegalPage })))
 const LandingPage = lazy(() =>
   import('./app/LandingPage').then((m) => ({ default: m.LandingPage })),
@@ -214,6 +217,14 @@ export default function App() {
           element={
             <Suspense fallback={<CenterSpinner />}>
               <TelegramPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="billing"
+          element={
+            <Suspense fallback={<CenterSpinner />}>
+              <BillingPage />
             </Suspense>
           }
         />

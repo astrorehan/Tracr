@@ -24,6 +24,7 @@ import { useTheme } from '@/features/settings/theme-context'
 import { useLiveRatesSync } from '@/features/fx/useLiveRatesSync'
 import { TransactionForm } from '@/features/transactions/TransactionForm'
 import { NotificationBell } from '@/features/notifications/NotificationBell'
+import { CreditChip } from '@/features/billing/CreditChip'
 
 type IconType = ComponentType<{ className?: string }>
 
@@ -119,6 +120,7 @@ export function AppLayout() {
             covers navigation, so the floating pill was just overlapping content. */}
         <div className="fixed top-4 right-4 z-50 hidden items-center gap-2 sm:flex sm:gap-3 sm:right-6 lg:right-8 print:hidden">
           <div className="bg-surface/80 backdrop-blur rounded-xl border border-border flex items-center p-1 shadow-sm gap-1">
+            <CreditChip />
             <NotificationBell />
             <button
               onClick={toggle}

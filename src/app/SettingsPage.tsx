@@ -17,6 +17,7 @@ import {
   PiggyBank,
   Coins,
   Database,
+  CreditCard,
 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -59,6 +60,10 @@ const PLANNING: NavItem[] = [
   { to: '/budgets', label: 'nav.budgets', desc: 'settings.budgetsDesc', icon: Target },
   { to: '/bills', label: 'nav.bills', desc: 'settings.billsDesc', icon: Receipt },
   { to: '/goals', label: 'section.savingsGoals', desc: 'settings.goalsDesc', icon: PiggyBank },
+]
+
+const BILLING: NavItem[] = [
+  { to: '/billing', label: 'settings.billing', desc: 'settings.billingDesc', icon: CreditCard },
 ]
 
 const SYSTEM: NavItem[] = [
@@ -198,6 +203,15 @@ export function SettingsPage() {
             </div>
           </div>
         </Card>
+      </Section>
+
+      {/* Billing */}
+      <Section title={t('settings.billing')}>
+        <ListCard>
+          {BILLING.map((item) => (
+            <NavRow key={item.to} {...item} />
+          ))}
+        </ListCard>
       </Section>
 
       {/* Assistant */}
