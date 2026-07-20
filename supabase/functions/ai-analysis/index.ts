@@ -40,8 +40,12 @@
 //   LLM_SITE_URL          (optional HTTP-Referer)
 //   GEMINI_BASE_URL       (default Google's OpenAI-compat endpoint)
 //   GEMINI_MODEL          (default 'gemini-3.1-flash-lite')
-//   AI_MONTHLY_LIMIT      (default '50')
 // SUPABASE_URL / SUPABASE_ANON_KEY are injected by the platform.
+//
+// Metering: every non-report call spends one AI credit via the
+// ai_credits_consume() RPC (migration 0034) — subscription pool first, then
+// top-up. There is no env-configurable limit any more; the cap comes from
+// the caller's plan (billing_plans.monthly_credits).
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { encodeBase64 } from 'jsr:@std/encoding@1/base64'
 import OpenAI from 'npm:openai'
@@ -79,7 +83,6 @@ Deno.serve(async (req) => {
   const baseURL = Deno.env.get('LLM_BASE_URL') ?? 'https://api.deepseek.com'
   const model = Deno.env.get('LLM_MODEL') ?? 'deepseek-v4-flash'
   const disableThinking = (Deno.env.get('LLM_DISABLE_THINKING') ?? 'true') === 'true'
-  const monthlyLimit = Number(Deno.env.get('AI_MONTHLY_LIMIT') ?? '50')
 
   // User-scoped client: the caller's JWT rides on every query → RLS applies.
   const supabase = createClient(
@@ -170,11 +173,15 @@ Deno.serve(async (req) => {
   }
 
   // Meter first — refuse before spending any tokens.
-  const { data: allowed, error: capErr } = await supabase.rpc('ai_try_consume', {
-    p_max: monthlyLimit,
-  })
+  const { data: credit, error: capErr } = await supabase.rpc('ai_credits_consume')
   if (capErr) return json({ error: capErr.message }, 500)
-  if (!allowed) return json({ limited: true })
+  if (!credit?.allowed) return json({ limited: true, credits_remaining: 0 })
+  // Spent already — surface the balance on every response for the rest of
+  // this request, success or failure, so the caller can show "N left" honestly.
+  const creditFields = {
+    credits_remaining: credit.subscription_remaining + credit.topup_remaining,
+    credits_source: credit.source as 'subscription' | 'topup',
+  }
 
   // Base currency for context (RLS-scoped read of the caller's own profile).
   const { data: profile } = await supabase
@@ -184,15 +191,16 @@ Deno.serve(async (req) => {
   // Scanner results never enter the text-model tool loop. The browser shows a
   // review screen and only its explicit bulk confirmation can create records.
   if (mode === 'scan') {
-    if (images.length === 0) return json({ error: 'image required' }, 400)
+    if (images.length === 0) return json({ error: 'image required', ...creditFields }, 400)
     try {
-      return json({ scan: await extractDocument(images, (body.question ?? '').trim()) })
+      return json({ scan: await extractDocument(images, (body.question ?? '').trim()), ...creditFields })
     } catch (e) {
       const notConfigured = e instanceof Error && e.message === 'vision-not-configured'
       return json({
         error: notConfigured
           ? 'Photo reading is not enabled on the server.'
           : 'The document could not be read. Please try clearer screenshots.',
+        ...creditFields,
       }, notConfigured ? 503 : 422)
     }
   }
@@ -227,6 +235,7 @@ Deno.serve(async (req) => {
               : notConfigured
                 ? "Photo reading isn't enabled on the server yet."
                 : "I couldn't read that photo. Try clearer screenshots.",
+          ...creditFields,
         })
       }
     } else {
@@ -265,7 +274,12 @@ Deno.serve(async (req) => {
     const result = await runAgentLoop({ client, model, messages, ctx, disableThinking })
     if (result.timedOut) {
       return json(
-        { text: '', error: 'The assistant took too long. Please try again.', ...(result.recorded ? { recorded: true } : {}) },
+        {
+          text: '',
+          error: 'The assistant took too long. Please try again.',
+          ...(result.recorded ? { recorded: true } : {}),
+          ...creditFields,
+        },
         200,
       )
     }
@@ -280,8 +294,9 @@ Deno.serve(async (req) => {
       text: result.text,
       ...(result.recorded ? { recorded: true } : {}),
       ...(files.length > 0 ? { files } : {}),
+      ...creditFields,
     })
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : String(e) }, 500)
+    return json({ error: e instanceof Error ? e.message : String(e), ...creditFields }, 500)
   }
 })

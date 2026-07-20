@@ -146,17 +146,16 @@ export async function runBotTurn(opts: {
   const { admin, channel, chatId, link, text, imageDataUrls = [] } = opts
   const plain = (message: string): BotTurnResult => ({ text: message, files: [] })
 
-  // --- meter (service-role variant; ai_try_consume reads auth.uid()) ---------
-  const monthlyLimit = Number(Deno.env.get('AI_MONTHLY_LIMIT') ?? '50')
-  const { data: allowed, error: capErr } = await admin.rpc('ai_try_consume_for', {
-    p_user: link.user_id, p_max: monthlyLimit,
+  // --- meter (service-role variant; auth.uid() is null under this role) ------
+  const { data: credit, error: capErr } = await admin.rpc('ai_credits_consume_for', {
+    p_user: link.user_id,
   })
   if (capErr) {
     console.error('meter failed', capErr)
     return plain('Something went wrong on my side. Please try again in a bit.')
   }
-  if (!allowed) {
-    return plain("You've reached this month's assistant limit. It resets at the start of next month.")
+  if (!credit?.allowed) {
+    return plain("You've used up your credits for this month. Open Tracr to see your balance or top up.")
   }
 
   // --- LLM config ------------------------------------------------------------
