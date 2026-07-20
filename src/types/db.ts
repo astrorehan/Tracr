@@ -16,6 +16,8 @@ export type TransactionSource = 'web' | 'whatsapp' | 'import' | 'telegram'
 /** Reconciliation state: just recorded, seen on the statement, or matched & locked. */
 export type TransactionStatus = 'pending' | 'cleared' | 'reconciled'
 
+export type BillingPlanId = 'free' | 'pro'
+
 export interface Profile {
   id: string
   display_name: string | null
@@ -24,6 +26,8 @@ export interface Profile {
   locale: string | null
   /** The book the user currently has open; mirrored to localStorage for instant boot. */
   active_book_id: string | null
+  /** Denormalized cache of the active plan; self-heals if a Pro subscription lapses. */
+  plan: BillingPlanId
   created_at: string
 }
 
@@ -378,4 +382,102 @@ export interface PushSubscription {
   auth: string
   created_at: string
   last_seen_at: string
+}
+
+// ── AI credits & billing (migration 0034) ──────────────────────────────────
+
+/** Config row: what a plan grants and costs. The only place "10"/"150" live. */
+export interface BillingPlan {
+  plan: BillingPlanId
+  monthly_credits: number
+  price_monthly_idr: number | null
+  price_yearly_idr: number | null
+  /** Pro-only launch gate — false until Midtrans recurring billing is approved. */
+  is_purchasable: boolean
+  updated_at: string
+}
+
+/** Config row: a purchasable top-up pack. */
+export interface CreditPack {
+  id: string
+  credits: number
+  price_idr: number
+  sort_order: number
+  is_active: boolean
+  created_at: string
+}
+
+/** This month's subscription-pool allotment. Lazily created; unused credits
+ *  never carry into the next `ym` row — that is the monthly expiry. */
+export interface CreditsSubscription {
+  user_id: string
+  /** 'YYYY-MM' bucket. */
+  ym: string
+  granted: number
+  used: number
+  updated_at: string
+}
+
+/** Never-expiring purchased balance. One row per user. */
+export interface CreditsTopup {
+  user_id: string
+  balance: number
+  updated_at: string
+}
+
+export type CreditPool = 'subscription' | 'topup'
+export type CreditLedgerReason = 'monthly_grant' | 'consume' | 'topup_purchase' | 'expire' | 'admin_adjustment'
+
+/** One row per balance-affecting event, append-only — the transparency log. */
+export interface CreditLedgerEntry {
+  id: string
+  user_id: string
+  pool: CreditPool
+  /** Positive = credit, negative = debit. */
+  delta: number
+  reason: CreditLedgerReason
+  /** That pool's balance right after this event. */
+  balance_after: number
+  /** ym bucket, order_id, or null depending on `reason`. */
+  ref: string | null
+  created_at: string
+}
+
+export type SubscriptionStatus = 'pending' | 'active' | 'past_due' | 'cancelled' | 'expired'
+export type BillingPeriod = 'monthly' | 'yearly'
+
+/** Pro billing lifecycle. Multiple historical rows allowed per user (cancel,
+ *  resubscribe); at most one `active`/`past_due` row at a time. */
+export interface Subscription {
+  id: string
+  user_id: string
+  midtrans_subscription_id: string | null
+  plan: 'pro'
+  billing_period: BillingPeriod
+  status: SubscriptionStatus
+  current_period_start: string | null
+  current_period_end: string | null
+  cancel_at_period_end: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type PaymentOrderKind = 'topup' | 'subscription_initial' | 'subscription_renewal'
+export type PaymentOrderStatus = 'pending' | 'paid' | 'failed' | 'expired' | 'cancelled'
+
+/** Every Midtrans order, keyed by our own order_id (the webhook's idempotency
+ *  key). Doubles as payment history. */
+export interface PaymentOrder {
+  order_id: string
+  user_id: string
+  kind: PaymentOrderKind
+  status: PaymentOrderStatus
+  credit_pack_id: string | null
+  billing_plan: BillingPlanId | null
+  billing_period: BillingPeriod | null
+  gross_amount_idr: number
+  midtrans_transaction_id: string | null
+  raw_notification: unknown
+  created_at: string
+  updated_at: string
 }

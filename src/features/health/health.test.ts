@@ -6,8 +6,10 @@ import {
   dailyAllowance,
   expenseBetween,
   flowBetween,
+  forecastMonthEnd,
   gradeOf,
   historyDays,
+  incomeAhead,
   runway,
   snapshotMoney,
   walletScore,
@@ -413,6 +415,75 @@ describe('billsAhead', () => {
     expect(b.items[0].base).toBeNull()
     expect(b.total).toBe(0)
     expect(b.partial).toBe(true)
+  })
+})
+
+describe('incomeAhead', () => {
+  it('sums active income schedules due within the window, ignoring expenses', () => {
+    const total = incomeAhead(
+      [
+        bill({ id: 'salary', next_due: '2024-03-25', type: 'income', amount: 5_000_000 }),
+        bill({ id: 'rent', next_due: '2024-03-20', type: 'expense', amount: 400_000 }),
+        bill({ id: 'far', next_due: '2024-05-01', type: 'income', amount: 5_000_000 }), // outside window
+        bill({ id: 'paused', next_due: '2024-03-20', type: 'income', is_active: false, amount: 1 }),
+      ],
+      BASE,
+      TABLE,
+      14,
+      NOW,
+    )
+    expect(total).toBe(5_000_000)
+  })
+
+  it('skips a schedule it cannot value rather than treating it as zero', () => {
+    const total = incomeAhead(
+      [bill({ id: 'eur', next_due: '2024-03-20', type: 'income', currency: 'EUR', amount: 1_000 })],
+      BASE,
+      NO_RATES,
+      14,
+      NOW,
+    )
+    expect(total).toBe(0)
+  })
+})
+
+describe('forecastMonthEnd', () => {
+  it('projects spendable cash forward using the steady burn rate', () => {
+    // March 15 -> 16 days strictly after today remain in the month (16..31).
+    const f = forecastMonthEnd({
+      spendable: 1_000_000,
+      scheduledIncome: 500_000,
+      billsAhead: 200_000,
+      dailyBurn: 20_000,
+      now: NOW,
+    })
+    expect(f.current).toBe(1_000_000)
+    expect(f.projected).toBe(1_000_000 + 500_000 - 200_000 - 20_000 * 16)
+    expect(f.shortfall).toBe(false)
+  })
+
+  it('flags a projected shortfall before month end', () => {
+    const f = forecastMonthEnd({
+      spendable: 100_000,
+      scheduledIncome: 0,
+      billsAhead: 0,
+      dailyBurn: 50_000,
+      now: NOW,
+    })
+    expect(f.projected).toBeLessThan(0)
+    expect(f.shortfall).toBe(true)
+  })
+
+  it('does not double-count today — the last day of the month projects zero days forward', () => {
+    const lastDay = new Date('2024-03-31T12:00:00')
+    const f = forecastMonthEnd({
+      spendable: 100_000,
+      scheduledIncome: 0,
+      billsAhead: 0,
+      dailyBurn: 999_999,
+      now: lastDay,
+    })
+    expect(f.projected).toBe(100_000)
   })
 })
 

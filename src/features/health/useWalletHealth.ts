@@ -17,13 +17,16 @@ import {
   burnRate,
   dailyAllowance,
   flowBetween,
+  forecastMonthEnd,
   historyDays,
+  incomeAhead,
   runway,
   scoreTip,
   snapshotMoney,
   walletScore,
   type BillsAhead,
   type DailyAllowance,
+  type MonthEndForecast,
   type MoneySnapshot,
   type Runway,
   type ScoreTip,
@@ -56,6 +59,8 @@ export interface WalletHealth {
   allowance: DailyAllowance
   runway: Runway
   bills: BillsAhead
+  /** Where spendable cash is headed by month end; `confident` mirrors the burn rate it's built on. */
+  forecast: MonthEndForecast & { confident: boolean }
   score: WalletScore
   /** The single thing worth doing next, or null when nothing needs attention. */
   tip: ScoreTip | null
@@ -141,6 +146,18 @@ export function useWalletHealth(): WalletHealth {
     // brokerage is still a cushion, just a slower one.
     const rw = runway(money.reserves, burn)
 
+    const scheduledIncome = incomeAhead(recurring, base, table, daysToMonthEnd, now)
+    const forecast = {
+      ...forecastMonthEnd({
+        spendable: money.spendable,
+        scheduledIncome,
+        billsAhead: billsThisMonth.total,
+        dailyBurn: burn.daily,
+        now,
+      }),
+      confident: burn.confident,
+    }
+
     const activeDaysLast14 = activeDays(transactions, 14, now)
     const overBudgetCount = budgetItems.filter((i) => i.status.level === 'over').length
 
@@ -176,6 +193,7 @@ export function useWalletHealth(): WalletHealth {
       allowance,
       runway: rw,
       bills,
+      forecast,
       score,
       tip,
       isLoading: la || lb || lt || lr || lbud,

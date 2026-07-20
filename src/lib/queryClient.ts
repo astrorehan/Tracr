@@ -30,6 +30,12 @@ export const qk = {
   transactionTemplates: ['transaction_templates'] as const,
   rules: ['rules'] as const,
   botLinks: ['bot_links'] as const,
+  creditsBalance: ['credits_balance'] as const,
+  creditLedger: ['credit_ledger'] as const,
+  billingPlans: ['billing_plans'] as const,
+  creditPacks: ['credit_packs'] as const,
+  subscription: ['subscription'] as const,
+  paymentOrders: ['payment_orders'] as const,
   transactions: (filters?: Record<string, unknown>) =>
     filters ? (['transactions', filters] as const) : (['transactions'] as const),
 }

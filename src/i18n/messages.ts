@@ -62,9 +62,6 @@ export const MESSAGES = {
   'layout.goBack': { en: 'Go back', id: 'Kembali' },
   'layout.toggleTheme': { en: 'Toggle theme', id: 'Ganti tema' },
   'layout.profileSettings': { en: 'Profile & settings', id: 'Profil & pengaturan' },
-  'greeting.morning': { en: 'Good morning', id: 'Selamat pagi' },
-  'greeting.afternoon': { en: 'Good afternoon', id: 'Selamat siang' },
-  'greeting.evening': { en: 'Good evening', id: 'Selamat malam' },
 
   // ── Settings ─────────────────────────────────────────────────────────────
   'settings.preferences': { en: 'Preferences', id: 'Preferensi' },
@@ -105,6 +102,8 @@ export const MESSAGES = {
     en: 'Note spending by chatting, even outside the app',
     id: 'Catat pengeluaran lewat chat, tanpa buka aplikasi',
   },
+  'settings.billing': { en: 'Credits & plan', id: 'Kredit & paket' },
+  'settings.billingDesc': { en: 'AI credit balance, plan, and history', id: 'Saldo kredit AI, paket, dan riwayat' },
   // ── Telegram bot ─────────────────────────────────────────────────────────
   'tg.title': { en: 'Telegram bot', id: 'Bot Telegram' },
   'tg.subtitle': {
@@ -377,7 +376,6 @@ export const MESSAGES = {
   'dash.owe': { en: 'owe {amount}', id: 'utang {amount}' },
   'dash.spentIn': { en: '{amount} spent in {month}', id: '{amount} keluar di {month}' },
   'dash.record': { en: 'Record', id: 'Catat' },
-  'dash.history': { en: 'History', id: 'Riwayat' },
   'dash.addRate': {
     en: 'Add a rate for {codes} to include it',
     id: 'Tambah kurs untuk {codes} biar ikut dihitung',
@@ -428,15 +426,6 @@ export const MESSAGES = {
   'today.leftForDays': { en: '{amount} for the last {n} days', id: '{amount} buat {n} hari terakhir' },
   'today.overByMonth': { en: '{amount} past the month’s plan', id: 'Lewat {amount} dari rencana bulan ini' },
   'today.tightTitle': { en: 'Ready-to-spend money is low', id: 'Uang siap pakai menipis' },
-  'today.tightBody': {
-    en: 'That’s well under your usual {avg} a day — most of your money is sitting somewhere you can’t spend from directly.',
-    id: 'Itu jauh di bawah kebiasaanmu {avg} per hari — sebagian besar uangmu ada di tempat yang tidak bisa langsung dipakai.',
-  },
-  'today.tightFooter': { en: '{amount} out today', id: 'Keluar hari ini {amount}' },
-  'today.tightNote': {
-    en: 'Cash, bank and e-wallet balances only. Investments aren’t counted here because you can’t spend them today.',
-    id: 'Hanya saldo tunai, bank, dan e-wallet. Investasi tidak dihitung di sini karena belum bisa dipakai hari ini.',
-  },
   'today.moveMoney': { en: 'Top up', id: 'Isi saldo' },
   'today.setBudget': { en: 'Set a limit', id: 'Atur batas' },
   'today.cashBasis': {
@@ -515,6 +504,39 @@ export const MESSAGES = {
   'score.tip.habit': {
     en: 'You recorded on {n} of the last 14 days. The more you log, the truer these numbers get.',
     id: 'Kamu mencatat {n} hari dari 14 hari terakhir. Makin rajin, makin akurat angkanya.',
+  },
+
+  // ── Home: month-end forecast ─────────────────────────────────────────────
+  'forecast.title': { en: 'Where this month is headed', id: 'Perkiraan sampai akhir bulan' },
+  'forecast.shortBadge': { en: 'May run short', id: 'Berpotensi kurang' },
+  'forecast.shortBody': {
+    en: 'At this pace, spendable cash runs {amount} short before the month is out.',
+    id: 'Dengan pola sekarang, uang siap pakai diperkirakan kurang {amount} sebelum bulan berakhir.',
+  },
+  'forecast.upBody': {
+    en: 'Up from {amount} today, once scheduled income and bills settle.',
+    id: 'Naik dari {amount} hari ini, setelah pemasukan dan tagihan terjadwal selesai.',
+  },
+  'forecast.downBody': {
+    en: 'Down from {amount} today, at the usual daily pace.',
+    id: 'Turun dari {amount} hari ini, mengikuti pola pengeluaran biasa.',
+  },
+
+  // ── Home: budget pace ─────────────────────────────────────────────────────
+  'budgets.overallLabel': { en: 'Overall spending', id: 'Semua pengeluaran' },
+  'budgets.spentOfLimit': { en: '{spent} of {limit}', id: '{spent} dari {limit}' },
+  'budgets.justStarted': { en: 'Period just started', id: 'Periode baru mulai' },
+  'budgets.underPace': { en: '{pct}% under pace', id: '{pct}% di bawah jadwal' },
+  'budgets.overPace': { en: '{pct}% over pace', id: '{pct}% di atas jadwal' },
+
+  // ── Home: goals preview ───────────────────────────────────────────────────
+  'goals.title': { en: 'Savings goals', id: 'Target nabung' },
+  'goals.atRisk': { en: 'At risk', id: 'Terancam' },
+  'goals.needRate': { en: 'Needs {amount}/month to land on time', id: 'Butuh {amount}/bulan biar tepat waktu' },
+  'goals.remaining': { en: '{amount} to go', id: 'Kurang {amount}' },
+  'goals.suggestion': {
+    en: 'Leftover this month — put {amount} toward {name}?',
+    id: 'Sisa bulan ini — setor {amount} ke {name}?',
   },
 
   // ── Home: bills ahead ────────────────────────────────────────────────────
@@ -608,6 +630,40 @@ export const MESSAGES = {
   'settings.size.md': { en: 'Default', id: 'Standar' },
   'settings.size.lg': { en: 'Large', id: 'Besar' },
   'settings.size.xl': { en: 'Larger', id: 'Lebih besar' },
+
+  // ── Billing / AI credits (migration 0034) ───────────────────────────────
+  'billing.title': { en: 'Credits & plan', id: 'Kredit & paket' },
+  'billing.chipAria': { en: '{n} credits left', id: '{n} kredit tersisa' },
+  'billing.planFree': { en: 'Free', id: 'Gratis' },
+  'billing.planPro': { en: 'Pro', id: 'Pro' },
+  'billing.currentPlan': { en: 'Current plan', id: 'Paket saat ini' },
+  'billing.subscriptionPool': { en: 'Monthly credits', id: 'Kredit bulanan' },
+  'billing.topupPool': { en: 'Top-up credits', id: 'Kredit top-up' },
+  'billing.resetsMonthly': { en: 'Resets on the 1st — unused credits don’t carry over', id: 'Reset tiap tanggal 1 — sisa kredit tidak terbawa ke bulan depan' },
+  'billing.topupNeverExpires': { en: 'Never expires', id: 'Tidak pernah hangus' },
+  'billing.usedOfGranted': { en: '{used} of {granted} used', id: '{used} dari {granted} terpakai' },
+  'billing.upgrade': { en: 'Upgrade to Pro', id: 'Upgrade ke Pro' },
+  'billing.comingSoon': { en: 'Coming soon', id: 'Segera hadir' },
+  'billing.upgradeComingSoon': {
+    en: 'Pro upgrades open soon — {credits} credits/month.',
+    id: 'Upgrade Pro segera dibuka — {credits} kredit/bulan.',
+  },
+  'billing.buyCredits': { en: 'Buy more credits', id: 'Beli kredit tambahan' },
+  'billing.packComingSoon': { en: 'Top-up opens soon', id: 'Top-up segera dibuka' },
+  'billing.buy': { en: 'Buy', id: 'Beli' },
+  'billing.buyError': { en: 'Payment failed to start. Please try again.', id: 'Pembayaran gagal dimulai. Coba lagi ya.' },
+  'billing.history': { en: 'History', id: 'Riwayat' },
+  'billing.historyEmpty': { en: 'No activity yet.', id: 'Belum ada aktivitas.' },
+  'billing.goToBilling': { en: 'Top up or upgrade', id: 'Top up atau upgrade' },
+  'billing.scanLimitNotice': {
+    en: 'Out of AI credits — enter it by hand, or top up.',
+    id: 'Kredit AI habis — isi manual, atau top up.',
+  },
+  'billing.ledger.monthly_grant': { en: 'Monthly credits granted', id: 'Kredit bulanan diberikan' },
+  'billing.ledger.consume': { en: 'Used 1 credit', id: 'Pakai 1 kredit' },
+  'billing.ledger.topup_purchase': { en: 'Top-up purchase', id: 'Pembelian top-up' },
+  'billing.ledger.expire': { en: 'Unused credits expired', id: 'Kredit tak terpakai hangus' },
+  'billing.ledger.admin_adjustment': { en: 'Balance adjustment', id: 'Penyesuaian saldo' },
 } satisfies Record<string, Entry>
 
 export type MsgKey = keyof typeof MESSAGES

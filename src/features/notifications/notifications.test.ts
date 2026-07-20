@@ -55,7 +55,7 @@ describe('billNotifications', () => {
 })
 
 function status(over: Partial<BudgetStatus>): BudgetStatus {
-  return { spent: 0, carry: 0, limit: 100000, remaining: 0, pct: 0, level: 'ok', projected: 0, ...over }
+  return { spent: 0, carry: 0, limit: 100000, remaining: 0, pct: 0, level: 'ok', projected: 0, paceFrac: 0, ...over }
 }
 function budget(overrides: Partial<Budget> = {}): Budget {
   return {

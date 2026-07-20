@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { goalProgress, daysToTarget } from './progress'
+import { goalProgress, daysToTarget, goalHealth } from './progress'
 import type { GoalContribution } from '@/types/db'
 
 function contrib(amount: number, occurred_at: string): GoalContribution {
@@ -54,5 +54,48 @@ describe('daysToTarget', () => {
     expect(daysToTarget('2024-03-20', NOW)).toBe(5)
     expect(daysToTarget('2024-03-10', NOW)).toBe(-5) // past
     expect(daysToTarget(null, NOW)).toBeNull()
+  })
+})
+
+describe('goalHealth', () => {
+  it('is never at risk without a target date', () => {
+    const h = goalHealth(100000, null, [], NOW)
+    expect(h.atRisk).toBe(false)
+    expect(h.neededMonthlyRate).toBeNull()
+  })
+
+  it('is never at risk once the goal is complete, even past its date', () => {
+    const h = goalHealth(50000, '2024-01-01', [contrib(60000, '2024-01-01T00:00:00')], NOW)
+    expect(h.progress.complete).toBe(true)
+    expect(h.atRisk).toBe(false)
+  })
+
+  it('flags a pace that will miss the target date', () => {
+    // 30,000/month won't cover the 70,000 left with ~31 days (~1 month) to go.
+    const h = goalHealth(
+      100000,
+      '2024-04-15', // 31 days out
+      [contrib(30000, '2024-03-01T00:00:00')],
+      NOW,
+    )
+    expect(h.progress.monthlyRate).toBe(30000)
+    expect(h.neededMonthlyRate).toBeCloseTo(68735, 0)
+    expect(h.atRisk).toBe(true)
+  })
+
+  it('is not at risk when the pace comfortably covers the target', () => {
+    const h = goalHealth(
+      100000,
+      '2024-06-15', // 3 months out
+      [contrib(60000, '2024-03-01T00:00:00')], // 60k/month pace, only ~13k/month needed
+      NOW,
+    )
+    expect(h.atRisk).toBe(false)
+  })
+
+  it('treats an overdue, incomplete goal as needing the full remainder now', () => {
+    const h = goalHealth(100000, '2024-03-01', [contrib(40000, '2024-02-01T00:00:00')], NOW)
+    expect(h.atRisk).toBe(true)
+    expect(h.neededMonthlyRate).toBe(60000)
   })
 })

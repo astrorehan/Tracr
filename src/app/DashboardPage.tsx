@@ -15,7 +15,6 @@ import {
   Moon,
   Sun,
   ChevronRight,
-  ListOrdered,
   type LucideProps,
 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
@@ -27,8 +26,9 @@ import { getCurrency } from '@/lib/currencies'
 import { useAuth } from '@/features/auth/useAuth'
 import { useTheme } from '@/features/settings/theme-context'
 import { useT } from '@/features/settings/language-context'
-import { dateLocale, type MsgKey } from '@/i18n'
+import { dateLocale } from '@/i18n'
 import { NotificationBell } from '@/features/notifications/NotificationBell'
+import { CreditChip } from '@/features/billing/CreditChip'
 import { useAccounts, useBalances } from '@/features/accounts/api'
 import { accountTypeMeta } from '@/features/accounts/meta'
 import type { Account } from '@/types/db'
@@ -36,10 +36,14 @@ import { useCategories } from '@/features/categories/api'
 import { useTransactions } from '@/features/transactions/api'
 import { useWalletHealth } from '@/features/health/useWalletHealth'
 import { TodayCard } from '@/features/health/TodayCard'
+import { ForecastCard } from '@/features/health/ForecastCard'
 import { MoneyFlowCard, NetStrip } from '@/features/health/MoneyFlowCard'
 import { WalletScoreCard } from '@/features/health/WalletScoreCard'
 import { UpcomingBillsCard } from '@/features/health/UpcomingBillsCard'
 import { AttentionCard } from '@/features/health/AttentionCard'
+import { useBudgetStatuses } from '@/features/budgets/useBudgetStatuses'
+import { BudgetPaceCard } from '@/features/budgets/BudgetPaceCard'
+import { GoalsPreviewCard } from '@/features/goals/GoalsPreviewCard'
 import { TransactionRow } from '@/features/transactions/TransactionRow'
 import { TransactionForm } from '@/features/transactions/TransactionForm'
 import { AiHomeCard } from '@/features/ai/AiHomeCard'
@@ -61,7 +65,6 @@ export function DashboardPage() {
   const { theme, toggle } = useTheme()
   const { t } = useT()
   const base = profile?.base_currency ?? 'IDR'
-  const firstName = profile?.display_name?.split(' ')[0]
 
   const [addOpen, setAddOpen] = useState(false)
   const [hidden, setHidden] = useHiddenBalance()
@@ -76,6 +79,7 @@ export function DashboardPage() {
   // itself or the Reports page.
   const health = useWalletHealth()
   const { money, month, prevMonth, allowance, bills } = health
+  const { items: budgetItems } = useBudgetStatuses()
 
   const accountMap = useMemo(() => indexById(accounts), [accounts])
   const categoryMap = useMemo(() => indexById(categories), [categories])
@@ -136,12 +140,9 @@ export function DashboardPage() {
       <section className="brand-hero relative z-10 overflow-hidden px-4 pb-7 pt-4 text-white max-sm:bg-none sm:mt-6 sm:rounded-[24px] sm:px-6 sm:pb-6 sm:pt-5">
         <div className="relative z-10">
           {/* Mobile top bar — the shared header is hidden on home/mobile */}
-          <div className="mb-4 flex items-center justify-between gap-3 sm:hidden">
-            <p className="truncate text-base font-bold">
-              {t(greetingKey())}
-              {firstName ? `, ${firstName}` : ''} 👋
-            </p>
+          <div className="mb-4 flex items-center justify-end gap-3 sm:hidden">
             <div className="flex shrink-0 items-center gap-2">
+              <CreditChip variant="onDark" />
               <NotificationBell variant="onDark" />
               <button
                 onClick={toggle}
@@ -208,21 +209,6 @@ export function DashboardPage() {
                 <ChevronRight className="h-3.5 w-3.5" />
               </Link>
             </div>
-
-            <div className="flex shrink-0 flex-col gap-2">
-              <button
-                onClick={() => setAddOpen(true)}
-                className="pressable flex items-center gap-1.5 rounded-xl bg-white px-3.5 py-2 text-xs font-bold text-primary"
-              >
-                <Plus className="h-4 w-4 stroke-[2.6]" /> {t('dash.record')}
-              </button>
-              <Link
-                to="/transactions"
-                className="pressable flex items-center gap-1.5 rounded-xl border border-white/30 bg-white/12 px-3.5 py-2 text-xs font-bold text-white"
-              >
-                <ListOrdered className="h-4 w-4" /> {t('dash.history')}
-              </Link>
-            </div>
           </div>
 
           {money.missing.length > 0 && (
@@ -264,6 +250,8 @@ export function DashboardPage() {
       <div className="relative z-10 -mt-5 space-y-5 rounded-t-[26px] bg-background px-4 pb-2 pt-5 sm:mt-6 sm:rounded-none sm:bg-transparent sm:px-0 sm:pt-0">
         <TodayCard allowance={allowance} base={base} />
 
+        <ForecastCard forecast={health.forecast} base={base} />
+
         <AttentionCard />
 
         {/* Quick actions */}
@@ -286,7 +274,11 @@ export function DashboardPage() {
         </div>
         <NetStrip net={month.net} prevNet={prevMonth.net} base={base} />
 
+        <BudgetPaceCard items={budgetItems} base={base} />
+
         <WalletScoreCard score={health.score} runway={health.runway} tip={health.tip} />
+
+        <GoalsPreviewCard monthNet={month.net} base={base} />
 
         {/* Assistant — chat about your money */}
         <AiHomeCard />
@@ -483,13 +475,6 @@ function AccountsPanel({
   )
 }
 
-function greetingKey(): MsgKey {
-  const h = new Date().getHours()
-  if (h < 12) return 'greeting.morning'
-  if (h < 18) return 'greeting.afternoon'
-  return 'greeting.evening'
-}
-
 /** Mirrors the home layout so loading → loaded swaps without layout shift. */
 function DashboardSkeleton() {
   const { t } = useT()
@@ -498,6 +483,7 @@ function DashboardSkeleton() {
       <Skeleton className="h-52 rounded-none sm:mt-6 sm:h-44 sm:rounded-[24px]" />
       <div className="-mt-5 space-y-5 rounded-t-[26px] bg-background px-4 pb-2 pt-5 sm:mt-6 sm:rounded-none sm:bg-transparent sm:px-0 sm:pt-0">
         <Skeleton className="h-44 rounded-[20px]" /> {/* today's allowance */}
+        <Skeleton className="h-28 rounded-[20px]" /> {/* month-end forecast */}
         <Skeleton className="h-[72px] rounded-[20px]" /> {/* needs attention */}
         <div className="grid grid-cols-4 gap-x-1 gap-y-4 rounded-[20px] border border-border bg-surface p-4">
           {Array.from({ length: 8 }).map((_, i) => (
@@ -513,7 +499,9 @@ function DashboardSkeleton() {
           <Skeleton className="h-56 rounded-[20px]" />
         </div>
         <Skeleton className="h-12 rounded-[20px]" />
+        <Skeleton className="h-24 rounded-[20px]" /> {/* budget pace */}
         <Skeleton className="h-52 rounded-[20px]" /> {/* wallet health */}
+        <Skeleton className="h-40 rounded-[20px]" /> {/* savings goals */}
         <div className="space-y-2">
           <Skeleton className="h-4 w-32" />
           <Skeleton className="h-64 rounded-[20px]" />

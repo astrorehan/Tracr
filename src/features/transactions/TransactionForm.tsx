@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState, type ComponentType } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   ArrowDownLeft,
   ArrowLeftRight,
@@ -29,6 +30,7 @@ import { callAi, type ScanDocument } from '@/features/ai/api'
 import { prepareScanImages } from '@/features/ai/image'
 import { useFxRates } from '@/features/fx/api'
 import { buildRateTable, convertMinor } from '@/features/fx/fx'
+import { qk } from '@/lib/queryClient'
 import { useAccounts } from '@/features/accounts/api'
 import { useCategories } from '@/features/categories/api'
 import { flattenWithDepth } from '@/features/categories/tree'
@@ -84,7 +86,7 @@ interface SplitRow {
 }
 
 /** Result of a receipt scan, shown as a small banner above the form. */
-type ScanNotice = { kind: 'ok' | 'error'; text: string }
+type ScanNotice = { kind: 'ok' | 'error' | 'limit'; text: string }
 
 function newRow(categoryId = '', amount = ''): SplitRow {
   return { key: crypto.randomUUID(), categoryId, amount }
@@ -148,9 +150,10 @@ function TransactionFormBody({
   initialCounterAmount?: string
 }) {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { profile } = useAuth()
   const { activeBookId } = useActiveBook()
-  const { lang } = useT()
+  const { t, lang } = useT()
   const base = profile?.base_currency ?? 'IDR'
   const { data: accounts = [] } = useAccounts()
   const { data: categories = [] } = useCategories()
@@ -392,8 +395,12 @@ function TransactionFormBody({
     try {
       const images = await prepareScanImages(fileList)
       const data = await callAi({ mode: 'scan', book_id: activeBookId, lang, images })
+      if (data.credits_remaining !== undefined) {
+        void queryClient.invalidateQueries({ queryKey: qk.creditsBalance })
+        void queryClient.invalidateQueries({ queryKey: qk.creditLedger })
+      }
       if (data.limited) {
-        setScanNotice({ kind: 'error', text: 'You’ve hit your AI limit for now — enter it by hand.' })
+        setScanNotice({ kind: 'limit', text: t('billing.scanLimitNotice') })
         return
       }
       const doc = data.scan
@@ -650,12 +657,28 @@ function TransactionFormBody({
           {scanNotice && (
             <p
               className={cn(
-                'mt-2 flex items-start gap-1.5 text-xs font-semibold',
-                scanNotice.kind === 'ok' ? 'text-positive' : 'text-danger',
+                'mt-2 flex flex-wrap items-start gap-x-1.5 gap-y-1 text-xs font-semibold',
+                scanNotice.kind === 'ok'
+                  ? 'text-positive'
+                  : scanNotice.kind === 'limit'
+                    ? 'text-warning'
+                    : 'text-danger',
               )}
             >
               {scanNotice.kind === 'ok' && <Check className="mt-px h-3.5 w-3.5 shrink-0" />}
               <span>{scanNotice.text}</span>
+              {scanNotice.kind === 'limit' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose()
+                    navigate('/billing')
+                  }}
+                  className="font-bold text-primary hover:underline"
+                >
+                  {t('billing.goToBilling')}
+                </button>
+              )}
             </p>
           )}
         </div>

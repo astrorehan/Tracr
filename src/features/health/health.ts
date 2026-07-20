@@ -372,6 +372,66 @@ export function billsAhead(
   return { items, total, overdueCount, partial }
 }
 
+/**
+ * Base-valued total of active income schedules due within `withinDays` —
+ * salary, transfers in, and so on. The forecast card only needs a total (not
+ * a list to render), so unvaluable rows are silently skipped rather than
+ * flagged the way `billsAhead` flags them.
+ */
+export function incomeAhead(
+  recurring: RecurringTransaction[],
+  base: string,
+  table: RateTable,
+  withinDays: number,
+  now: Date = new Date(),
+): number {
+  let total = 0
+  for (const rec of recurring) {
+    if (!rec.is_active || rec.type !== 'income') continue
+    const days = differenceInCalendarDays(new Date(`${rec.next_due}T12:00:00`), now)
+    if (days > withinDays) continue
+    const value = convertMinor(rec.amount, rec.currency, base, table)
+    if (value != null) total += value
+  }
+  return total
+}
+
+/* ───────────────────────── month-end forecast ───────────────────────── */
+
+export interface MonthEndForecast {
+  /** Spendable cash right now. */
+  current: number
+  /** Spendable cash projected forward to month end. */
+  projected: number
+  /** True when the projection would dip below zero before the month is out. */
+  shortfall: boolean
+}
+
+/**
+ * Where spendable cash is headed by month end: today's balance, plus
+ * schedules still due to arrive, minus schedules still due to go out, minus
+ * ordinary day-to-day spending projected at the 90-day burn rate. Uses the
+ * steadier 90-day rate rather than this month's pace-so-far, which a single
+ * big day on the 2nd of the month would otherwise skew wildly. Only
+ * meaningful once the burn rate has enough history — gate display on
+ * `BurnRate.confident`.
+ */
+export function forecastMonthEnd(opts: {
+  spendable: number
+  scheduledIncome: number
+  billsAhead: number
+  dailyBurn: number
+  now?: Date
+}): MonthEndForecast {
+  const now = opts.now ?? new Date()
+  // Today's spend is already reflected in `spendable`, so only the days
+  // strictly after today get projected forward.
+  const daysAfterToday = Math.max(0, differenceInCalendarDays(endOfMonth(now), now))
+  const projected =
+    opts.spendable + opts.scheduledIncome - opts.billsAhead - opts.dailyBurn * daysAfterToday
+  return { current: opts.spendable, projected, shortfall: projected < 0 }
+}
+
 /* ───────────────────────── logging habit ───────────────────────── */
 
 /** Distinct calendar days carrying at least one transaction in the last `days`. */

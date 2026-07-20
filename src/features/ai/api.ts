@@ -46,6 +46,11 @@ export interface AiResponse {
   files?: AiFile[]
   /** mode 'report': the period held no transactions, so nothing was built. */
   empty?: boolean
+  /** Combined remaining balance (subscription + top-up) after this call.
+   *  Absent for the deterministic 'report' mode, which spends no credit. */
+  credits_remaining?: number
+  /** Which pool this call drew from — absent when the call was blocked. */
+  credits_source?: 'subscription' | 'topup'
 }
 
 /** Build a PDF report for an explicit period. Deterministic server path — no
