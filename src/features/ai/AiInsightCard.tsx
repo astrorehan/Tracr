@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { RotateCcw, Sparkles } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
@@ -6,6 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { Skeleton } from '@/components/ui/States'
 import { useT } from '@/features/settings/language-context'
 import { useActiveBook } from '@/features/books/useActiveBook'
+import { qk } from '@/lib/queryClient'
 import { dateLocale, type MsgKey } from '@/i18n'
 import { AiAvatar } from './AiChat'
 import { AiMarkdown } from './Markdown'
@@ -21,6 +24,7 @@ const LOADING_STEPS: MsgKey[] = ['ai.analyzing', 'ai.analyzing2', 'ai.analyzing3
 export function AiInsightCard() {
   const { t, lang } = useT()
   const { activeBookId } = useActiveBook()
+  const queryClient = useQueryClient()
 
   const month = format(new Date(), 'yyyy-MM')
   const monthLabel = format(new Date(), 'MMMM yyyy', { locale: dateLocale() })
@@ -51,6 +55,10 @@ export function AiInsightCard() {
     setStep(0)
     try {
       const data = await callAi({ mode: 'insights', book_id: activeBookId, lang })
+      if (data.credits_remaining !== undefined) {
+        void queryClient.invalidateQueries({ queryKey: qk.creditsBalance })
+        void queryClient.invalidateQueries({ queryKey: qk.creditLedger })
+      }
       if (data.limited) {
         setState('limited')
       } else if (data.text) {
@@ -118,8 +126,11 @@ export function AiInsightCard() {
               </p>
             )}
             {state === 'limited' && (
-              <p className="mb-3 rounded-xl border border-warning/40 bg-warning/10 px-3.5 py-2.5 text-xs font-semibold text-foreground">
+              <p className="mb-3 flex flex-wrap items-center gap-x-1.5 rounded-xl border border-warning/40 bg-warning/10 px-3.5 py-2.5 text-xs font-semibold text-foreground">
                 {t('ai.limit')}
+                <Link to="/billing" className="font-bold text-primary hover:underline">
+                  {t('billing.goToBilling')}
+                </Link>
               </p>
             )}
             <div key={text.slice(0, 24)} className="animate-rise">
@@ -130,8 +141,11 @@ export function AiInsightCard() {
             </p>
           </>
         ) : state === 'limited' ? (
-          <p className="rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm font-medium text-foreground">
+          <p className="flex flex-wrap items-center gap-x-1.5 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm font-medium text-foreground">
             {t('ai.limit')}
+            <Link to="/billing" className="font-bold text-primary hover:underline">
+              {t('billing.goToBilling')}
+            </Link>
           </p>
         ) : (
           <div className="flex flex-col items-start gap-3.5">

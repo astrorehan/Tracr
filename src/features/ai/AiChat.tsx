@@ -9,6 +9,7 @@ import {
   type FormEvent,
 } from 'react'
 import { createPortal } from 'react-dom'
+import { Link } from 'react-router-dom'
 import { endOfMonth, format, startOfMonth, startOfYear, subMonths } from 'date-fns'
 import { ArrowUp, Download, FileText, ImagePlus, RotateCcw, Sparkles, X } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -225,6 +226,13 @@ export const ChatSheet = forwardRef<ChatSheetHandle, ChatSheetProps>(function Ch
             : { role: 'model', content: t('ai.error'), kind: 'error' }
         setMessages((m) => [...m, msg])
         if (!msg.kind) setAnimIdx(replyAt)
+        // A credit was spent (or the block was recorded) either way — refresh the
+        // balance chip/Billing page rather than leaving them stale until the next
+        // natural refetch.
+        if (data.credits_remaining !== undefined) {
+          void queryClient.invalidateQueries({ queryKey: qk.creditsBalance })
+          void queryClient.invalidateQueries({ queryKey: qk.creditLedger })
+        }
         // The assistant wrote something — refresh everything its tools can touch
         // (transactions, but also created categories/accounts/tags/recurring).
         if (data.recorded) {
@@ -269,6 +277,10 @@ export const ChatSheet = forwardRef<ChatSheetHandle, ChatSheetProps>(function Ch
         images,
         ...(caption ? { question: caption } : {}),
       })
+      if (data.credits_remaining !== undefined) {
+        void queryClient.invalidateQueries({ queryKey: qk.creditsBalance })
+        void queryClient.invalidateQueries({ queryKey: qk.creditLedger })
+      }
       if (data.limited) {
         setMessages((m) => [...m, { role: 'model', content: t('ai.limit'), kind: 'limit' }])
       } else if (data.scan) {
@@ -703,6 +715,7 @@ function Bubble({
   typing: number | null
   onSkip: () => void
 }) {
+  const { t } = useT()
   if (msg.role === 'user') {
     return (
       <div className="animate-msg flex justify-end">
@@ -737,6 +750,14 @@ function Bubble({
         )}
       >
         <AiMarkdown text={text} className={cn(typing != null && 'ai-caret')} />
+        {msg.kind === 'limit' && typing == null && (
+          <Link
+            to="/billing"
+            className="mt-2 inline-block text-xs font-bold text-primary hover:underline"
+          >
+            {t('billing.goToBilling')}
+          </Link>
+        )}
         {/* File attachments land once the text has finished typing out. */}
         {msg.files && msg.files.length > 0 && typing == null && (
           <div className={cn('space-y-1.5', msg.content && 'mt-2.5')}>
