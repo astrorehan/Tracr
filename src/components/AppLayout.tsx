@@ -9,6 +9,8 @@ import {
   Receipt,
   PiggyBank,
   HandCoins,
+  Package,
+  TrendingUp,
   Settings,
   Plus,
   Moon,
@@ -68,12 +70,19 @@ export function AppLayout() {
   const isHome = pathname === '/'
   const activeSlot = mobileSlotFor(pathname)
 
-  // Business books get the Utang-Piutang (debts) ledger in the sidebar.
+  // Business books get the POS-lite (products) + Utang-Piutang (debts) tools
+  // inserted into the sidebar, just above Settings.
   const nav = useMemo(() => {
     if (activeBook?.type !== 'business') return NAV
     const items = [...NAV]
     const at = items.findIndex((i) => i.to === '/settings')
-    items.splice(at, 0, { to: '/debts', label: 'nav.debts', icon: HandCoins })
+    items.splice(
+      at,
+      0,
+      { to: '/products', label: 'nav.products', icon: Package },
+      { to: '/profit', label: 'nav.profit', icon: TrendingUp },
+      { to: '/debts', label: 'nav.debts', icon: HandCoins },
+    )
     return items
   }, [activeBook?.type])
 

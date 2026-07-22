@@ -545,3 +545,55 @@ export interface DebtPayment {
 }
 
 export type NewDebtPayment = Omit<DebtPayment, 'id' | 'user_id' | 'book_id' | 'created_at'>
+
+// ── POS-lite: products + sale line items (migration 0038, business books only) ──
+
+/** A product or service the business sells. Prices are integer minor units. */
+export interface Product {
+  id: string
+  user_id: string
+  book_id: string
+  name: string
+  /** Harga jual (sale price), minor units. */
+  price: number
+  /** Harga modal (cost of goods), minor units — snapshotted onto each sale line. */
+  cost: number
+  /** Optional unit label, e.g. 'porsi', 'pcs'. */
+  unit: string | null
+  is_archived: boolean
+  sort_order: number
+  created_at: string
+}
+
+export type NewProduct = Omit<
+  Product,
+  'id' | 'user_id' | 'book_id' | 'created_at' | 'is_archived' | 'sort_order'
+> &
+  Partial<Pick<Product, 'is_archived' | 'sort_order'>>
+
+/**
+ * One line on a sale (an income transaction). Snapshots the product name, sale
+ * price, and cost at sale time so historical profit never changes when a
+ * product is later re-priced. `product_id` goes null if the product is deleted;
+ * the `name` snapshot preserves the line's history.
+ */
+export interface TransactionItem {
+  id: string
+  user_id: string
+  book_id: string
+  transaction_id: string
+  product_id: string | null
+  name: string
+  /** Quantity sold (supports fractional units, e.g. 1.5 kg). */
+  qty: number
+  /** Snapshot of harga jual at sale time, minor units. */
+  unit_price: number
+  /** Snapshot of harga modal at sale time, minor units — feeds COGS. */
+  unit_cost: number
+  created_at: string
+}
+
+export type NewTransactionItem = Omit<
+  TransactionItem,
+  'id' | 'user_id' | 'book_id' | 'created_at'
+>
