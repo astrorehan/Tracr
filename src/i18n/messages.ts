@@ -45,6 +45,7 @@ export const MESSAGES = {
   'nav.budgets': { en: 'Budgets', id: 'Anggaran' },
   'nav.bills': { en: 'Bills', id: 'Tagihan' },
   'nav.goals': { en: 'Goals', id: 'Nabung' },
+  'nav.debts': { en: 'Debts', id: 'Utang-Piutang' },
   'nav.settings': { en: 'Settings', id: 'Pengaturan' },
   'section.billsSubs': { en: 'Bills & subscriptions', id: 'Tagihan & langganan' },
   'section.savingsGoals': { en: 'Savings goals', id: 'Target nabung' },
