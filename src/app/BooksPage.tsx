@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
-import { Book as BookIcon, Plus, Pencil, Copy, Archive, ArchiveRestore, Trash2, Check } from 'lucide-react'
+import { Book as BookIcon, Store, Plus, Pencil, Copy, Archive, ArchiveRestore, Trash2, Check } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -152,6 +152,7 @@ function BookCard({
   const duplicate = useDuplicateBookStructure()
   const { setActiveBook, books } = useActiveBook()
   const accent = book.color ?? 'var(--primary)'
+  const isBusiness = book.type === 'business'
   const busy = update.isPending || duplicate.isPending
 
   function toggleArchive() {
@@ -170,11 +171,16 @@ function BookCard({
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
           style={{ backgroundColor: `${accent}1f`, color: accent }}
         >
-          <BookIcon className="h-5 w-5" />
+          {isBusiness ? <Store className="h-5 w-5" /> : <BookIcon className="h-5 w-5" />}
         </span>
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5 truncate text-sm font-bold text-foreground">
             {book.name}
+            {isBusiness && (
+              <span className="inline-flex items-center gap-0.5 rounded-md bg-surface-muted px-1.5 py-0.5 text-[10px] font-bold uppercase text-muted-foreground">
+                <Store className="h-2.5 w-2.5" /> Business
+              </span>
+            )}
             {isActive && (
               <span className="inline-flex items-center gap-0.5 rounded-md bg-primary-soft px-1.5 py-0.5 text-xs font-bold uppercase text-primary">
                 <Check className="h-2.5 w-2.5" /> Open

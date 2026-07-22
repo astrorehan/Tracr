@@ -1,4 +1,4 @@
-import { useState, type ComponentType } from 'react'
+import { useMemo, useState, type ComponentType } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -8,6 +8,7 @@ import {
   Target,
   Receipt,
   PiggyBank,
+  HandCoins,
   Settings,
   Plus,
   Moon,
@@ -60,12 +61,21 @@ function mobileSlotFor(pathname: string) {
 export function AppLayout() {
   const [addOpen, setAddOpen] = useState(false)
   const { profile } = useAuth()
-  const { activeBookId, loading: booksLoading } = useActiveBook()
+  const { activeBookId, activeBook, loading: booksLoading } = useActiveBook()
   const { theme, toggle } = useTheme()
   const { t } = useT()
   const { pathname } = useLocation()
   const isHome = pathname === '/'
   const activeSlot = mobileSlotFor(pathname)
+
+  // Business books get the Utang-Piutang (debts) ledger in the sidebar.
+  const nav = useMemo(() => {
+    if (activeBook?.type !== 'business') return NAV
+    const items = [...NAV]
+    const at = items.findIndex((i) => i.to === '/settings')
+    items.splice(at, 0, { to: '/debts', label: 'nav.debts', icon: HandCoins })
+    return items
+  }, [activeBook?.type])
 
   // Refresh FX rates from the free live sources once per session.
   useLiveRatesSync()
@@ -97,7 +107,7 @@ export function AppLayout() {
 
         {/* Primary nav */}
         <nav className="mt-4 flex flex-1 flex-col gap-1.5">
-          {NAV.map((item) => (
+          {nav.map((item) => (
             <SidebarLink key={item.to} {...item} />
           ))}
         </nav>
