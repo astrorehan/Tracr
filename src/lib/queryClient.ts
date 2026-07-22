@@ -33,6 +33,8 @@ export const qk = {
   contacts: ['contacts'] as const,
   debts: ['debts'] as const,
   debtPayments: ['debt_payments'] as const,
+  products: ['products'] as const,
+  transactionItems: ['transaction_items'] as const,
   creditsBalance: ['credits_balance'] as const,
   creditLedger: ['credit_ledger'] as const,
   billingPlans: ['billing_plans'] as const,

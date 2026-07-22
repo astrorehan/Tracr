@@ -38,6 +38,10 @@ const BudgetsPage = lazy(() =>
 const BillsPage = lazy(() => import('./app/BillsPage').then((m) => ({ default: m.BillsPage })))
 const GoalsPage = lazy(() => import('./app/GoalsPage').then((m) => ({ default: m.GoalsPage })))
 const DebtsPage = lazy(() => import('./app/DebtsPage').then((m) => ({ default: m.DebtsPage })))
+const ProductsPage = lazy(() =>
+  import('./app/ProductsPage').then((m) => ({ default: m.ProductsPage })),
+)
+const ProfitPage = lazy(() => import('./app/ProfitPage').then((m) => ({ default: m.ProfitPage })))
 const CurrenciesPage = lazy(() =>
   import('./app/CurrenciesPage').then((m) => ({ default: m.CurrenciesPage })),
 )
@@ -194,6 +198,22 @@ export default function App() {
           element={
             <Suspense fallback={<CenterSpinner />}>
               <DebtsPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="products"
+          element={
+            <Suspense fallback={<CenterSpinner />}>
+              <ProductsPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="profit"
+          element={
+            <Suspense fallback={<CenterSpinner />}>
+              <ProfitPage />
             </Suspense>
           }
         />
