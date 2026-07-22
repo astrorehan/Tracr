@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Book as BookIcon, Check, ChevronsUpDown, Plus, Settings2 } from 'lucide-react'
+import { Book as BookIcon, Store, Check, ChevronsUpDown, Plus, Settings2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useActiveBook } from './useActiveBook'
 import { BookForm } from './BookForm'
@@ -37,7 +37,11 @@ export function BookSwitcher() {
           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
           style={{ backgroundColor: `${accent}1f`, color: accent }}
         >
-          <BookIcon className="h-4 w-4" />
+          {activeBook?.type === 'business' ? (
+            <Store className="h-4 w-4" />
+          ) : (
+            <BookIcon className="h-4 w-4" />
+          )}
         </span>
         <span className="hidden min-w-0 flex-1 lg:block">
           <span className="block truncate text-sm font-bold text-foreground">
@@ -73,7 +77,11 @@ export function BookSwitcher() {
                     className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
                     style={{ backgroundColor: `${c}1f`, color: c }}
                   >
-                    <BookIcon className="h-3.5 w-3.5" />
+                    {book.type === 'business' ? (
+                      <Store className="h-3.5 w-3.5" />
+                    ) : (
+                      <BookIcon className="h-3.5 w-3.5" />
+                    )}
                   </span>
                   <span className="min-w-0 flex-1 truncate">{book.name}</span>
                   {isActive && <Check className="h-4 w-4 shrink-0 text-primary" />}
