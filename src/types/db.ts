@@ -32,10 +32,14 @@ export interface Profile {
 }
 
 /** A ledger. One user owns several independent books (Personal, Business, …). */
+/** Personal ledger, or a business (UMKM) ledger that unlocks debts, capital vs profit, etc. */
+export type BookType = 'personal' | 'business'
+
 export interface Book {
   id: string
   owner_id: string
   name: string
+  type: BookType
   color: string | null
   icon: string | null
   is_archived: boolean
@@ -43,7 +47,7 @@ export interface Book {
   created_at: string
 }
 
-export type NewBook = Pick<Book, 'name'> & Partial<Pick<Book, 'color' | 'icon'>>
+export type NewBook = Pick<Book, 'name'> & Partial<Pick<Book, 'color' | 'icon' | 'type'>>
 
 export interface Account {
   id: string
@@ -481,3 +485,63 @@ export interface PaymentOrder {
   created_at: string
   updated_at: string
 }
+
+// ── Utang-Piutang / kasbon (migration 0037, business books only) ────────────
+
+/** A customer (owes us) or supplier (we owe them) in a business book. */
+export type ContactKind = 'customer' | 'supplier'
+
+export interface Contact {
+  id: string
+  user_id: string
+  book_id: string
+  name: string
+  phone: string | null
+  kind: ContactKind
+  created_at: string
+}
+
+export type NewContact = Omit<Contact, 'id' | 'user_id' | 'book_id' | 'created_at'> &
+  Partial<Pick<Contact, 'kind'>>
+
+/** receivable = a customer owes us ; payable = we owe a supplier. */
+export type DebtDirection = 'receivable' | 'payable'
+export type DebtStatus = 'open' | 'paid'
+
+export interface Debt {
+  id: string
+  user_id: string
+  book_id: string
+  contact_id: string | null
+  direction: DebtDirection
+  /** Total owed, in minor units. */
+  amount: number
+  /** Amount settled so far, in minor units. */
+  paid: number
+  currency: string
+  due_date: string | null
+  note: string | null
+  status: DebtStatus
+  created_at: string
+}
+
+export type NewDebt = Omit<
+  Debt,
+  'id' | 'user_id' | 'book_id' | 'created_at' | 'paid' | 'status'
+> &
+  Partial<Pick<Debt, 'paid' | 'status'>>
+
+export interface DebtPayment {
+  id: string
+  user_id: string
+  book_id: string
+  debt_id: string
+  /** Minor units. */
+  amount: number
+  /** yyyy-MM-dd */
+  paid_on: string
+  note: string | null
+  created_at: string
+}
+
+export type NewDebtPayment = Omit<DebtPayment, 'id' | 'user_id' | 'book_id' | 'created_at'>
