@@ -5,10 +5,7 @@ import {
   Moon,
   Sun,
   Sparkles,
-  MessageCircle,
   Send,
-  Table,
-  Split,
   Tag,
   Tags,
   Zap,
@@ -82,14 +79,6 @@ const SYSTEM: NavItem[] = [
 const ASSISTANT: NavItem[] = [
   { to: '/?chat=1', label: 'settings.soonAI', desc: 'settings.aiDesc', icon: Sparkles },
   { to: '/telegram', label: 'settings.telegram', desc: 'settings.telegramDesc', icon: Send },
-]
-
-// WhatsApp stays here: the backend exists, but the channel needs Meta Business
-// verification before it can message anyone.
-const COMING_SOON: { icon: ComponentType<{ className?: string }>; label: MsgKey }[] = [
-  { icon: MessageCircle, label: 'settings.soonWhatsApp' },
-  { icon: Split, label: 'settings.soonSplit' },
-  { icon: Table, label: 'settings.soonSheets' },
 ]
 
 export function SettingsPage() {
@@ -249,19 +238,6 @@ export function SettingsPage() {
         <ListCard>
           {SYSTEM.map((item) => (
             <NavRow key={item.to} {...item} />
-          ))}
-        </ListCard>
-      </Section>
-
-      {/* Roadmap */}
-      <Section title={t('settings.comingSoon')}>
-        <ListCard>
-          {COMING_SOON.map(({ icon: Icon, label }) => (
-            <ListRow
-              key={label}
-              leading={<IconChip icon={Icon} plain />}
-              title={<span className="text-muted-foreground">{t(label)}</span>}
-            />
           ))}
         </ListCard>
       </Section>

@@ -213,6 +213,20 @@ h1,
   );
 }
 
+/* On mobile the home hero text scrolls over the FIXED .brand-hero layer, so the
+   scrolling section itself must stay transparent — otherwise its gradient (and
+   weave) rides up with the text as a second blue. Tailwind's max-sm:bg-none lives
+   in @layer utilities and loses to the unlayered .brand-hero rule above, so strip
+   the gradient and its weave here, where the cascade still wins. */
+@media (width < 640px) {
+  .home-hero-scroll {
+    background-image: none;
+  }
+  .home-hero-scroll::after {
+    display: none;
+  }
+}
+
 /* Smooth active press effects */
 .pressable {
   transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease, box-shadow 0.2s ease;

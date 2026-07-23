@@ -42,18 +42,23 @@ export function ForecastCard({
         )}
       </div>
 
+      {/* A plain caption above the figure so the number never reads as a bare
+          negative balance — "Bisa kurang IDR 681,799", not "−IDR 681,799". */}
+      <p className={cn('mt-2 text-xs font-semibold', shortfall ? 'text-warning' : 'text-muted-foreground')}>
+        {t(shortfall ? 'forecast.shortLabel' : 'forecast.leftLabel')}
+      </p>
       <p
         className={cn(
-          'mt-1.5 font-numeric text-[26px] font-extrabold leading-none tracking-tight',
+          'mt-0.5 font-numeric text-[26px] font-extrabold leading-none tracking-tight',
           shortfall ? 'text-warning' : 'text-foreground',
         )}
       >
-        {shortfall ? `−${money(Math.abs(projected))}` : <AnimatedNumber value={projected} format={money} />}
+        {shortfall ? money(Math.abs(projected)) : <AnimatedNumber value={projected} format={money} />}
       </p>
 
       <p className="mt-2 text-xs font-medium leading-relaxed text-muted-foreground">
         {shortfall
-          ? t('forecast.shortBody', { amount: money(Math.abs(projected)) })
+          ? t('forecast.shortBody')
           : delta >= 0
             ? t('forecast.upBody', { amount: money(current) })
             : t('forecast.downBody', { amount: money(current) })}
