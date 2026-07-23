@@ -14,12 +14,17 @@ export function PlanningPage() {
   const { t } = useT()
 
   return (
-    <div className="mx-auto max-w-3xl space-y-7 pb-4">
+    <div className="space-y-7 pb-4">
       <PageHeader title={t('nav.planning')} subtitle={t('planning.subtitle')} />
       <PlanningSummary />
-      <BudgetSection />
-      <BillSection />
-      <GoalSection />
+      {/* Full-width: on wide screens the three sections flow into two balanced
+          columns so cards stay a comfortable width instead of stretching edge
+          to edge. Each section is kept whole (never split across columns). */}
+      <div className="space-y-6 lg:columns-2 lg:gap-6 lg:space-y-0 lg:[&>section]:mb-6 lg:[&>section]:break-inside-avoid">
+        <BudgetSection />
+        <BillSection />
+        <GoalSection />
+      </div>
     </div>
   )
 }

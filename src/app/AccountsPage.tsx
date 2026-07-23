@@ -114,7 +114,7 @@ export function AccountsPage() {
   const amountPart = netParts.length > 1 ? netParts.slice(1).join(' ') : formattedNet
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6 pb-20">
+    <div className="w-full space-y-6 pb-20">
       <div className="space-y-4">
         <Link to="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground w-max transition-colors">
           <div className="flex h-6 w-6 items-center justify-center rounded-full border border-border bg-surface">
@@ -141,7 +141,7 @@ export function AccountsPage() {
         />
       ) : (
         <>
-          <div className="card-surface flex flex-col md:flex-row rounded-[24px] p-6 gap-8 shadow-sm">
+          <div className="card-surface flex flex-col md:flex-row rounded-[24px] gap-6 p-4 shadow-sm sm:p-6 md:gap-8">
             <div className="flex-1 h-[220px] min-w-0">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={netWorthHistory} margin={{ top: 20, right: 0, left: 0, bottom: 0 }}>
@@ -161,33 +161,30 @@ export function AccountsPage() {
               </ResponsiveContainer>
             </div>
 
-            <div className="md:w-[360px] shrink-0 flex flex-col justify-center space-y-5">
+            <div className="flex min-w-0 shrink-0 flex-col justify-center space-y-5 md:w-[360px]">
               <div>
                 <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1.5">
                   NET WORTH
                 </p>
-                <div className="text-[40px] font-extrabold leading-none tracking-tight text-foreground flex items-baseline gap-2 whitespace-nowrap">
+                <div className="flex items-baseline gap-2 whitespace-normal text-[32px] font-extrabold leading-none tracking-tight text-foreground sm:whitespace-nowrap sm:text-[40px]">
                   {currencyPart && <span className="text-2xl font-bold">{currencyPart}</span>}
                   <span>{amountPart}</span>
                 </div>
               </div>
-              
-              <div className="flex gap-4">
-                <div className="flex-1 bg-[#E8F5E9] dark:bg-green-950/40 rounded-[20px] p-4 flex items-center gap-3 border border-[#C8E6C9] dark:border-green-900/50 overflow-hidden">
-                  <div className="bg-[#4CAF50] text-white rounded-full h-[42px] w-[42px] flex items-center justify-center shrink-0">
-                    <PieChart className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-green-900 dark:text-green-300">Total Assets</p>
-                    <p className="font-numeric text-[15px] font-extrabold text-green-900 dark:text-green-300 mt-0.5 whitespace-nowrap">
-                      {formatMoney(assetsTotal, base)}
-                    </p>
-                  </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+                <div className="flex flex-1 flex-col justify-center overflow-hidden rounded-[20px] border border-[#C8E6C9] bg-[#E8F5E9] p-4 dark:border-green-900/50 dark:bg-green-950/40">
+                  <p className="flex items-center gap-1.5 text-xs font-bold text-green-900 dark:text-green-300">
+                    <PieChart className="h-3.5 w-3.5" /> Total Assets
+                  </p>
+                  <p className="font-numeric mt-0.5 break-words text-[15px] font-extrabold text-green-900 dark:text-green-300">
+                    {formatMoney(assetsTotal, base)}
+                  </p>
                 </div>
-                
-                <div className="flex-1 bg-[#FFF3E0] dark:bg-orange-950/40 rounded-[20px] p-4 flex flex-col justify-center border border-[#FFE0B2] dark:border-orange-900/50 overflow-hidden">
+
+                <div className="flex flex-1 flex-col justify-center overflow-hidden rounded-[20px] border border-[#FFE0B2] bg-[#FFF3E0] p-4 dark:border-orange-900/50 dark:bg-orange-950/40">
                   <p className="text-xs font-bold text-orange-900 dark:text-orange-300">Total Debt</p>
-                  <p className="font-numeric text-[15px] font-extrabold text-orange-900 dark:text-orange-300 mt-0.5 whitespace-nowrap">
+                  <p className="font-numeric mt-0.5 break-words text-[15px] font-extrabold text-orange-900 dark:text-orange-300">
                     {formatMoney(debtsTotal, base)}
                   </p>
                 </div>
@@ -284,8 +281,8 @@ function AccountRow({
       title={account.name}
       subtitle={subtitle}
       trailing={
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="hidden items-center gap-2 sm:flex">
             <button
               onClick={(e) => onEdit(e, account)}
               className="flex h-[32px] w-[32px] items-center justify-center rounded-full bg-surface-muted hover:brightness-95 transition-all"

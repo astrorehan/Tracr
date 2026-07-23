@@ -215,7 +215,7 @@ export function AppLayout() {
           size, which would otherwise inflate the whole bar on the larger steps. */}
       <nav
         className="dock-shadow fixed inset-x-[16px] z-40 rounded-[24px] border border-border bg-surface sm:hidden print:hidden"
-        style={{ bottom: 'calc(12px + env(safe-area-inset-bottom))' }}
+        style={{ bottom: 'calc(24px + env(safe-area-inset-bottom))' }}
       >
         {/* No horizontal padding on the grid: each column is exactly a fifth of
             the bar, which is what the indicator's `w-1/5` + translate assumes. */}
