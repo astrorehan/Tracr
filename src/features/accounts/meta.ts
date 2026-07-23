@@ -32,17 +32,16 @@ export function accountTypeMeta(type: AccountType) {
   return ACCOUNT_TYPES.find((t) => t.value === type) ?? ACCOUNT_TYPES[ACCOUNT_TYPES.length - 1]
 }
 
-/** Muted accent palette offered when creating an account — purely for *identity*
-   (telling accounts apart), the one place the monochrome system tolerates colour.
-   Even, low-saturation tones rendered as low-opacity tints; leads with a cool
-   neutral and carries no loud brand hue, so accounts don't tie back to a theme. */
+/** Vibrant e-wallet accent palette offered when creating an account, book, goal, tag, or category —
+   high-clarity, friendly tones designed to render clearly as both solid pickers and
+   low-opacity tints (`${color}22`) across light and dark modes. */
 export const ACCOUNT_COLORS = [
-  '#5b7290', // dusty blue
-  '#4f8a8b', // dusty teal
-  '#6b8e6b', // sage
-  '#8a5f7e', // mauve
-  '#a87b3f', // ochre
-  '#c2603f', // terracotta
-  '#8a7c66', // stone
-  '#6b7280', // slate grey
+  '#2b8ef0', // vibrant blue
+  '#12b0c4', // vibrant cyan
+  '#1fb07c', // vibrant green
+  '#f0a020', // vibrant amber
+  '#f2743d', // vibrant orange
+  '#ef4d6b', // vibrant rose
+  '#7a5af0', // vibrant indigo
+  '#d857b0', // vibrant magenta
 ]

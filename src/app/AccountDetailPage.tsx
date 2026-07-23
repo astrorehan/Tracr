@@ -85,7 +85,7 @@ export function AccountDetailPage() {
 
   const meta = accountTypeMeta(account.type)
   const Icon = meta.icon
-  const color = account.color ?? '#9a8c74'
+  const color = account.color ?? '#0072BC'
   const balance = balances[account.id] ?? account.opening_balance
   const baseEstimate =
     account.currency === base

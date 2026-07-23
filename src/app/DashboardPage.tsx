@@ -137,7 +137,7 @@ export function DashboardPage() {
       <div className="min-w-0">
 
       {/* ───────── Balance hero — full-bleed gradient (GoPay saldo card) ───────── */}
-      <section className="brand-hero relative z-10 overflow-hidden px-4 pb-7 pt-4 text-white max-sm:bg-none sm:mt-6 sm:rounded-[24px] sm:px-6 sm:pb-6 sm:pt-5">
+      <section className="brand-hero home-hero-scroll relative z-10 overflow-hidden px-4 pb-7 pt-4 text-white sm:mt-6 sm:rounded-[24px] sm:px-6 sm:pb-6 sm:pt-5">
         <div className="relative z-10">
           {/* Mobile top bar — the shared header is hidden on home/mobile */}
           <div className="mb-4 flex items-center justify-end gap-3 sm:hidden">

@@ -35,7 +35,7 @@ export function TodayCard({ allowance, base }: { allowance: DailyAllowance; base
     ok: { fill: 'bg-primary', text: 'text-foreground', chip: 'bg-primary-soft text-primary' },
     spent: { fill: 'bg-warning', text: 'text-warning', chip: 'bg-warning/12 text-warning' },
     over: { fill: 'bg-warning', text: 'text-warning', chip: 'bg-warning/12 text-warning' },
-    tight: { fill: 'bg-warning', text: 'text-warning', chip: 'bg-warning/12 text-warning' },
+    tight: { fill: 'bg-warning', text: 'text-foreground', chip: 'bg-warning/12 text-warning' },
   }[mood]
 
   const headline = { ok: 'today.title', spent: 'today.title', over: 'today.overTitle', tight: 'today.tightTitle' } as const
@@ -47,7 +47,7 @@ export function TodayCard({ allowance, base }: { allowance: DailyAllowance; base
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
-            <Sparkles className="h-4 w-4" />
+            {mood !== 'tight' && <Sparkles className="h-4 w-4" />}
             {t(headline[mood])}
           </p>
 
@@ -69,9 +69,11 @@ export function TodayCard({ allowance, base }: { allowance: DailyAllowance; base
           )}
         </div>
 
-        <span className={cn('shrink-0 rounded-full px-2.5 py-1 text-xs font-bold', tone.chip)}>
-          {t('today.daysLeft', { n: daysLeft })}
-        </span>
+        {mood !== 'tight' && (
+          <span className={cn('shrink-0 rounded-full px-2.5 py-1 text-xs font-bold', tone.chip)}>
+            {t('today.daysLeft', { n: daysLeft })}
+          </span>
+        )}
       </div>
 
       {/* Today's spend filling up today's share. Meaningless once the daily
@@ -98,15 +100,10 @@ export function TodayCard({ allowance, base }: { allowance: DailyAllowance; base
         </>
       )}
 
-      <div
-        className={cn(
-          'mt-4 flex items-center gap-3 border-t border-border pt-3',
-          mood === 'tight' ? 'justify-end' : 'justify-between',
-        )}
-      >
-        {/* "Keluar hari ini" was redundant with the number above it in tight
-            mode — dropped along with the rest of the tight-state detail. */}
-        {mood !== 'tight' && (
+      {/* The tight state stops here: just the "Uang siap pakai" label and the
+          number, no days-left context, no CTA. */}
+      {mood !== 'tight' && (
+        <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-3">
           <p className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-muted-foreground">
             <CalendarDays className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">
@@ -115,17 +112,17 @@ export function TodayCard({ allowance, base }: { allowance: DailyAllowance; base
                 : t('today.overByMonth', { amount: money(Math.abs(available)) })}
             </span>
           </p>
-        )}
-        {basis === 'cash' && (
-          <Link
-            to={mood === 'tight' ? '/accounts' : '/budgets'}
-            className="pressable flex shrink-0 items-center gap-1 rounded-full bg-primary-soft px-2.5 py-1 text-xs font-bold text-primary"
-          >
-            <Target className="h-3.5 w-3.5" />
-            {t(mood === 'tight' ? 'today.moveMoney' : 'today.setBudget')}
-          </Link>
-        )}
-      </div>
+          {basis === 'cash' && (
+            <Link
+              to="/budgets"
+              className="pressable flex shrink-0 items-center gap-1 rounded-full bg-primary-soft px-2.5 py-1 text-xs font-bold text-primary"
+            >
+              <Target className="h-3.5 w-3.5" />
+              {t('today.setBudget')}
+            </Link>
+          )}
+        </div>
+      )}
 
       {basis === 'cash' && mood !== 'tight' && (
         <p className="mt-2 text-[11px] font-medium leading-relaxed text-muted-foreground">

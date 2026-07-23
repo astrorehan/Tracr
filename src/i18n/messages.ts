@@ -587,7 +587,7 @@ export const MESSAGES = {
   'today.usually': { en: 'usually {amount}/day', id: 'biasanya {amount}/hari' },
   'today.leftForDays': { en: '{amount} for the last {n} days', id: '{amount} buat {n} hari terakhir' },
   'today.overByMonth': { en: '{amount} past the month’s plan', id: 'Lewat {amount} dari rencana bulan ini' },
-  'today.tightTitle': { en: 'Ready-to-spend money is low', id: 'Uang siap pakai menipis' },
+  'today.tightTitle': { en: 'Ready-to-spend money', id: 'Uang siap pakai' },
   'today.moveMoney': { en: 'Top up', id: 'Isi saldo' },
   'today.setBudget': { en: 'Set a limit', id: 'Atur batas' },
   'today.cashBasis': {
@@ -670,10 +670,12 @@ export const MESSAGES = {
 
   // ── Home: month-end forecast ─────────────────────────────────────────────
   'forecast.title': { en: 'Where this month is headed', id: 'Perkiraan sampai akhir bulan' },
-  'forecast.shortBadge': { en: 'May run short', id: 'Berpotensi kurang' },
+  'forecast.shortBadge': { en: 'Ease off', id: 'Perlu direm' },
+  'forecast.shortLabel': { en: 'Could fall short', id: 'Bisa kurang' },
+  'forecast.leftLabel': { en: 'Projected to be left', id: 'Perkiraan sisa' },
   'forecast.shortBody': {
-    en: 'At this pace, spendable cash runs {amount} short before the month is out.',
-    id: 'Dengan pola sekarang, uang siap pakai diperkirakan kurang {amount} sebelum bulan berakhir.',
+    en: 'At this pace your spendable cash runs out before month-end. Easing off keeps you clear.',
+    id: 'Dengan pola belanja sekarang, uang siap pakai bisa habis sebelum akhir bulan. Agak direm biar aman.',
   },
   'forecast.upBody': {
     en: 'Up from {amount} today, once scheduled income and bills settle.',
