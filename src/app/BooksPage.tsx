@@ -1,26 +1,33 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
-import { Book as BookIcon, Store, Plus, Pencil, Copy, Archive, ArchiveRestore, Trash2, Check } from 'lucide-react'
+import {
+  Wallet,
+  Store,
+  Plus,
+  Pencil,
+  Copy,
+  Archive,
+  ArchiveRestore,
+  Trash2,
+  Check,
+  MoreVertical,
+} from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
-import { PageHeader, Pill } from '@/components/ui/list'
+import { PageHeader, Pill, Section, ListCard, IconChip } from '@/components/ui/list'
 import { CenterSpinner } from '@/components/ui/States'
-import { cn } from '@/lib/utils'
+import { useT } from '@/features/settings/language-context'
+import { dateLocale } from '@/i18n'
 import { useActiveBook } from '@/features/books/useActiveBook'
-import {
-  useUpdateBook,
-  useDeleteBook,
-  useDuplicateBookStructure,
-} from '@/features/books/api'
+import { useUpdateBook, useDeleteBook, useDuplicateBookStructure } from '@/features/books/api'
 import { BookForm } from '@/features/books/BookForm'
 import type { Book } from '@/types/db'
 
-/** Active accounts per book, in one round-trip, for the per-card stat. */
+/** Active accounts per book, in one round-trip, for the per-row stat. */
 function useAccountCounts() {
   return useQuery({
     queryKey: ['book-account-counts'],
@@ -40,6 +47,7 @@ function useAccountCounts() {
 }
 
 export function BooksPage() {
+  const { t } = useT()
   const { books, activeBookId, setActiveBook, loading } = useActiveBook()
   const { data: counts = {} } = useAccountCounts()
   const navigate = useNavigate()
@@ -64,20 +72,20 @@ export function BooksPage() {
   if (loading) return <CenterSpinner />
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="mx-auto w-full max-w-2xl space-y-6 pb-20">
       <PageHeader
-        title="Books"
-        subtitle="Each book is its own separate set of accounts, transactions and budgets. Switch anytime — nothing is shared across books."
+        title={t('books.title')}
+        subtitle={t('books.subtitle')}
         action={
           <Pill variant="tint" icon={Plus} onClick={() => setCreating(true)}>
-            New book
+            {t('books.new')}
           </Pill>
         }
       />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <ListCard className="rounded-[24px]">
         {active.map((book) => (
-          <BookCard
+          <BookRow
             key={book.id}
             book={book}
             accountCount={counts[book.id] ?? 0}
@@ -91,19 +99,18 @@ export function BooksPage() {
 
         <button
           onClick={() => setCreating(true)}
-          className="flex min-h-[148px] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border text-muted-foreground transition-colors hover:border-primary/50 hover:bg-surface-muted hover:text-foreground"
+          className="flex w-full items-center gap-3 py-4 text-left transition-opacity hover:opacity-90"
         >
-          <Plus className="h-6 w-6" />
-          <span className="text-sm font-semibold">New book</span>
+          <IconChip icon={Plus} color="primary" />
+          <span className="text-sm font-bold text-primary">{t('books.create')}</span>
         </button>
-      </div>
+      </ListCard>
 
       {archived.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="section-head px-1 text-[17px] text-foreground">Archived</h2>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <Section title={t('books.archived')}>
+          <ListCard className="rounded-[24px]">
             {archived.map((book) => (
-              <BookCard
+              <BookRow
                 key={book.id}
                 book={book}
                 accountCount={counts[book.id] ?? 0}
@@ -114,8 +121,8 @@ export function BooksPage() {
                 onDelete={() => setDeleting(book)}
               />
             ))}
-          </div>
-        </div>
+          </ListCard>
+        </Section>
       )}
 
       <BookForm
@@ -131,7 +138,7 @@ export function BooksPage() {
   )
 }
 
-function BookCard({
+function BookRow({
   book,
   accountCount,
   isActive,
@@ -148,12 +155,12 @@ function BookCard({
   onRename: () => void
   onDelete: () => void
 }) {
+  const { t } = useT()
   const update = useUpdateBook()
   const duplicate = useDuplicateBookStructure()
   const { setActiveBook, books } = useActiveBook()
-  const accent = book.color ?? 'var(--primary)'
+  const color = book.color ?? '#0072BC'
   const isBusiness = book.type === 'business'
-  const busy = update.isPending || duplicate.isPending
 
   function toggleArchive() {
     // Don't leave the user "inside" a book they just archived — hop to another.
@@ -164,88 +171,155 @@ function BookCard({
     update.mutate({ id: book.id, patch: { is_archived: !book.is_archived } })
   }
 
-  return (
-    <Card className={cn('flex flex-col gap-3 p-4', isActive && 'ring-2 ring-primary/40')}>
-      <div className="flex items-start gap-3">
-        <span
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-          style={{ backgroundColor: `${accent}1f`, color: accent }}
-        >
-          {isBusiness ? <Store className="h-5 w-5" /> : <BookIcon className="h-5 w-5" />}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-1.5 truncate text-sm font-bold text-foreground">
-            {book.name}
-            {isBusiness && (
-              <span className="inline-flex items-center gap-0.5 rounded-md bg-surface-muted px-1.5 py-0.5 text-[10px] font-bold uppercase text-muted-foreground">
-                <Store className="h-2.5 w-2.5" /> Business
-              </span>
-            )}
-            {isActive && (
-              <span className="inline-flex items-center gap-0.5 rounded-md bg-primary-soft px-1.5 py-0.5 text-xs font-bold uppercase text-primary">
-                <Check className="h-2.5 w-2.5" /> Open
-              </span>
-            )}
-          </p>
-          <p className="truncate text-xs font-semibold text-muted-foreground">
-            {accountCount} {accountCount === 1 ? 'account' : 'accounts'}
-            {book.last_opened_at &&
-              ` · opened ${formatDistanceToNow(new Date(book.last_opened_at), { addSuffix: true })}`}
-          </p>
-        </div>
-      </div>
+  const typeLabel = t(isBusiness ? 'books.type.business' : 'books.type.personal')
+  const accountLabel =
+    accountCount === 1 ? t('books.oneAccount') : t('books.nAccounts', { count: accountCount })
+  const openedLabel = book.last_opened_at
+    ? t('books.openedAgo', {
+        ago: formatDistanceToNow(new Date(book.last_opened_at), {
+          addSuffix: true,
+          locale: dateLocale(),
+        }),
+      })
+    : null
+  const subtitle = [typeLabel, accountLabel, openedLabel].filter(Boolean).join(' · ')
 
-      <div className="mt-auto flex items-center gap-2 pt-1">
-        <Button size="sm" className="flex-1" onClick={onOpen} disabled={busy}>
-          Open
-        </Button>
-        <button
-          onClick={onRename}
-          disabled={busy}
-          className="rounded-lg border border-transparent p-1.5 text-muted-foreground transition-colors hover:border-border hover:bg-surface-muted hover:text-foreground"
-          aria-label={`Rename ${book.name}`}
-          title="Rename"
+  return (
+    <div className="flex items-center gap-3 py-3">
+      <button
+        onClick={onOpen}
+        className="flex min-w-0 flex-1 items-center gap-3 text-left transition-opacity hover:opacity-90"
+      >
+        <IconChip icon={isBusiness ? Store : Wallet} color={color} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <p className="truncate text-sm font-bold text-foreground">{book.name}</p>
+            {isActive && (
+              <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-primary-soft px-2 py-0.5 text-[11px] font-bold text-primary">
+                <Check className="h-3 w-3" /> {t('books.active')}
+              </span>
+            )}
+          </div>
+          <p className="mt-0.5 truncate text-xs font-medium text-muted-foreground">{subtitle}</p>
+        </div>
+      </button>
+
+      <RowMenu
+        book={book}
+        canDelete={canDelete}
+        busy={update.isPending || duplicate.isPending}
+        onRename={onRename}
+        onDuplicate={() => duplicate.mutate({ sourceId: book.id, name: `${book.name} copy` })}
+        onToggleArchive={toggleArchive}
+        onDelete={onDelete}
+      />
+    </div>
+  )
+}
+
+/** Per-row overflow menu (⋯): rename, duplicate, archive, delete — kept off the
+ *  main row so a tap anywhere else just opens the book. */
+function RowMenu({
+  book,
+  canDelete,
+  busy,
+  onRename,
+  onDuplicate,
+  onToggleArchive,
+  onDelete,
+}: {
+  book: Book
+  canDelete: boolean
+  busy: boolean
+  onRename: () => void
+  onDuplicate: () => void
+  onToggleArchive: () => void
+  onDelete: () => void
+}) {
+  const { t } = useT()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    document.addEventListener('mousedown', onDoc)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDoc)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  function run(fn: () => void) {
+    setOpen(false)
+    fn()
+  }
+
+  const items = [
+    { icon: Pencil, label: t('books.rename'), onClick: () => run(onRename) },
+    { icon: Copy, label: t('books.duplicate'), onClick: () => run(onDuplicate) },
+    {
+      icon: book.is_archived ? ArchiveRestore : Archive,
+      label: t(book.is_archived ? 'books.unarchive' : 'books.archive'),
+      onClick: () => run(onToggleArchive),
+    },
+  ]
+
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        disabled={busy}
+        aria-label={t('books.more')}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground disabled:opacity-40"
+      >
+        <MoreVertical className="h-[18px] w-[18px]" />
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="card-surface absolute right-0 top-full z-50 mt-1.5 w-52 overflow-hidden rounded-2xl border border-border bg-surface p-1.5 shadow-lg animate-fade-in"
         >
-          <Pencil className="h-4 w-4" />
-        </button>
-        <button
-          onClick={() => duplicate.mutate({ sourceId: book.id, name: `${book.name} copy` })}
-          disabled={busy}
-          className="rounded-lg border border-transparent p-1.5 text-muted-foreground transition-colors hover:border-border hover:bg-surface-muted hover:text-foreground"
-          aria-label={`Duplicate ${book.name}`}
-          title="Duplicate setup (accounts, categories, budgets — no transactions)"
-        >
-          <Copy className="h-4 w-4" />
-        </button>
-        <button
-          onClick={toggleArchive}
-          disabled={busy}
-          className="rounded-lg border border-transparent p-1.5 text-muted-foreground transition-colors hover:border-border hover:bg-surface-muted hover:text-foreground"
-          aria-label={book.is_archived ? `Unarchive ${book.name}` : `Archive ${book.name}`}
-          title={book.is_archived ? 'Unarchive' : 'Archive'}
-        >
-          {book.is_archived ? (
-            <ArchiveRestore className="h-4 w-4" />
-          ) : (
-            <Archive className="h-4 w-4" />
-          )}
-        </button>
-        <button
-          onClick={onDelete}
-          disabled={busy || !canDelete}
-          className="rounded-lg border border-transparent p-1.5 text-muted-foreground transition-colors hover:border-danger/10 hover:bg-danger/10 hover:text-danger disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
-          aria-label={`Delete ${book.name}`}
-          title={canDelete ? 'Delete permanently' : 'You need at least one book'}
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
-      </div>
-    </Card>
+          {items.map((item) => (
+            <button
+              key={item.label}
+              role="menuitem"
+              onClick={item.onClick}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-foreground transition-colors hover:bg-surface-muted"
+            >
+              <item.icon className="h-[18px] w-[18px] shrink-0 text-muted-foreground" />
+              {item.label}
+            </button>
+          ))}
+
+          <div className="my-1 h-px bg-border" />
+
+          <button
+            role="menuitem"
+            onClick={() => run(onDelete)}
+            disabled={!canDelete}
+            title={canDelete ? undefined : t('books.needOne')}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-danger transition-colors hover:bg-danger/10 disabled:opacity-40 disabled:hover:bg-transparent"
+          >
+            <Trash2 className="h-[18px] w-[18px] shrink-0" />
+            {t('books.delete')}
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
 
 /** Permanent delete behind a typed confirmation (the book name), like account deletion. */
 function DeleteBookModal({ book, onClose }: { book: Book | null; onClose: () => void }) {
+  const { t } = useT()
   const del = useDeleteBook()
   const [typed, setTyped] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -271,17 +345,15 @@ function DeleteBookModal({ book, onClose }: { book: Book | null; onClose: () => 
   const matches = book ? typed.trim() === book.name : false
 
   return (
-    <Modal open={Boolean(book)} onClose={close} title="Delete book">
+    <Modal open={Boolean(book)} onClose={close} title={t('books.deleteTitle')}>
       {book && (
         <div className="space-y-4">
           <p className="text-sm leading-relaxed text-muted-foreground">
-            This permanently deletes <span className="font-bold text-foreground">{book.name}</span>{' '}
-            and everything in it — accounts, transactions, budgets, bills, goals and receipts. This
-            cannot be undone.
+            {t('books.deleteBody', { name: book.name })}
           </p>
           <div>
             <label className="mb-1.5 block text-sm font-semibold text-foreground">
-              Type <span className="font-bold text-danger">{book.name}</span> to confirm
+              {t('books.deleteConfirm', { name: book.name })}
             </label>
             <Input
               value={typed}
@@ -294,7 +366,7 @@ function DeleteBookModal({ book, onClose }: { book: Book | null; onClose: () => 
           {error && <p className="text-sm font-medium text-danger">{error}</p>}
           <div className="flex gap-3 pt-1">
             <Button variant="secondary" className="flex-1" onClick={close} disabled={del.isPending}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               className="flex-1 bg-danger text-white hover:brightness-110"
@@ -302,7 +374,7 @@ function DeleteBookModal({ book, onClose }: { book: Book | null; onClose: () => 
               disabled={!matches}
               onClick={confirm}
             >
-              Delete forever
+              {t('books.deleteForever')}
             </Button>
           </div>
         </div>
