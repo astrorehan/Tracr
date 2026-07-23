@@ -119,7 +119,9 @@ export function SettingsPage() {
           <p className="truncate text-lg font-bold leading-tight text-foreground">
             {profile?.display_name ?? t('settings.accountFallback')}
           </p>
-          <p className="mt-1 truncate text-xs font-semibold text-muted-foreground">{user?.email}</p>
+          <p className="mt-1 truncate text-xs font-semibold text-muted-foreground">
+            {user?.email?.replace(/@tracr\.com$/i, '')}
+          </p>
         </div>
       </Card>
 

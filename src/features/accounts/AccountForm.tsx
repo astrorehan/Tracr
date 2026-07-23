@@ -18,16 +18,19 @@ interface Props {
 }
 
 export function AccountForm({ open, onClose, account }: Props) {
-  const { t } = useT()
-  // Modal unmounts children when closed, so the body initializes fresh each open.
-  return (
-    <Modal open={open} onClose={onClose} title={account ? t('acc.form.edit') : t('acc.form.new')}>
-      {open && <AccountFormBody onClose={onClose} account={account ?? null} />}
-    </Modal>
-  )
+  if (!open) return null
+  return <AccountFormBody onClose={onClose} account={account ?? null} open={open} />
 }
 
-function AccountFormBody({ onClose, account }: { onClose: () => void; account: Account | null }) {
+function AccountFormBody({
+  open,
+  onClose,
+  account,
+}: {
+  open: boolean
+  onClose: () => void
+  account: Account | null
+}) {
   const { t } = useT()
   const create = useCreateAccount()
   const update = useUpdateAccount()
@@ -107,164 +110,174 @@ function AccountFormBody({ onClose, account }: { onClose: () => void; account: A
     }
   }
 
+  const footer = (
+    <div className="flex gap-3">
+      <Button type="button" variant="secondary" className="flex-1" onClick={onClose}>
+        {t('common.cancel')}
+      </Button>
+      <Button type="submit" form="account-form" className="flex-1" loading={pending}>
+        {editing ? t('common.save') : t('acc.form.create')}
+      </Button>
+    </div>
+  )
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <Field label={t('common.name')}>
-        <Input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder={t('acc.form.placeholder')}
-          autoFocus
-        />
-      </Field>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={editing ? t('acc.form.edit') : t('acc.form.new')}
+      footer={footer}
+    >
+      <form id="account-form" onSubmit={handleSubmit} className="space-y-4">
+        <Field label={t('common.name')}>
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t('acc.form.placeholder')}
+            autoFocus
+          />
+        </Field>
 
-      <Field label={t('common.type') ?? 'Type'}>
-        <Select value={type} onChange={(e) => changeType(e.target.value as AccountType)}>
-          {ACCOUNT_TYPES.map((typeObj) => (
-            <option key={typeObj.value} value={typeObj.value}>
-              {t(typeObj.label)}
-            </option>
-          ))}
-        </Select>
-      </Field>
+        <Field label={t('common.type') ?? 'Type'}>
+          <Select value={type} onChange={(e) => changeType(e.target.value as AccountType)}>
+            {ACCOUNT_TYPES.map((typeObj) => (
+              <option key={typeObj.value} value={typeObj.value}>
+                {t(typeObj.label)}
+              </option>
+            ))}
+          </Select>
+        </Field>
 
-      {isDebtType ? (
-        // Debt type → no question, just explain what it means in plain terms.
-        <div className="flex items-start gap-2.5 rounded-xl border border-danger/25 bg-danger/5 px-4 py-3">
-          <Info className="mt-0.5 h-4 w-4 shrink-0 text-danger" />
-          <p className="text-[12px] font-medium leading-snug text-muted-foreground">
-            {t('acc.form.debtTracked')} <span className="font-semibold text-danger">{t('acc.form.debtWord')}</span> {t('acc.form.debtDesc')}
-          </p>
+        {isDebtType ? (
+          // Debt type → no question, just explain what it means in plain terms.
+          <div className="flex items-start gap-2.5 rounded-xl border border-danger/25 bg-danger/5 px-4 py-3">
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-danger" />
+            <p className="text-[12px] font-medium leading-snug text-muted-foreground">
+              {t('acc.form.debtTracked')} <span className="font-semibold text-danger">{t('acc.form.debtWord')}</span> {t('acc.form.debtDesc')}
+            </p>
+          </div>
+        ) : (
+          // Ambiguous type → let the user mark it a debt, in plain language.
+          <button
+            type="button"
+            role="switch"
+            aria-checked={isLiability}
+            onClick={() => setIsLiability((v) => !v)}
+            className="flex w-full items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 text-left transition-colors hover:border-primary/50"
+          >
+            <span
+              className={cn(
+                'relative h-6 w-11 shrink-0 rounded-full transition-colors',
+                isLiability ? 'bg-danger' : 'bg-surface-muted',
+              )}
+            >
+              <span
+                className={cn(
+                  'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform',
+                  isLiability ? 'translate-x-[1.375rem]' : 'translate-x-0.5',
+                )}
+              />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-foreground">
+                {t('acc.form.debtLabel')}
+              </span>
+              <span className="block text-xs font-medium text-muted-foreground">
+                {isLiability ? t('acc.form.debtCounted') : t('acc.form.debtTurnOn')}
+              </span>
+            </span>
+          </button>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Field label={t('common.currency')}>
+            <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+              {CURRENCY_CODES.map((code) => (
+                <option key={code} value={code}>
+                  {code} — {CURRENCIES[code].symbol}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label={isLiability ? t('acc.form.amountOwed') : t('acc.form.openingBal')}>
+            <Input
+              type="number"
+              inputMode="decimal"
+              step="any"
+              value={opening}
+              onChange={(e) => setOpening(e.target.value)}
+              placeholder="0"
+            />
+          </Field>
         </div>
-      ) : (
-        // Ambiguous type → let the user mark it a debt, in plain language.
+        {isLiability && (
+          <p className="-mt-2 px-1 text-xs font-medium text-muted-foreground">
+            {t('acc.form.oweDesc')}
+          </p>
+        )}
+
+        {isLiability && (
+          <Field label={t('acc.form.limit')}>
+            <Input
+              type="number"
+              inputMode="decimal"
+              step="any"
+              value={creditLimit}
+              onChange={(e) => setCreditLimit(e.target.value)}
+              placeholder={t('acc.form.limitPlaceholder')}
+            />
+          </Field>
+        )}
+
+        <Field label={t('acc.form.color')}>
+          <div className="flex flex-wrap gap-2">
+            {ACCOUNT_COLORS.map((c) => (
+              <button
+                type="button"
+                key={c}
+                onClick={() => setColor(c)}
+                className="h-8 w-8 rounded-full border-2 transition hover:scale-105 active:scale-95"
+                style={{
+                  backgroundColor: c,
+                  borderColor: color === c ? 'var(--foreground)' : 'transparent',
+                }}
+                aria-label={`Color ${c}`}
+              />
+            ))}
+          </div>
+        </Field>
+
         <button
           type="button"
           role="switch"
-          aria-checked={isLiability}
-          onClick={() => setIsLiability((v) => !v)}
+          aria-checked={excludeFromStats}
+          onClick={() => setExcludeFromStats((v) => !v)}
           className="flex w-full items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 text-left transition-colors hover:border-primary/50"
         >
           <span
             className={cn(
               'relative h-6 w-11 shrink-0 rounded-full transition-colors',
-              isLiability ? 'bg-danger' : 'bg-surface-muted',
+              excludeFromStats ? 'bg-primary' : 'bg-surface-muted',
             )}
           >
             <span
               className={cn(
                 'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform',
-                isLiability ? 'translate-x-[1.375rem]' : 'translate-x-0.5',
+                excludeFromStats ? 'translate-x-[1.375rem]' : 'translate-x-0.5',
               )}
             />
           </span>
           <span className="min-w-0">
-            <span className="block text-sm font-semibold text-foreground">
-              {t('acc.form.debtLabel')}
-            </span>
+            <span className="block text-sm font-semibold text-foreground">{t('acc.form.excludeToggle')}</span>
             <span className="block text-xs font-medium text-muted-foreground">
-              {isLiability ? t('acc.form.debtCounted') : t('acc.form.debtTurnOn')}
+              {excludeFromStats ? t('acc.form.excludeHidden') : t('acc.form.excludeKeep')}
             </span>
           </span>
         </button>
-      )}
 
-      <div className="grid grid-cols-2 gap-3">
-        <Field label={t('common.currency')}>
-          <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-            {CURRENCY_CODES.map((code) => (
-              <option key={code} value={code}>
-                {code} — {CURRENCIES[code].symbol}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label={isLiability ? t('acc.form.amountOwed') : t('acc.form.openingBal')}>
-          <Input
-            type="number"
-            inputMode="decimal"
-            step="any"
-            value={opening}
-            onChange={(e) => setOpening(e.target.value)}
-            placeholder="0"
-          />
-        </Field>
-      </div>
-      {isLiability && (
-        <p className="-mt-2 px-1 text-xs font-medium text-muted-foreground">
-          {t('acc.form.oweDesc')}
-        </p>
-      )}
-
-      {isLiability && (
-        <Field label={t('acc.form.limit')}>
-          <Input
-            type="number"
-            inputMode="decimal"
-            step="any"
-            value={creditLimit}
-            onChange={(e) => setCreditLimit(e.target.value)}
-            placeholder={t('acc.form.limitPlaceholder')}
-          />
-        </Field>
-      )}
-
-      <Field label={t('acc.form.color')}>
-        <div className="flex flex-wrap gap-2">
-          {ACCOUNT_COLORS.map((c) => (
-            <button
-              type="button"
-              key={c}
-              onClick={() => setColor(c)}
-              className="h-8 w-8 rounded-full border-2 transition"
-              style={{
-                backgroundColor: c,
-                borderColor: color === c ? 'var(--foreground)' : 'transparent',
-              }}
-              aria-label={`Color ${c}`}
-            />
-          ))}
-        </div>
-      </Field>
-
-      <button
-        type="button"
-        role="switch"
-        aria-checked={excludeFromStats}
-        onClick={() => setExcludeFromStats((v) => !v)}
-        className="flex w-full items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 text-left transition-colors hover:border-primary/50"
-      >
-        <span
-          className={cn(
-            'relative h-6 w-11 shrink-0 rounded-full transition-colors',
-            excludeFromStats ? 'bg-primary' : 'bg-surface-muted',
-          )}
-        >
-          <span
-            className={cn(
-              'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform',
-              excludeFromStats ? 'translate-x-[1.375rem]' : 'translate-x-0.5',
-            )}
-          />
-        </span>
-        <span className="min-w-0">
-          <span className="block text-sm font-semibold text-foreground">{t('acc.form.excludeToggle')}</span>
-          <span className="block text-xs font-medium text-muted-foreground">
-            {excludeFromStats ? t('acc.form.excludeHidden') : t('acc.form.excludeKeep')}
-          </span>
-        </span>
-      </button>
-
-      {error && <p className="text-sm text-danger">{error}</p>}
-
-      <div className="flex gap-3 pt-2">
-        <Button type="button" variant="secondary" className="flex-1" onClick={onClose}>
-          {t('common.cancel')}
-        </Button>
-        <Button type="submit" className="flex-1" loading={pending}>
-          {editing ? t('common.save') : t('acc.form.create')}
-        </Button>
-      </div>
-    </form>
+        {error && <p className="text-sm font-medium text-danger">{error}</p>}
+      </form>
+    </Modal>
   )
 }
+
