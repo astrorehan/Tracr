@@ -110,7 +110,7 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="w-full space-y-6 pb-4">
       <PageHeader title={t('nav.settings')} />
 
       {/* Profile */}
@@ -134,6 +134,9 @@ export function SettingsPage() {
         </div>
       </Card>
 
+      {/* Everything below the profile flows into two balanced columns on wide
+          screens so the settings fill the width instead of a narrow center rail. */}
+      <div className="space-y-6 lg:columns-2 lg:gap-6 lg:space-y-0 lg:[&>section]:mb-6 lg:[&>section]:break-inside-avoid">
       {/* Preferences */}
       <Section title={t('settings.preferences')}>
         <Card className="space-y-5 p-5">
@@ -267,6 +270,7 @@ export function SettingsPage() {
       <Section title={t('settings.accountSection')}>
         <DeleteAccountCard />
       </Section>
+      </div>
 
       <Button
         variant="outline"
