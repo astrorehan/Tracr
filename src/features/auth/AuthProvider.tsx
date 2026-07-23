@@ -50,6 +50,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         options: { redirectTo: window.location.origin },
       })
     },
+    signInWithPhone: async (phone: string, pin: string) => {
+      const email = `${phone}@tracr.com`
+      const { error } = await supabase.auth.signInWithPassword({ email, password: pin })
+      if (error) throw error
+    },
+    signUpWithPhone: async (phone: string, pin: string, name: string) => {
+      const email = `${phone}@tracr.com`
+      const { error } = await supabase.auth.signUp({
+        email,
+        password: pin,
+        options: { data: { full_name: name } },
+      })
+      if (error) throw error
+    },
     signOut: async () => {
       await supabase.auth.signOut()
       setProfile(null)

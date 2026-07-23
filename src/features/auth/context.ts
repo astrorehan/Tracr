@@ -8,6 +8,8 @@ export interface AuthState {
   profile: Profile | null
   loading: boolean
   signInWithGoogle: () => Promise<void>
+  signInWithPhone: (phone: string, pin: string) => Promise<void>
+  signUpWithPhone: (phone: string, pin: string, name: string) => Promise<void>
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
 }
