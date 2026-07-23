@@ -1,13 +1,11 @@
-import { useMemo, useState, type ComponentType } from 'react'
+import { Fragment, useMemo, useState, type ComponentType } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
   Wallet,
   ArrowLeftRight,
   BarChart3,
-  Target,
-  Receipt,
-  PiggyBank,
+  ClipboardList,
   HandCoins,
   Package,
   TrendingUp,
@@ -31,15 +29,34 @@ import { CreditChip } from '@/features/billing/CreditChip'
 
 type IconType = ComponentType<{ className?: string }>
 
-const NAV: { to: string; label: MsgKey; icon: IconType }[] = [
-  { to: '/', label: 'nav.home', icon: LayoutDashboard },
-  { to: '/accounts', label: 'nav.accounts', icon: Wallet },
-  { to: '/transactions', label: 'nav.activity', icon: ArrowLeftRight },
-  { to: '/reports', label: 'nav.reports', icon: BarChart3 },
-  { to: '/budgets', label: 'nav.budgets', icon: Target },
-  { to: '/bills', label: 'nav.bills', icon: Receipt },
-  { to: '/goals', label: 'nav.goals', icon: PiggyBank },
-  { to: '/settings', label: 'nav.settings', icon: Settings },
+type NavItem = {
+  to: string
+  label: MsgKey
+  icon: IconType
+  // Extra path prefixes that should also light this link up. Used by the
+  // Rencana entry, which owns /budgets but stays active on /bills and /goals.
+  match?: string[]
+}
+
+// Sidebar nav, split into visual groups. Budgets, Bills and Savings goals are
+// folded into one "Rencana" tab, set apart in its own group by the dividers
+// the renderer draws between groups.
+const NAV_GROUPS: NavItem[][] = [
+  [
+    { to: '/', label: 'nav.home', icon: LayoutDashboard },
+    { to: '/accounts', label: 'nav.accounts', icon: Wallet },
+    { to: '/transactions', label: 'nav.activity', icon: ArrowLeftRight },
+    { to: '/reports', label: 'nav.reports', icon: BarChart3 },
+  ],
+  [
+    {
+      to: '/budgets',
+      label: 'nav.planning',
+      icon: ClipboardList,
+      match: ['/budgets', '/bills', '/goals'],
+    },
+  ],
+  [{ to: '/settings', label: 'nav.settings', icon: Settings }],
 ]
 
 // Mobile dock slots, left to right. `null` is the center slot the raised
@@ -70,20 +87,22 @@ export function AppLayout() {
   const isHome = pathname === '/'
   const activeSlot = mobileSlotFor(pathname)
 
-  // Business books get the POS-lite (products) + Utang-Piutang (debts) tools
-  // inserted into the sidebar, just above Settings.
-  const nav = useMemo(() => {
-    if (activeBook?.type !== 'business') return NAV
-    const items = [...NAV]
-    const at = items.findIndex((i) => i.to === '/settings')
-    items.splice(
+  // Business books get the POS-lite (products) + laba-rugi (profit) +
+  // Utang-Piutang (debts) tools inserted into the last group, just above
+  // Settings.
+  const navGroups = useMemo(() => {
+    if (activeBook?.type !== 'business') return NAV_GROUPS
+    const groups = NAV_GROUPS.map((g) => [...g])
+    const last = groups[groups.length - 1]
+    const at = last.findIndex((i) => i.to === '/settings')
+    last.splice(
       at,
       0,
       { to: '/products', label: 'nav.products', icon: Package },
       { to: '/profit', label: 'nav.profit', icon: TrendingUp },
       { to: '/debts', label: 'nav.debts', icon: HandCoins },
     )
-    return items
+    return groups
   }, [activeBook?.type])
 
   // Refresh FX rates from the free live sources once per session.
@@ -114,10 +133,16 @@ export function AppLayout() {
           <BookSwitcher />
         </div>
 
-        {/* Primary nav */}
+        {/* Primary nav, drawn group by group with a divider between each so the
+            Rencana tab reads as its own cluster. */}
         <nav className="mt-4 flex flex-1 flex-col gap-1.5">
-          {nav.map((item) => (
-            <SidebarLink key={item.to} {...item} />
+          {navGroups.map((group, gi) => (
+            <Fragment key={gi}>
+              {gi > 0 && <div aria-hidden className="mx-2 my-1 h-px bg-border" />}
+              {group.map((item) => (
+                <SidebarLink key={item.to} {...item} />
+              ))}
+            </Fragment>
           ))}
         </nav>
 
@@ -233,24 +258,33 @@ export function AppLayout() {
   )
 }
 
-function SidebarLink({ to, label, icon: Icon }: { to: string; label: MsgKey; icon: IconType }) {
+function SidebarLink({ to, label, icon: Icon, match }: NavItem) {
   const { t } = useT()
+  const { pathname } = useLocation()
+  // A link with `match` owns several routes, so decide active ourselves; plain
+  // links fall back to NavLink's own path matching.
+  const matched = match
+    ? match.some((p) => (p === '/' ? pathname === '/' : pathname.startsWith(p)))
+    : undefined
   return (
     <NavLink to={to} end={to === '/'}>
-      {({ isActive }) => (
-        <span
-          className={cn(
-            'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200',
-            'justify-center lg:justify-start',
-            isActive
-              ? 'bg-primary-soft text-primary'
-              : 'text-muted-foreground hover:bg-surface-muted hover:text-foreground',
-          )}
-        >
-          <Icon className="h-5 w-5 shrink-0 transition-transform duration-300 group-hover:scale-110" />
-          <span className="hidden lg:inline">{t(label)}</span>
-        </span>
-      )}
+      {({ isActive }) => {
+        const active = matched ?? isActive
+        return (
+          <span
+            className={cn(
+              'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200',
+              'justify-center lg:justify-start',
+              active
+                ? 'bg-primary-soft text-primary'
+                : 'text-muted-foreground hover:bg-surface-muted hover:text-foreground',
+            )}
+          >
+            <Icon className="h-5 w-5 shrink-0 transition-transform duration-300 group-hover:scale-110" />
+            <span className="hidden lg:inline">{t(label)}</span>
+          </span>
+        )
+      }}
     </NavLink>
   )
 }

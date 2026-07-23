@@ -42,6 +42,7 @@ export const MESSAGES = {
   'nav.accounts': { en: 'Accounts', id: 'Dompet' },
   'nav.activity': { en: 'Activity', id: 'Aktivitas' },
   'nav.reports': { en: 'Reports', id: 'Laporan' },
+  'nav.planning': { en: 'Planning', id: 'Rencana' },
   'nav.budgets': { en: 'Budgets', id: 'Anggaran' },
   'nav.bills': { en: 'Bills', id: 'Tagihan' },
   'nav.goals': { en: 'Goals', id: 'Nabung' },

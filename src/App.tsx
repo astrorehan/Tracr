@@ -32,11 +32,9 @@ const RulesPage = lazy(() => import('./app/RulesPage').then((m) => ({ default: m
 const ReportsPage = lazy(() =>
   import('./app/ReportsPage').then((m) => ({ default: m.ReportsPage })),
 )
-const BudgetsPage = lazy(() =>
-  import('./app/BudgetsPage').then((m) => ({ default: m.BudgetsPage })),
+const PlanningPage = lazy(() =>
+  import('./app/PlanningPage').then((m) => ({ default: m.PlanningPage })),
 )
-const BillsPage = lazy(() => import('./app/BillsPage').then((m) => ({ default: m.BillsPage })))
-const GoalsPage = lazy(() => import('./app/GoalsPage').then((m) => ({ default: m.GoalsPage })))
 const DebtsPage = lazy(() => import('./app/DebtsPage').then((m) => ({ default: m.DebtsPage })))
 const ProductsPage = lazy(() =>
   import('./app/ProductsPage').then((m) => ({ default: m.ProductsPage })),
@@ -173,7 +171,7 @@ export default function App() {
           path="budgets"
           element={
             <Suspense fallback={<CenterSpinner />}>
-              <BudgetsPage />
+              <PlanningPage />
             </Suspense>
           }
         />
@@ -181,7 +179,7 @@ export default function App() {
           path="bills"
           element={
             <Suspense fallback={<CenterSpinner />}>
-              <BillsPage />
+              <PlanningPage />
             </Suspense>
           }
         />
@@ -189,7 +187,7 @@ export default function App() {
           path="goals"
           element={
             <Suspense fallback={<CenterSpinner />}>
-              <GoalsPage />
+              <PlanningPage />
             </Suspense>
           }
         />
