@@ -162,6 +162,61 @@ export const MESSAGES = {
   'section.books': { en: 'Books', id: 'Buku' },
   'section.workspace': { en: 'Workspace', id: 'Ruang kerja' },
 
+  // ── Books (pick / manage / switch) ───────────────────────────────────────
+  'books.title': { en: 'Books', id: 'Buku' },
+  'books.subtitle': {
+    en: 'Each book keeps its own money separate. Tap one to open it — switch anytime.',
+    id: 'Tiap buku menyimpan uangnya sendiri-sendiri. Ketuk satu untuk membukanya — bisa ganti kapan saja.',
+  },
+  'books.new': { en: 'New book', id: 'Buku baru' },
+  'books.create': { en: 'Make a new book', id: 'Buat buku baru' },
+  'books.open': { en: 'Open', id: 'Buka' },
+  'books.active': { en: 'Open now', id: 'Sedang dibuka' },
+  'books.yours': { en: 'Your books', id: 'Buku kamu' },
+  'books.manage': { en: 'Manage books', id: 'Atur buku' },
+  'books.oneAccount': { en: '1 wallet', id: '1 dompet' },
+  'books.nAccounts': { en: '{count} wallets', id: '{count} dompet' },
+  'books.openedAgo': { en: 'opened {ago}', id: 'dibuka {ago}' },
+  'books.archived': { en: 'Archived', id: 'Diarsipkan' },
+  // Type picker
+  'books.type.personal': { en: 'Personal', id: 'Pribadi' },
+  'books.type.business': { en: 'Business', id: 'Usaha' },
+  'books.type.personalHint': {
+    en: 'Everyday money — income, spending, saving',
+    id: 'Uang harian — pemasukan, pengeluaran, nabung',
+  },
+  'books.type.businessHint': {
+    en: 'A shop or small business — sales, debts, profit',
+    id: 'Toko atau usaha kecil — jualan, utang-piutang, untung-rugi',
+  },
+  // Row actions
+  'books.rename': { en: 'Rename', id: 'Ubah nama' },
+  'books.duplicate': { en: 'Duplicate', id: 'Gandakan' },
+  'books.duplicateHint': {
+    en: 'Copy the setup (wallets, categories, budgets) — no records',
+    id: 'Salin susunannya (dompet, kategori, anggaran) — tanpa catatan',
+  },
+  'books.archive': { en: 'Archive', id: 'Arsipkan' },
+  'books.unarchive': { en: 'Unarchive', id: 'Pulihkan' },
+  'books.delete': { en: 'Delete', id: 'Hapus' },
+  'books.more': { en: 'More', id: 'Lainnya' },
+  'books.needOne': { en: 'You need at least one book', id: 'Kamu perlu minimal satu buku' },
+  // Form
+  'books.formNew': { en: 'New book', id: 'Buku baru' },
+  'books.formRename': { en: 'Rename book', id: 'Ubah buku' },
+  'books.namePlaceholder': { en: 'e.g. Personal, Shop, Family', id: 'cth. Pribadi, Toko, Keluarga' },
+  'books.color': { en: 'Color', id: 'Warna' },
+  'books.nameRequired': { en: 'Please name this book.', id: 'Beri nama buku ini dulu.' },
+  'books.createBtn': { en: 'Create', id: 'Buat' },
+  // Delete confirmation
+  'books.deleteTitle': { en: 'Delete book', id: 'Hapus buku' },
+  'books.deleteBody': {
+    en: 'This permanently deletes {name} and everything in it — wallets, records, budgets, bills and goals. This cannot be undone.',
+    id: 'Ini menghapus permanen {name} dan semua isinya — dompet, catatan, anggaran, tagihan, dan target. Tidak bisa dibatalkan.',
+  },
+  'books.deleteConfirm': { en: 'Type {name} to confirm', id: 'Ketik {name} untuk konfirmasi' },
+  'books.deleteForever': { en: 'Delete forever', id: 'Hapus selamanya' },
+
   // ── App layout ───────────────────────────────────────────────────────────
   'layout.writeItDown': { en: 'Write it down', id: 'Catat' },
   'layout.recordTransaction': { en: 'Record a transaction', id: 'Catat transaksi' },
