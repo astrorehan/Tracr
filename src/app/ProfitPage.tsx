@@ -1,12 +1,11 @@
 import { useMemo, useState } from 'react'
 import { startOfMonth, startOfYear, subMonths, addMonths, addYears } from 'date-fns'
-import { Store, TrendingUp } from 'lucide-react'
+import { TrendingUp } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
-import { PageHeader } from '@/components/ui/list'
 import { Segmented } from '@/components/ui/Segmented'
 import { CenterSpinner } from '@/components/ui/States'
 import { useAuth } from '@/features/auth/useAuth'
-import { useActiveBook } from '@/features/books/useActiveBook'
+import { useT } from '@/features/settings/language-context'
 import { formatMoney } from '@/lib/money'
 import { cn } from '@/lib/utils'
 import { useProfitData } from '@/features/profit/api'
@@ -32,7 +31,7 @@ function periodRange(key: PeriodKey): { from: string; to: string } {
 export function ProfitPage() {
   const { profile } = useAuth()
   const base = profile?.base_currency ?? 'IDR'
-  const { activeBook } = useActiveBook()
+  const { t } = useT()
 
   const [period, setPeriod] = useState<PeriodKey>('month')
   const { from, to } = useMemo(() => periodRange(period), [period])
@@ -43,40 +42,21 @@ export function ProfitPage() {
     [data],
   )
 
-  // Guard: the profit report only makes sense inside a business book.
-  if (activeBook && activeBook.type !== 'business') {
-    return (
-      <div className="mx-auto max-w-3xl">
-        <PageHeader title="Profit" />
-        <Card className="flex flex-col items-center gap-3 p-8 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-soft text-primary">
-            <Store className="h-6 w-6" />
-          </span>
-          <p className="text-sm font-medium text-muted-foreground">
-            The profit report (laba-rugi) is part of a{' '}
-            <span className="font-bold text-foreground">business</span> book. Switch to or create a
-            business book to see what you earn.
-          </p>
-        </Card>
-      </div>
-    )
-  }
-
   const hasData = summary.penjualan > 0 || summary.biaya > 0
 
+  // The back link, header and tab bar come from BizLayout.
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <PageHeader title="Laba-Rugi" subtitle="What you sold, what it cost, what you kept." />
-
+    <div className="mt-5 space-y-5">
       <Segmented
         value={period}
         onChange={setPeriod}
+        size="sm"
         options={[
-          { value: 'month', label: 'This month' },
-          { value: 'last', label: 'Last month' },
-          { value: 'year', label: 'This year' },
+          { value: 'month', label: t('profit.periodMonth') },
+          { value: 'last', label: t('profit.periodLast') },
+          { value: 'year', label: t('profit.periodYear') },
         ]}
-        aria-label="Period"
+        aria-label={t('profit.period')}
       />
 
       {isLoading ? (
@@ -86,9 +66,7 @@ export function ProfitPage() {
           <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-soft text-primary">
             <TrendingUp className="h-6 w-6" />
           </span>
-          <p className="text-sm font-medium text-muted-foreground">
-            No sales or costs in this period yet. Record a sale to see your profit here.
-          </p>
+          <p className="text-sm font-medium text-muted-foreground">{t('profit.emptyBody')}</p>
         </Card>
       ) : (
         <>

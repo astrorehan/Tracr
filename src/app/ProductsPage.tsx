@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
-import { Plus, Store, Pencil, ShoppingBag, ArrowRight } from 'lucide-react'
+import { Plus, Pencil, ShoppingBag, ArrowRight } from 'lucide-react'
+import { BizHeaderAction } from '@/components/BizLayout'
 import { Button } from '@/components/ui/Button'
 import { CenterSpinner } from '@/components/ui/States'
 import { useAuth } from '@/features/auth/useAuth'
-import { useActiveBook } from '@/features/books/useActiveBook'
 import { useT } from '@/features/settings/language-context'
 import { formatMoney } from '@/lib/money'
 import { cn } from '@/lib/utils'
@@ -42,7 +42,6 @@ function guessEmoji(name: string): string | null {
 export function ProductsPage() {
   const { profile } = useAuth()
   const base = profile?.base_currency ?? 'IDR'
-  const { activeBook } = useActiveBook()
   const { t } = useT()
   const { data: products = [], isLoading } = useProducts()
 
@@ -63,37 +62,12 @@ export function ProductsPage() {
     })
   }
 
-  // Guard: the catalog only makes sense inside a business book.
-  if (activeBook && activeBook.type !== 'business') {
-    return (
-      <div className="mx-auto max-w-xl px-4 pt-8">
-        <div className="flex flex-col items-center gap-4 rounded-[24px] border border-border bg-surface p-8 text-center shadow-sm">
-          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-soft text-primary">
-            <Store className="h-7 w-7" />
-          </span>
-          <div>
-            <h2 className="text-lg font-extrabold tracking-tight">{t('biz.onlyTitle')}</h2>
-            <p className="mt-1.5 text-sm text-muted-foreground">{t('prod.bizOnly')}</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
+  // The back link, header and tab bar come from BizLayout — this page only
+  // fills in the header action and the body below the tabs.
   return (
-    <div className="mx-auto max-w-2xl px-4 pb-24 pt-6 sm:pt-8">
-      {/* Header */}
-      <header className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <span className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.14em] text-primary">
-            <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-            {t('biz.ledger')}
-            {activeBook && <span className="text-muted-foreground/70">· {activeBook.name}</span>}
-          </span>
-          <h1 className="mt-1 text-[27px] font-extrabold tracking-tight">{t('nav.products')}</h1>
-          <p className="mt-0.5 text-sm font-medium text-muted-foreground">{t('prod.subtitle')}</p>
-        </div>
-        {products.length > 0 && (
+    <>
+      {products.length > 0 && (
+        <BizHeaderAction>
           <button
             onClick={() => setCreating(true)}
             className="pressable flex h-11 shrink-0 items-center gap-1.5 rounded-2xl bg-foreground px-4 text-sm font-extrabold text-background"
@@ -101,8 +75,8 @@ export function ProductsPage() {
             <Plus className="h-4 w-4 stroke-[2.6]" />
             {t('prod.new')}
           </button>
-        )}
-      </header>
+        </BizHeaderAction>
+      )}
 
       {isLoading ? (
         <div className="pt-16">
@@ -160,7 +134,7 @@ export function ProductsPage() {
         onLinesChange={setCart}
         currency={base}
       />
-    </div>
+    </>
   )
 }
 

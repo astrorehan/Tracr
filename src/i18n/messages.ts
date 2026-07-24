@@ -832,6 +832,7 @@ export const MESSAGES = {
   // ── Buku Usaha: shared ───────────────────────────────────────────────────
   'biz.ledger': { en: 'Business book', id: 'Buku Usaha' },
   'biz.onlyTitle': { en: 'Business books only', id: 'Khusus Buku Usaha' },
+  'biz.tools': { en: 'Business tools', id: 'Alat usaha' },
   // Human aging — plain words, never a raw date.
   'age.today': { en: 'today', id: 'hari ini' },
   'age.yesterday': { en: 'yesterday', id: 'kemarin' },
@@ -922,6 +923,24 @@ export const MESSAGES = {
   'pay.errPos': { en: 'Enter an amount above zero.', id: 'Isi jumlah lebih dari nol.' },
   'pay.errTooMuch': { en: "That's more than what's left ({amount}).", id: 'Itu lebih dari sisanya ({amount}).' },
   'pay.save': { en: 'Save payment', id: 'Simpan bayaran' },
+
+  // ── Laba-Rugi ────────────────────────────────────────────────────────────
+  'profit.subtitle': {
+    en: 'What you sold, what it cost, what you kept.',
+    id: 'Berapa yang laku, berapa modalnya, berapa sisanya.',
+  },
+  'profit.period': { en: 'Period', id: 'Periode' },
+  'profit.periodMonth': { en: 'This month', id: 'Bulan ini' },
+  'profit.periodLast': { en: 'Last month', id: 'Bulan lalu' },
+  'profit.periodYear': { en: 'This year', id: 'Tahun ini' },
+  'profit.emptyBody': {
+    en: 'No sales or costs in this period yet. Record a sale to see your profit here.',
+    id: 'Belum ada jualan atau biaya di periode ini. Catat satu jualan untuk lihat untungnya di sini.',
+  },
+  'profit.bizOnly': {
+    en: 'Laba-rugi lives in a business book. Open or make a business book to see what you earn.',
+    id: 'Laba-rugi ada di Buku Usaha. Buka atau buat Buku Usaha untuk lihat untungmu.',
+  },
 
   // ── Produk (POS-lite) ────────────────────────────────────────────────────
   'prod.subtitle': { en: 'Tap an item to record a sale.', id: 'Ketuk barang untuk catat jualan.' },

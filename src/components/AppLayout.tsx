@@ -69,6 +69,15 @@ const MOBILE_NAV: ({ to: string; label: MsgKey; icon: IconType } | null)[] = [
   { to: '/settings', label: 'nav.settings', icon: Settings },
 ]
 
+// Routes that share the Buku Usaha chrome (BizLayout). They animate as one
+// group so tabbing between them doesn't replay the page fade on the shared
+// header and tab bar.
+const BIZ_PATHS = ['/products', '/debts', '/profit']
+
+function animationKeyFor(pathname: string) {
+  return BIZ_PATHS.some((p) => pathname.startsWith(p)) ? 'biz' : pathname
+}
+
 function mobileSlotFor(pathname: string) {
   return MOBILE_NAV.findIndex(
     (item) =>
@@ -201,7 +210,10 @@ export function AppLayout() {
             !isHome && 'px-4 pt-6 sm:px-6 lg:px-8',
           )}
         >
-          <div key={pathname} className="mx-auto w-full max-w-[1500px] animate-fade-in">
+          <div
+            key={animationKeyFor(pathname)}
+            className="mx-auto w-full max-w-[1500px] animate-fade-in"
+          >
             <Outlet />
           </div>
         </main>
