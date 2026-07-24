@@ -4,6 +4,8 @@ import {
   LayoutDashboard,
   Wallet,
   ArrowLeftRight,
+  ArrowDownLeft,
+  ArrowUpRight,
   BarChart3,
   ClipboardList,
   HandCoins,
@@ -16,6 +18,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { MsgKey } from '@/i18n'
+import type { TransactionType } from '@/types/db'
 import { useT } from '@/features/settings/language-context'
 import { useAuth } from '@/features/auth/useAuth'
 import { useActiveBook } from '@/features/books/useActiveBook'
@@ -61,12 +64,42 @@ const NAV_GROUPS: NavItem[][] = [
 
 // Mobile dock slots, left to right. `null` is the center slot the raised
 // Record button sits over.
-const MOBILE_NAV: ({ to: string; label: MsgKey; icon: IconType } | null)[] = [
-  { to: '/', label: 'nav.home', icon: LayoutDashboard },
-  { to: '/accounts', label: 'nav.accounts', icon: Wallet },
+//
+// Every route in the app maps onto one of the four slots via `match`. Without
+// that the dock went dark the moment you opened anything outside these four
+// exact paths, which is most of the app. A slot owns the routes you reach from
+// it: the planning and Buku Usaha pages are entered from the home tiles, so
+// Home keeps them lit; Reports answers the same question as Activity; the
+// config pages sit under Settings.
+const MOBILE_NAV: (NavItem | null)[] = [
+  {
+    to: '/',
+    label: 'nav.home',
+    icon: LayoutDashboard,
+    match: ['/', '/budgets', '/bills', '/goals', '/products', '/profit', '/debts'],
+  },
+  { to: '/accounts', label: 'nav.accounts', icon: Wallet, match: ['/accounts', '/currencies'] },
   null,
-  { to: '/transactions', label: 'nav.activity', icon: ArrowLeftRight },
-  { to: '/settings', label: 'nav.settings', icon: Settings },
+  {
+    to: '/transactions',
+    label: 'nav.activity',
+    icon: ArrowLeftRight,
+    match: ['/transactions', '/reports'],
+  },
+  {
+    to: '/settings',
+    label: 'nav.settings',
+    icon: Settings,
+    match: ['/settings', '/categories', '/tags', '/rules', '/books', '/data', '/billing', '/telegram'],
+  },
+]
+
+// Mobile FAB speed-dial: three ways into the record form, each preselecting the
+// money direction. Bottom-to-top so the first sits closest to the FAB.
+const SPEED_ACTIONS: { type: TransactionType; label: MsgKey; icon: IconType; tint: string }[] = [
+  { type: 'expense', label: 'common.expense', icon: ArrowUpRight, tint: 'text-negative' },
+  { type: 'income', label: 'common.income', icon: ArrowDownLeft, tint: 'text-positive' },
+  { type: 'transfer', label: 'common.transfer', icon: ArrowLeftRight, tint: 'text-primary' },
 ]
 
 // Routes that share the Buku Usaha chrome (BizLayout). They animate as one
@@ -78,16 +111,45 @@ function animationKeyFor(pathname: string) {
   return BIZ_PATHS.some((p) => pathname.startsWith(p)) ? 'biz' : pathname
 }
 
+/** True when `pathname` sits under `prefix`. '/' matches only itself. */
+function underPath(pathname: string, prefix: string) {
+  return prefix === '/' ? pathname === '/' : pathname.startsWith(prefix)
+}
+
+function matchesItem(pathname: string, item: NavItem) {
+  return (item.match ?? [item.to]).some((p) => underPath(pathname, p))
+}
+
 function mobileSlotFor(pathname: string) {
-  return MOBILE_NAV.findIndex(
-    (item) =>
-      item !== null &&
-      (item.to === '/' ? pathname === '/' : pathname.startsWith(item.to)),
-  )
+  return MOBILE_NAV.findIndex((item) => item !== null && matchesItem(pathname, item))
 }
 
 export function AppLayout() {
   const [addOpen, setAddOpen] = useState(false)
+  // The record form opens on a preset direction; the mobile FAB picks it via the
+  // speed-dial, the desktop quick-add just defaults to an expense.
+  const [addType, setAddType] = useState<TransactionType>('expense')
+  const [speedOpen, setSpeedOpen] = useState(false)
+  const [speedClosing, setSpeedClosing] = useState(false)
+
+  const closeSpeedDial = (onComplete?: () => void) => {
+    if (!speedOpen || speedClosing) return
+    setSpeedClosing(true)
+    setTimeout(() => {
+      setSpeedOpen(false)
+      setSpeedClosing(false)
+      if (onComplete) onComplete()
+    }, 200)
+  }
+
+  const toggleSpeedDial = () => {
+    if (speedClosing) return
+    if (speedOpen) {
+      closeSpeedDial()
+    } else {
+      setSpeedOpen(true)
+    }
+  }
   const { profile } = useAuth()
   const { activeBookId, activeBook, loading: booksLoading } = useActiveBook()
   const { theme, toggle } = useTheme()
@@ -108,8 +170,8 @@ export function AppLayout() {
       at,
       0,
       { to: '/products', label: 'nav.products', icon: Package },
-      { to: '/profit', label: 'nav.profit', icon: TrendingUp },
       { to: '/debts', label: 'nav.debts', icon: HandCoins },
+      { to: '/profit', label: 'nav.profit', icon: TrendingUp },
     )
     return groups
   }, [activeBook?.type])
@@ -157,7 +219,10 @@ export function AppLayout() {
 
         {/* Quick add */}
         <button
-          onClick={() => setAddOpen(true)}
+          onClick={() => {
+            setAddType('expense')
+            setAddOpen(true)
+          }}
           className="pressable btn-sheen group mt-2 flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-3 font-semibold text-primary-foreground transition-all duration-300 hover:brightness-[1.06]"
           aria-label={t('layout.recordTransaction')}
         >
@@ -232,40 +297,95 @@ export function AppLayout() {
         {/* No horizontal padding on the grid: each column is exactly a fifth of
             the bar, which is what the indicator's `w-1/5` + translate assumes. */}
         <div className="relative grid grid-cols-5 py-[5px]">
-          {/* Sliding active indicator. Parked under the center slot and faded
-              out when no tab matches, so it never animates in from a corner.
-              Decelerating ease only — no overshoot past the target slot. */}
+          {/* Sliding active indicator — a squircle that hugs just the icon, so a
+              long label (e.g. "Pengaturan") is never clipped by the pill. Parked
+              under the center slot and faded out when no tab matches, so it never
+              animates in from a corner. Decelerating ease only — no overshoot. */}
           <span
             aria-hidden
-            className="pointer-events-none absolute inset-y-[5px] left-0 w-1/5 px-[12px] transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,0.61,0.36,1)]"
+            className="pointer-events-none absolute top-[6px] left-0 flex w-1/5 justify-center transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,0.61,0.36,1)]"
             style={{
               transform: `translateX(${(activeSlot < 0 ? 2 : activeSlot) * 100}%)`,
               opacity: activeSlot < 0 ? 0 : 1,
             }}
           >
-            <span className="brand-gradient block h-full w-full rounded-[14px] shadow-sm shadow-primary/40" />
+            <span className="brand-gradient block h-[24px] w-[42px] rounded-[13px] shadow-sm shadow-primary/40" />
           </span>
 
           {MOBILE_NAV.map((item, i) =>
             item ? (
-              <MobileNavLink key={item.to} {...item} />
+              <MobileNavLink key={item.to} {...item} active={i === activeSlot} />
             ) : (
               // Spacer column — the Record button is absolutely centered over it.
-              <div key={`slot-${i}`} aria-hidden className="h-[40px]" />
+              <div key={`slot-${i}`} aria-hidden className="h-[46px]" />
             ),
           )}
         </div>
 
+        {/* Speed-dial: the three record directions, stacked above the FAB. */}
+        {(speedOpen || speedClosing) && (
+          <div className="absolute bottom-[84px] left-1/2 z-10 flex -translate-x-1/2 flex-col items-stretch gap-2">
+            {SPEED_ACTIONS.map((a, i) => (
+              <button
+                key={a.type}
+                onClick={() => {
+                  closeSpeedDial(() => {
+                    setAddType(a.type)
+                    setAddOpen(true)
+                  })
+                }}
+                style={{
+                  animationDelay: speedClosing
+                    ? `${i * 35}ms`
+                    : `${(SPEED_ACTIONS.length - 1 - i) * 40}ms`,
+                }}
+                className={cn(
+                  'pressable dock-shadow flex items-center gap-2.5 whitespace-nowrap rounded-full border border-border bg-surface py-2.5 pl-3 pr-5 text-sm font-bold text-foreground transition-transform',
+                  speedClosing ? 'animate-rise-out' : 'animate-rise',
+                )}
+              >
+                <span className={cn('flex h-8 w-8 items-center justify-center rounded-full bg-surface-muted', a.tint)}>
+                  <a.icon className="h-[18px] w-[18px]" />
+                </span>
+                {t(a.label)}
+              </button>
+            ))}
+          </div>
+        )}
+
         <button
-          onClick={() => setAddOpen(true)}
-          className="fab-record pressable group absolute left-1/2 top-0 flex h-[60px] w-[60px] -translate-x-1/2 -translate-y-[17px] items-center justify-center rounded-[19px] text-white ring-[3px] ring-surface transition-transform duration-300 hover:scale-105 active:scale-95"
+          onClick={toggleSpeedDial}
+          aria-expanded={speedOpen && !speedClosing}
+          className="fab-record pressable group absolute left-1/2 top-0 z-10 flex h-[60px] w-[60px] -translate-x-1/2 -translate-y-[17px] items-center justify-center rounded-[19px] text-white ring-[3px] ring-surface transition-transform duration-300 hover:scale-105 active:scale-95"
           aria-label={t('layout.recordTransaction')}
         >
-          <Plus className="h-[28px] w-[28px] stroke-[2.75] transition-transform duration-300 group-active:rotate-90" />
+          <Plus
+            className={cn(
+              'h-[28px] w-[28px] stroke-[2.75] transition-transform duration-300',
+              speedOpen && !speedClosing ? 'rotate-[135deg]' : 'group-active:rotate-90',
+            )}
+          />
         </button>
       </nav>
 
-      <TransactionForm open={addOpen} onClose={() => setAddOpen(false)} />
+      {/* Scrim: tap-away to close the speed-dial (mobile only). */}
+      {(speedOpen || speedClosing) && (
+        <button
+          aria-hidden
+          tabIndex={-1}
+          onClick={() => closeSpeedDial()}
+          className={cn(
+            'fixed inset-0 z-30 bg-black/40 sm:hidden print:hidden',
+            speedClosing ? 'animate-fade-out' : 'animate-fade-in',
+          )}
+        />
+      )}
+
+      <TransactionForm
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        defaultType={addType}
+      />
     </div>
   )
 }
@@ -275,9 +395,7 @@ function SidebarLink({ to, label, icon: Icon, match }: NavItem) {
   const { pathname } = useLocation()
   // A link with `match` owns several routes, so decide active ourselves; plain
   // links fall back to NavLink's own path matching.
-  const matched = match
-    ? match.some((p) => (p === '/' ? pathname === '/' : pathname.startsWith(p)))
-    : undefined
+  const matched = match ? matchesItem(pathname, { to, label, icon: Icon, match }) : undefined
   return (
     <NavLink to={to} end={to === '/'}>
       {({ isActive }) => {
@@ -301,25 +419,44 @@ function SidebarLink({ to, label, icon: Icon, match }: NavItem) {
   )
 }
 
-// Icon-only dock tab. `relative` keeps it painting above the absolutely
-// positioned indicator that slides in behind it.
-function MobileNavLink({ to, label, icon: Icon }: { to: string; label: MsgKey; icon: IconType }) {
+// Dock tab: icon over a text label. Abstract icons alone left people guessing
+// which tab was which, so the word carries the meaning and the icon is decor.
+// `relative` keeps it painting above the absolutely positioned indicator that
+// slides in behind it. Active state is passed down rather than taken from
+// NavLink, because a slot also lights up for the routes it owns via `match`.
+function MobileNavLink({
+  to,
+  label,
+  icon: Icon,
+  active,
+}: NavItem & { active: boolean }) {
   const { t } = useT()
   return (
     <NavLink
       to={to}
       end={to === '/'}
-      aria-label={t(label)}
-      className="relative flex h-[40px] w-full items-center justify-center"
+      className="relative flex h-[46px] w-full flex-col items-center gap-[4px] px-0.5 pt-[3px]"
     >
-      {({ isActive }) => (
-        <Icon
-          className={cn(
-            'h-[21px] w-[21px] transition-[color,transform] duration-300 ease-[cubic-bezier(0.22,0.61,0.36,1)] active:scale-90',
-            isActive ? 'scale-105 text-white' : 'text-muted-foreground',
-          )}
-        />
-      )}
+      {/* Icon sits over the gradient squircle → white; the label lives below it
+          on the bar, so it stays its own colour and never disappears. */}
+      <Icon
+        className={cn(
+          'h-[20px] w-[20px] shrink-0 transition-[color,transform] duration-300 ease-[cubic-bezier(0.22,0.61,0.36,1)] active:scale-90',
+          active ? 'text-white' : 'text-muted-foreground',
+        )}
+      />
+      {/* px, not rem: the text-size setting scales the root font size, which
+          would otherwise wrap these labels and blow out the bar height. */}
+      <span
+        className={cn(
+          // leading must clear descenders (g/p): `truncate` clips overflow, so a
+          // tight line-box would shave the tails off "Pengaturan"/"Dompet".
+          'max-w-full truncate text-[10px] font-semibold leading-[14px] transition-colors duration-300',
+          active ? 'text-primary' : 'text-muted-foreground',
+        )}
+      >
+        {t(label)}
+      </span>
     </NavLink>
   )
 }

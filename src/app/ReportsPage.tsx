@@ -61,11 +61,25 @@ import {
 import { toCsv, downloadTextFile } from '@/lib/csv'
 import { AiInsightCard } from '@/features/ai/AiInsightCard'
 import { formatMoney, fromMinorUnits } from '@/lib/money'
+import { useT } from '@/features/settings/language-context'
+import type { MsgKey } from '@/i18n'
 import { cn } from '@/lib/utils'
 import type { Account, Transaction, TransactionSplit } from '@/types/db'
 
+// Mon-first weekday order + label keys, so the weekday chart reads localized.
+const WEEKDAY_KEYS: MsgKey[] = [
+  'rep.dow.mon',
+  'rep.dow.tue',
+  'rep.dow.wed',
+  'rep.dow.thu',
+  'rep.dow.fri',
+  'rep.dow.sat',
+  'rep.dow.sun',
+]
+
 export function ReportsPage() {
   const { profile } = useAuth()
+  const { t } = useT()
   const base = profile?.base_currency ?? 'IDR'
 
   const [preset, setPreset] = useState<DatePreset>('this_month')
@@ -234,9 +248,8 @@ export function ReportsPage() {
       sums[new Date(tx.occurred_at).getDay()] += tx.amount
     }
     const order = [1, 2, 3, 4, 5, 6, 0]
-    const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-    return order.map((d, i) => ({ label: labels[i], total: sums[d] }))
-  }, [baseTxns])
+    return order.map((d, i) => ({ label: t(WEEKDAY_KEYS[i]), total: sums[d] }))
+  }, [baseTxns, t])
 
   const biggest = useMemo(
     () => [...baseTxns].sort((a, b) => b.amount - a.amount).slice(0, 8),
@@ -265,31 +278,45 @@ export function ReportsPage() {
 
   function exportCsv() {
     const rows: (string | number)[][] = [
-      ['Report', `${breakdownKind} by category`],
-      ['Period', `${format(from, 'yyyy-MM-dd')} to ${format(to, 'yyyy-MM-dd')}`],
-      ['Currency', base],
+      [t('rep.csvReport'), t(breakdownKind === 'expense' ? 'rep.csvReportExpense' : 'rep.csvReportIncome')],
+      [
+        t('rep.csvPeriod'),
+        t('rep.csvPeriodValue', { from: format(from, 'yyyy-MM-dd'), to: format(to, 'yyyy-MM-dd') }),
+      ],
+      [t('rep.csvCurrency'), base],
       [],
-      ['Category', 'Amount', 'Share %'],
+      [t('common.category'), t('common.amount'), t('rep.csvShare')],
       ...breakdown.map((s) => [s.name, fromMinorUnits(s.total, base), s.pct.toFixed(1)]),
       ...(topPayees.length > 0
         ? ([
             [],
-            [`Top ${breakdownKind === 'expense' ? 'payees' : 'sources'}`, 'Amount', 'Count'],
+            [
+              t(breakdownKind === 'expense' ? 'rep.topPayees' : 'rep.topSources'),
+              t('common.amount'),
+              t('rep.csvCount'),
+            ],
             ...topPayees.map((p) => [p.name, fromMinorUnits(p.total, base), p.count]),
           ] as (string | number)[][])
         : []),
       [],
-      ['Total income', fromMinorUnits(totals.income, base)],
-      ['Total expense', fromMinorUnits(totals.expense, base)],
-      ['Net', fromMinorUnits(totals.net, base)],
+      [t('rep.csvTotalIncome'), fromMinorUnits(totals.income, base)],
+      [t('rep.csvTotalExpense'), fromMinorUnits(totals.expense, base)],
+      [t('rep.statNet'), fromMinorUnits(totals.net, base)],
     ]
     downloadTextFile(`tracr-report-${format(new Date(), 'yyyyMMdd')}.csv`, toCsv(rows))
   }
 
+  // Presets/labels are language-aware; resolve them here so the dropdown stays
+  // in sync with the active locale.
+  const presetOptions = useMemo(
+    () => DATE_PRESETS.map((p) => ({ value: p.value, label: t(p.labelKey) })),
+    [t],
+  )
+
   return (
     <div className="mx-auto max-w-5xl space-y-5">
       <PageHeader
-        title="Reports"
+        title={t('nav.reports')}
         subtitle={`${format(from, 'd MMM yyyy')} – ${format(to, 'd MMM yyyy')} · ${base}`}
         action={
           <div className="flex items-center gap-2 print:hidden">
@@ -300,7 +327,7 @@ export function ReportsPage() {
             className="inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-surface px-4 text-sm font-semibold text-foreground shadow-sm transition hover:bg-surface-muted disabled:opacity-50"
           >
             <Printer className="h-4 w-4" />
-            <span className="hidden sm:inline">Print / PDF</span>
+            <span className="hidden sm:inline">{t('rep.print')}</span>
           </button>
           <button
             type="button"
@@ -309,7 +336,7 @@ export function ReportsPage() {
             className="inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-surface px-4 text-sm font-semibold text-foreground shadow-sm transition hover:bg-surface-muted disabled:opacity-50"
           >
             <Download className="h-4 w-4" />
-            <span className="hidden sm:inline">Export CSV</span>
+            <span className="hidden sm:inline">{t('rep.exportCsv')}</span>
           </button>
           </div>
         }
@@ -320,8 +347,8 @@ export function ReportsPage() {
         <Dropdown
           value={preset}
           onChange={setPreset}
-          options={DATE_PRESETS}
-          aria-label="Date range"
+          options={presetOptions}
+          aria-label={t('rep.dateRangeAria')}
           className="w-full sm:w-56"
         />
         {preset === 'custom' && (
@@ -332,7 +359,7 @@ export function ReportsPage() {
               onChange={(e) => setCustomFrom(e.target.value)}
               className="h-11 rounded-xl border border-border bg-surface px-3 text-sm text-foreground shadow-sm focus-visible:border-primary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
             />
-            <span className="text-sm text-muted-foreground">to</span>
+            <span className="text-sm text-muted-foreground">{t('rep.rangeTo')}</span>
             <input
               type="date"
               value={customTo}
@@ -348,8 +375,7 @@ export function ReportsPage() {
 
       {skipped.length > 0 && (
         <p className="rounded-xl border border-border bg-surface-muted/50 px-4 py-2.5 text-xs font-medium text-muted-foreground">
-          Some {skipped.join(', ')} transactions are excluded — add an exchange rate in Settings so
-          they can be valued in {base}.
+          {t('rep.skippedNotice', { codes: skipped.join(', '), base })}
         </p>
       )}
 
@@ -358,36 +384,36 @@ export function ReportsPage() {
       ) : baseTxns.length === 0 ? (
         <EmptyState
           icon={<BarChart3 className="h-7 w-7" />}
-          title="No data for this period"
-          description="Log some income or expenses, or widen the date range to see your reports."
+          title={t('rep.emptyTitle')}
+          description={t('rep.emptyDesc')}
         />
       ) : (
         <div className="space-y-5">
           {/* Summary cards */}
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <Stat
-              label="Income"
+              label={t('common.income')}
               value={formatMoney(totals.income, base, { signDisplay: 'never' })}
               tone="positive"
               icon={TrendingUp}
               delta={hasComparison ? deltaFor(totals.income, prevTotals.income, true) : undefined}
             />
             <Stat
-              label="Expenses"
+              label={t('common.expense')}
               value={formatMoney(totals.expense, base, { signDisplay: 'never' })}
               tone="negative"
               icon={TrendingDown}
               delta={hasComparison ? deltaFor(totals.expense, prevTotals.expense, false) : undefined}
             />
             <Stat
-              label="Net"
+              label={t('rep.statNet')}
               value={formatMoney(totals.net, base, { signDisplay: 'always' })}
               tone={totals.net >= 0 ? 'positive' : 'negative'}
               icon={Wallet}
               delta={hasComparison ? deltaFor(totals.net, prevTotals.net, true) : undefined}
             />
             <Stat
-              label="Avg / day spend"
+              label={t('rep.statAvgDay')}
               value={formatMoney(Math.round(avgDailySpend), base, { signDisplay: 'never' })}
               tone="neutral"
               icon={BarChart3}
@@ -398,7 +424,7 @@ export function ReportsPage() {
           {/* Net worth over time */}
           <Card className="p-5">
             <div className="mb-1 flex items-baseline justify-between gap-3">
-              <h2 className="section-head text-[17px] text-foreground">Net worth over time</h2>
+              <h2 className="section-head text-[17px] text-foreground">{t('rep.netWorthTitle')}</h2>
               <span className="font-numeric text-sm font-extrabold text-foreground">
                 {formatMoney(netWorth.nwNow, base)}
               </span>
@@ -410,7 +436,7 @@ export function ReportsPage() {
               )}
             >
               {netWorth.change >= 0 ? '▲' : '▼'}{' '}
-              {formatMoney(netWorth.change, base, { signDisplay: 'always' })} over this period
+              {formatMoney(netWorth.change, base, { signDisplay: 'always' })} {t('rep.overThisPeriod')}
             </p>
             <ResponsiveContainer width="100%" height={220}>
               <AreaChart data={netWorth.series} margin={{ top: 8, right: 0, bottom: 0, left: 0 }}>
@@ -432,7 +458,7 @@ export function ReportsPage() {
                 />
                 <Tooltip
                   contentStyle={tooltipStyle}
-                  formatter={(value) => [formatMoney(Number(value), base), 'Net worth']}
+                  formatter={(value) => [formatMoney(Number(value), base), t('rep.netWorth')]}
                 />
                 <Area
                   type="monotone"
@@ -447,7 +473,7 @@ export function ReportsPage() {
 
           {/* Income vs expense over time */}
           <Card className="p-5">
-            <h2 className="section-head mb-4 text-[17px] text-foreground">Money in vs money out</h2>
+            <h2 className="section-head mb-4 text-[17px] text-foreground">{t('rep.inVsOut')}</h2>
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={timeline} margin={{ top: 8, right: 0, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
@@ -463,27 +489,30 @@ export function ReportsPage() {
                 <Tooltip
                   cursor={chartCursor}
                   contentStyle={tooltipStyle}
-                  formatter={(value, name) => [formatMoney(Number(value), base), labelize(String(name))]}
+                  formatter={(value, name) => [
+                    formatMoney(Number(value), base),
+                    t(name === 'income' ? 'common.income' : 'common.expense'),
+                  ]}
                 />
                 <Bar dataKey="income" fill="var(--positive)" radius={[4, 4, 0, 0]} maxBarSize={28} />
                 <Bar dataKey="expense" fill="var(--negative)" radius={[4, 4, 0, 0]} maxBarSize={28} />
               </BarChart>
             </ResponsiveContainer>
             <div className="mt-3 flex items-center justify-center gap-5 text-xs font-semibold">
-              <LegendDot color="var(--positive)" label="Income" />
-              <LegendDot color="var(--negative)" label="Expense" />
+              <LegendDot color="var(--positive)" label={t('common.income')} />
+              <LegendDot color="var(--negative)" label={t('common.expense')} />
             </div>
           </Card>
 
           {/* Spending calendar (daily heatmap) */}
           <Card className="p-5">
-            <h2 className="section-head mb-4 text-[17px] text-foreground">Spending calendar</h2>
+            <h2 className="section-head mb-4 text-[17px] text-foreground">{t('rep.calendarTitle')}</h2>
             <CalendarHeatmap data={heatmap} from={from} to={to} base={base} />
           </Card>
 
           {/* Spending by weekday */}
           <Card className="p-5">
-            <h2 className="section-head mb-4 text-[17px] text-foreground">Spending by weekday</h2>
+            <h2 className="section-head mb-4 text-[17px] text-foreground">{t('rep.weekdayTitle')}</h2>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={weekday} margin={{ top: 8, right: 0, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
@@ -497,7 +526,7 @@ export function ReportsPage() {
                 <Tooltip
                   cursor={chartCursor}
                   contentStyle={tooltipStyle}
-                  formatter={(value) => [formatMoney(Number(value), base), 'Spent']}
+                  formatter={(value) => [formatMoney(Number(value), base), t('rep.spent')]}
                 />
                 <Bar dataKey="total" fill="var(--primary)" radius={[4, 4, 0, 0]} maxBarSize={40} />
               </BarChart>
@@ -508,7 +537,7 @@ export function ReportsPage() {
           <Card className="p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="section-head text-[17px] text-foreground">
-                {breakdownKind === 'expense' ? 'Spending' : 'Income'} by category
+                {t(breakdownKind === 'expense' ? 'rep.byCategoryExpense' : 'rep.byCategoryIncome')}
               </h2>
               <div className="inline-flex overflow-hidden rounded-lg border border-border text-xs font-semibold">
                 {(['expense', 'income'] as const).map((k) => (
@@ -526,14 +555,19 @@ export function ReportsPage() {
                         : 'bg-surface text-muted-foreground hover:text-foreground',
                     )}
                   >
-                    {k === 'expense' ? 'Spending' : 'Income'}
+                    {t(k === 'expense' ? 'common.expense' : 'common.income')}
                   </button>
                 ))}
               </div>
             </div>
 
             {breakdown.length === 0 ? (
-              <EmptyState title="Nothing here" description={`No ${breakdownKind} in this period.`} />
+              <EmptyState
+                title={t('rep.nothingHere')}
+                description={t(
+                  breakdownKind === 'expense' ? 'rep.noneExpenseInPeriod' : 'rep.noneIncomeInPeriod',
+                )}
+              />
             ) : (
               <div className="grid items-center gap-6 sm:grid-cols-[200px_1fr]">
                 <div className="relative mx-auto h-[200px] w-[200px]">
@@ -562,7 +596,7 @@ export function ReportsPage() {
                   </ResponsiveContainer>
                   <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
                     <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      Total
+                      {t('rep.total')}
                     </span>
                     <span className="font-numeric text-sm font-extrabold text-foreground">
                       {formatMoney(
@@ -629,7 +663,7 @@ export function ReportsPage() {
                             {s.children.length > 0 && (
                               <div className="space-y-2">
                                 <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                  Subcategories
+                                  {t('rep.subcategories')}
                                 </p>
                                 {s.children.map((c) => (
                                   <DrillBar key={c.id} label={c.name} value={c.total} pct={c.pct} color={c.color} base={base} />
@@ -639,15 +673,15 @@ export function ReportsPage() {
                             {drillTags.length > 0 && (
                               <div className="space-y-2">
                                 <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                  <TagIcon className="h-3 w-3" /> Tags
+                                  <TagIcon className="h-3 w-3" /> {t('section.tags')}
                                 </p>
-                                {drillTags.map((t) => (
-                                  <DrillBar key={t.id} label={t.name} value={t.total} pct={t.pct} color={t.color} base={base} />
+                                {drillTags.map((tag) => (
+                                  <DrillBar key={tag.id} label={tag.name} value={tag.total} pct={tag.pct} color={tag.color} base={base} />
                                 ))}
                               </div>
                             )}
                             {s.children.length === 0 && drillTags.length === 0 && (
-                              <p className="text-xs text-muted-foreground">No subcategories or tags here.</p>
+                              <p className="text-xs text-muted-foreground">{t('rep.noDrill')}</p>
                             )}
                           </div>
                         )}
@@ -661,7 +695,7 @@ export function ReportsPage() {
 
           {/* Biggest transactions */}
           <Card className="p-5">
-            <h2 className="section-head mb-3 text-[17px] text-foreground">Biggest transactions</h2>
+            <h2 className="section-head mb-3 text-[17px] text-foreground">{t('rep.biggest')}</h2>
             <ul className="divide-y divide-border">
               {biggest.map((tx) => (
                 <BiggestRow key={tx.id} tx={tx} base={base} categoryName={categories.find((c) => c.id === tx.category_id)?.name} />
@@ -673,7 +707,7 @@ export function ReportsPage() {
           {topPayees.length > 0 && (
             <Card className="p-5">
               <h2 className="section-head mb-3 text-[17px] text-foreground">
-                Top {breakdownKind === 'expense' ? 'payees' : 'sources'}
+                {t(breakdownKind === 'expense' ? 'rep.topPayees' : 'rep.topSources')}
               </h2>
               <ul className="space-y-2.5">
                 {topPayees.map((p) => (
@@ -706,10 +740,6 @@ export function ReportsPage() {
       )}
     </div>
   )
-}
-
-function labelize(name: string) {
-  return name.charAt(0).toUpperCase() + name.slice(1)
 }
 
 function LegendDot({ color, label }: { color: string; label: string }) {
@@ -747,6 +777,7 @@ function Stat({
   icon: React.ComponentType<{ className?: string }>
   delta?: Delta
 }) {
+  const { t } = useT()
   const toneCls =
     tone === 'positive'
       ? 'text-positive bg-positive/10'
@@ -775,7 +806,7 @@ function Stat({
             <span>
               {delta.pct >= 0 ? '▲' : '▼'} {Math.abs(delta.pct).toFixed(0)}%
             </span>
-            <span className="font-medium text-muted-foreground">vs prev</span>
+            <span className="font-medium text-muted-foreground">{t('rep.vsPrev')}</span>
           </p>
         )}
       </div>
@@ -832,6 +863,7 @@ function CalendarHeatmap({
   to: Date
   base: string
 }) {
+  const { t } = useT()
   const { weeks, max, fromKey, toKey } = useMemo(() => {
     const start = startOfWeek(from, { weekStartsOn: 1 })
     const end = endOfWeek(to, { weekStartsOn: 1 })
@@ -893,12 +925,12 @@ function CalendarHeatmap({
 
         {/* Legend */}
         <div className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-          <span>Less</span>
+          <span>{t('rep.less')}</span>
           <span className="h-[11px] w-[11px] rounded-[3px]" style={{ backgroundColor: 'var(--surface-muted)' }} />
           {HEAT_LEVELS.map((o) => (
             <span key={o} className="h-[11px] w-[11px] rounded-[3px]" style={{ backgroundColor: 'var(--primary)', opacity: o }} />
           ))}
-          <span>More</span>
+          <span>{t('rep.more')}</span>
         </div>
       </div>
     </div>
@@ -914,12 +946,13 @@ function BiggestRow({
   base: string
   categoryName?: string
 }) {
+  const { t } = useT()
   const income = tx.type === 'income'
   return (
     <li className="flex items-center justify-between gap-3 py-2.5">
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold text-foreground">
-          {tx.note || categoryName || (income ? 'Income' : 'Expense')}
+          {tx.note || categoryName || t(income ? 'common.income' : 'common.expense')}
         </p>
         <p className="text-xs font-medium text-muted-foreground">
           {format(new Date(tx.occurred_at), 'd MMM yyyy')}

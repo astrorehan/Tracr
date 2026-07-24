@@ -15,6 +15,7 @@ import {
   Moon,
   Sun,
   ChevronRight,
+  ChevronDown,
   Store,
   Package,
   HandCoins,
@@ -52,6 +53,7 @@ import { BudgetPaceCard } from '@/features/budgets/BudgetPaceCard'
 import { GoalsPreviewCard } from '@/features/goals/GoalsPreviewCard'
 import { TransactionRow } from '@/features/transactions/TransactionRow'
 import { TransactionForm } from '@/features/transactions/TransactionForm'
+import { QuickEntryBar } from '@/features/transactions/QuickEntryBar'
 import { AiHomeCard } from '@/features/ai/AiHomeCard'
 import { indexById } from '@/lib/collections'
 import { cn } from '@/lib/utils'
@@ -74,6 +76,7 @@ export function DashboardPage() {
   const base = profile?.base_currency ?? 'IDR'
 
   const [addOpen, setAddOpen] = useState(false)
+  const [detailsOpen, setDetailsOpen] = useState(false)
   const [hidden, setHidden] = useHiddenBalance()
 
   const { data: accounts = [], isLoading: la } = useAccounts()
@@ -270,8 +273,8 @@ export function DashboardPage() {
               <h2 className="text-base font-bold text-foreground">{t('biz.ledger')}</h2>
             </div>
             <div className="grid grid-cols-3 gap-1">
-              <QuickTile label={t('debt.title')} icon={HandCoins} chip="green" to="/debts" />
               <QuickTile label={t('nav.products')} icon={Package} chip="orange" to="/products" />
+              <QuickTile label={t('debt.title')} icon={HandCoins} chip="green" to="/debts" />
               <QuickTile label={t('nav.profit')} icon={TrendingUp} chip="blue" to="/profit" />
             </div>
           </Card>
@@ -279,7 +282,8 @@ export function DashboardPage() {
 
         <TodayCard allowance={allowance} base={base} />
 
-        <ForecastCard forecast={health.forecast} base={base} />
+        {/* Express entry: log an expense in one line, before any card of charts. */}
+        <QuickEntryBar />
 
         <AttentionCard />
 
@@ -301,13 +305,34 @@ export function DashboardPage() {
           <MoneyFlowCard kind="income" flow={health.inflow} base={base} month={monthName} />
           <MoneyFlowCard kind="expense" flow={health.outflow} base={base} month={monthName} />
         </div>
-        <NetStrip net={month.net} prevNet={prevMonth.net} base={base} />
+        {/* Everything past this line answers "how am I doing over time", which
+            is a question people ask on purpose — not one worth six more cards of
+            scrolling past every time they open the app. Folded away by default. */}
+        <button
+          type="button"
+          onClick={() => setDetailsOpen((o) => !o)}
+          aria-expanded={detailsOpen}
+          className="pressable flex w-full items-center justify-center gap-1.5 rounded-2xl border border-border bg-surface py-3 text-sm font-bold text-primary transition-colors hover:bg-surface-muted"
+        >
+          {t(detailsOpen ? 'dash.hideDetails' : 'dash.moreDetails')}
+          <ChevronDown
+            className={cn('h-4 w-4 transition-transform duration-300', detailsOpen && 'rotate-180')}
+          />
+        </button>
 
-        <BudgetPaceCard items={budgetItems} base={base} />
+        {detailsOpen && (
+          <div className="animate-fade-in space-y-5">
+            <ForecastCard forecast={health.forecast} base={base} />
 
-        <WalletScoreCard score={health.score} runway={health.runway} tip={health.tip} />
+            <NetStrip net={month.net} prevNet={prevMonth.net} base={base} />
 
-        <GoalsPreviewCard monthNet={month.net} base={base} />
+            <BudgetPaceCard items={budgetItems} base={base} />
+
+            <WalletScoreCard score={health.score} runway={health.runway} tip={health.tip} />
+
+            <GoalsPreviewCard monthNet={month.net} base={base} />
+          </div>
+        )}
 
         {/* Assistant — chat about your money */}
         <AiHomeCard />
@@ -346,46 +371,6 @@ export function DashboardPage() {
             )}
           </section>
 
-          {/* Light / dark switch — big, playful, GoPay-style */}
-          <section className="pb-4 pt-4 text-center">
-            <h2 className="text-xl font-extrabold tracking-tight text-foreground">
-              {t('dash.lightOrDark')}
-            </h2>
-            <p className="mt-1 text-sm font-medium text-muted-foreground">{t('dash.flipSwitch')}</p>
-
-            <button
-              type="button"
-              role="switch"
-              aria-checked={theme === 'dark'}
-              onClick={toggle}
-              aria-label={t('dash.switchTheme')}
-              className="pressable mx-auto mt-7 flex h-[128px] w-[128px] items-center justify-center rounded-[30px] bg-surface-muted"
-            >
-              <span
-                className={cn(
-                  'flex h-[60px] w-[92px] items-center rounded-full p-1.5 shadow-inner transition-colors duration-300',
-                  theme === 'dark' ? 'bg-primary/80' : 'bg-border',
-                )}
-              >
-                <span
-                  className={cn(
-                    'flex h-12 w-12 items-center justify-center rounded-full bg-surface shadow-md transition-transform duration-300',
-                    theme === 'dark' ? 'translate-x-[32px]' : 'translate-x-0',
-                  )}
-                >
-                  {theme === 'dark' ? (
-                    <Moon className="h-5 w-5 text-primary" />
-                  ) : (
-                    <Sun className="h-5 w-5 text-warning" />
-                  )}
-                </span>
-              </span>
-            </button>
-
-            <p className="mx-auto mt-7 max-w-[280px] text-sm font-medium text-muted-foreground">
-              {t('dash.onePlace')}
-            </p>
-          </section>
         </aside>
       </div>
       {/* end desktop grid */}
@@ -512,7 +497,6 @@ function DashboardSkeleton() {
       <Skeleton className="h-52 rounded-none sm:mt-6 sm:h-44 sm:rounded-[24px]" />
       <div className="-mt-5 space-y-5 rounded-t-[26px] bg-background px-4 pb-2 pt-5 sm:mt-6 sm:rounded-none sm:bg-transparent sm:px-0 sm:pt-0">
         <Skeleton className="h-44 rounded-[20px]" /> {/* today's allowance */}
-        <Skeleton className="h-28 rounded-[20px]" /> {/* month-end forecast */}
         <Skeleton className="h-[72px] rounded-[20px]" /> {/* needs attention */}
         <div className="grid grid-cols-4 gap-x-1 gap-y-4 rounded-[20px] border border-border bg-surface p-4">
           {Array.from({ length: 8 }).map((_, i) => (
@@ -527,13 +511,12 @@ function DashboardSkeleton() {
           <Skeleton className="h-56 rounded-[20px]" />
           <Skeleton className="h-56 rounded-[20px]" />
         </div>
-        <Skeleton className="h-12 rounded-[20px]" />
-        <Skeleton className="h-24 rounded-[20px]" /> {/* budget pace */}
-        <Skeleton className="h-52 rounded-[20px]" /> {/* wallet health */}
-        <Skeleton className="h-40 rounded-[20px]" /> {/* savings goals */}
+        {/* the "see more detail" toggle — the analytics behind it start folded,
+            so the skeleton stops here too */}
+        <Skeleton className="h-12 rounded-2xl" />
         <div className="space-y-2">
           <Skeleton className="h-4 w-32" />
-          <Skeleton className="h-64 rounded-[20px]" />
+          <Skeleton className="h-64 rounded-[20px]" /> {/* assistant */}
         </div>
       </div>
     </div>

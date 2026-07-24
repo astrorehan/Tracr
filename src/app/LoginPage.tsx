@@ -11,6 +11,7 @@ import {
   Lock,
 } from 'lucide-react'
 import { useAuth } from '@/features/auth/useAuth'
+import { useT } from '@/features/settings/language-context'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { PinInput } from '@/components/ui/PinInput'
@@ -18,6 +19,7 @@ import { CenterSpinner } from '@/components/ui/States'
 
 export function LoginPage() {
   const { session, loading, signInWithPhone, signUpWithPhone, signInWithGoogle } = useAuth()
+  const { t } = useT()
   const [busy, setBusy] = useState(false)
   const [isRegistering, setIsRegistering] = useState(false)
   const [loginStep, setLoginStep] = useState<'phone' | 'pin'>('phone')
@@ -34,7 +36,7 @@ export function LoginPage() {
     setErrorMsg('')
     const cleanPhone = phone.trim().replace(/[^0-9]/g, '')
     if (!cleanPhone || cleanPhone.length < 8) {
-      setErrorMsg('Masukkan nomor HP yang valid (minimal 8 angka).')
+      setErrorMsg(t('login.errBadPhone'))
       return
     }
     setLoginStep('pin')
@@ -50,37 +52,37 @@ export function LoginPage() {
 
     if (isRegistering) {
       if (!name.trim()) {
-        setErrorMsg('Masukkan nama lengkap Anda.')
+        setErrorMsg(t('login.errNoName'))
         setBusy(false)
         return
       }
       if (!cleanPhone || cleanPhone.length < 8) {
-        setErrorMsg('Masukkan nomor HP yang valid (minimal 8 angka).')
+        setErrorMsg(t('login.errBadPhone'))
         setBusy(false)
         return
       }
       if (cleanPin.length < 6) {
-        setErrorMsg('Masukkan PIN 6 angka.')
+        setErrorMsg(t('login.errPinLength'))
         setBusy(false)
         return
       }
       try {
         await signUpWithPhone(cleanPhone, cleanPin, name.trim())
-      } catch (err: any) {
-        setErrorMsg(err.message || 'Terjadi kesalahan saat pendaftaran.')
+      } catch (err) {
+        setErrorMsg(err instanceof Error ? err.message : t('login.errRegisterFailed'))
       } finally {
         setBusy(false)
       }
     } else {
       if (cleanPin.length < 6) {
-        setErrorMsg('Masukkan 6 angka PIN Anda.')
+        setErrorMsg(t('login.errPinRequired'))
         setBusy(false)
         return
       }
       try {
         await signInWithPhone(cleanPhone, cleanPin)
-      } catch (err: any) {
-        setErrorMsg('Nomor HP atau PIN salah. Silakan periksa kembali.')
+      } catch {
+        setErrorMsg(t('login.errWrongCredentials'))
       } finally {
         setBusy(false)
       }
@@ -91,8 +93,8 @@ export function LoginPage() {
     setBusy(true)
     try {
       await signInWithGoogle()
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Gagal masuk dengan Google.')
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : t('login.errGoogleFailed'))
     } finally {
       setBusy(false)
     }
@@ -126,13 +128,11 @@ export function LoginPage() {
           </div>
           <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white/90 backdrop-blur-md mb-2">
             <Sparkles className="h-3.5 w-3.5" />
-            Smart Financial Tracker
+            {t('login.tagline')}
           </div>
           <h1 className="font-display text-4xl font-black tracking-tight">Tracr</h1>
           <p className="mt-2 text-sm font-medium text-white/85">
-            {isRegistering
-              ? 'Buat akun baru untuk mulai mencatat keuangan'
-              : 'Kelola & pantau arus kas Anda dalam satu genggaman'}
+            {t(isRegistering ? 'login.subtitleRegister' : 'login.subtitleSignIn')}
           </p>
         </div>
 
@@ -151,11 +151,11 @@ export function LoginPage() {
               <div>
                 <label className="mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   <User className="h-3.5 w-3.5 text-primary" />
-                  Nama Lengkap
+                  {t('login.fullName')}
                 </label>
                 <Input
                   type="text"
-                  placeholder="Contoh: Budi Santoso"
+                  placeholder={t('login.fullNamePlaceholder')}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   disabled={busy}
@@ -167,7 +167,7 @@ export function LoginPage() {
               <div>
                 <label className="mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   <Smartphone className="h-3.5 w-3.5 text-primary" />
-                  Nomor HP
+                  {t('login.phone')}
                 </label>
                 <Input
                   type="tel"
@@ -184,7 +184,7 @@ export function LoginPage() {
                 <label className="mb-2 flex items-center justify-between text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   <span className="flex items-center gap-1.5">
                     <KeyRound className="h-3.5 w-3.5 text-primary" />
-                    Buat PIN (6 Angka)
+                    {t('login.createPin')}
                   </span>
                 </label>
                 <PinInput value={pin} onChange={setPin} disabled={busy} />
@@ -196,7 +196,7 @@ export function LoginPage() {
                 loading={busy}
                 className="btn-sheen group mt-4 w-full rounded-2xl py-3.5 font-bold shadow-lg shadow-primary/25 transition-all duration-300 hover:brightness-105 active:scale-[0.99]"
               >
-                <span>Daftar Sekarang</span>
+                <span>{t('login.register')}</span>
                 <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
               </Button>
             </form>
@@ -206,7 +206,7 @@ export function LoginPage() {
               <div>
                 <label className="mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   <Smartphone className="h-3.5 w-3.5 text-primary" />
-                  Nomor HP Anda
+                  {t('login.yourPhone')}
                 </label>
                 <Input
                   type="tel"
@@ -226,7 +226,7 @@ export function LoginPage() {
                 loading={busy}
                 className="btn-sheen group w-full rounded-2xl py-3.5 font-bold shadow-lg shadow-primary/25 transition-all duration-300 hover:brightness-105 active:scale-[0.99]"
               >
-                <span>Lanjut</span>
+                <span>{t('login.continue')}</span>
                 <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
               </Button>
             </form>
@@ -241,7 +241,7 @@ export function LoginPage() {
                   </div>
                   <div className="min-w-0">
                     <span className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Akun
+                      {t('login.account')}
                     </span>
                     <span className="block truncate text-sm font-extrabold text-foreground">
                       {phone}
@@ -258,7 +258,7 @@ export function LoginPage() {
                   className="flex items-center gap-1 rounded-xl bg-surface px-3 py-1.5 text-xs font-bold text-primary border border-border transition-colors hover:bg-surface-muted"
                 >
                   <ChevronLeft className="h-3.5 w-3.5" />
-                  Ubah
+                  {t('login.change')}
                 </button>
               </div>
 
@@ -266,7 +266,7 @@ export function LoginPage() {
                 <label className="mb-2 flex items-center justify-between text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   <span className="flex items-center gap-1.5">
                     <Lock className="h-3.5 w-3.5 text-primary" />
-                    Masukkan PIN Keamanan (6 Angka)
+                    {t('login.enterPin')}
                   </span>
                 </label>
                 <PinInput value={pin} onChange={setPin} disabled={busy} autoFocus />
@@ -278,7 +278,7 @@ export function LoginPage() {
                 loading={busy}
                 className="btn-sheen group w-full rounded-2xl py-3.5 font-bold shadow-lg shadow-primary/25 transition-all duration-300 hover:brightness-105 active:scale-[0.99]"
               >
-                <span>Masuk ke Akun</span>
+                <span>{t('login.signIn')}</span>
                 <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
               </Button>
             </form>
@@ -291,11 +291,7 @@ export function LoginPage() {
               onClick={toggleMode}
               className="group inline-flex items-center text-sm font-bold text-primary transition-colors hover:text-primary/80"
             >
-              <span>
-                {isRegistering
-                  ? 'Sudah punya akun? Masuk di sini'
-                  : 'Belum punya akun? Daftar sekarang'}
-              </span>
+              <span>{t(isRegistering ? 'login.haveAccount' : 'login.noAccount')}</span>
             </button>
           </div>
 
@@ -305,7 +301,7 @@ export function LoginPage() {
               <span className="w-full border-t border-border/80" />
             </div>
             <div className="relative flex justify-center text-[10px] font-extrabold uppercase tracking-widest">
-              <span className="bg-surface px-3 text-muted-foreground">Atau Masuk Dengan</span>
+              <span className="bg-surface px-3 text-muted-foreground">{t('login.orSignInWith')}</span>
             </div>
           </div>
 
@@ -319,13 +315,13 @@ export function LoginPage() {
             className="w-full rounded-2xl py-3.5 font-bold border-border/80 shadow-sm transition-all duration-200 hover:border-primary/50 hover:bg-surface-muted/50 active:scale-[0.99]"
           >
             <GoogleIcon />
-            <span>Continue with Google</span>
+            <span>{t('login.continueWithGoogle')}</span>
           </Button>
 
           {/* Trust & Security Badge */}
           <div className="mt-8 flex items-center justify-center gap-1.5 text-center text-xs font-semibold text-muted-foreground/80">
             <ShieldCheck className="h-4 w-4 text-emerald-500 shrink-0" />
-            <span>Privat & Terenkripsi dengan Keamanan Tinggi</span>
+            <span>{t('login.securityNote')}</span>
           </div>
         </div>
       </div>

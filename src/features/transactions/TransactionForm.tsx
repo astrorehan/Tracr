@@ -26,6 +26,8 @@ import { isExpression } from '@/lib/calc'
 import { useAuth } from '@/features/auth/useAuth'
 import { useActiveBook } from '@/features/books/useActiveBook'
 import { useT } from '@/features/settings/language-context'
+import type { MsgKey } from '@/i18n'
+import type { QuickDraft } from './quickEntry'
 import { callAi, type ScanDocument } from '@/features/ai/api'
 import { prepareScanImages } from '@/features/ai/image'
 import { useFxRates } from '@/features/fx/api'
@@ -61,22 +63,30 @@ interface Props {
   initialTagIds?: string[]
   initialSplits?: TransactionSplit[]
   initialCounterAmount?: string
+  /** Seed a brand-new entry from the express-entry parser (ignored when editing). */
+  initialDraft?: QuickDraft
+  /** Preselect the money direction for a new entry (used by the FAB speed-dial). */
+  defaultType?: TransactionType
 }
 
 type IconType = ComponentType<{ className?: string }>
 
 // Active pill takes the money-direction color + a matching direction glyph so the
 // chosen type reads at a glance.
-const TYPES: { value: TransactionType; label: string; activeText: string; icon: IconType }[] = [
-  { value: 'expense', label: 'Expense', activeText: 'text-negative', icon: ArrowUpRight },
-  { value: 'income', label: 'Income', activeText: 'text-positive', icon: ArrowDownLeft },
-  { value: 'transfer', label: 'Transfer', activeText: 'text-foreground', icon: ArrowLeftRight },
+const TYPES: { value: TransactionType; label: MsgKey; activeText: string; icon: IconType }[] = [
+  { value: 'expense', label: 'common.expense', activeText: 'text-negative', icon: ArrowUpRight },
+  { value: 'income', label: 'common.income', activeText: 'text-positive', icon: ArrowDownLeft },
+  { value: 'transfer', label: 'common.transfer', activeText: 'text-foreground', icon: ArrowLeftRight },
 ]
 
-const AMOUNT_TONE: Record<TransactionType, { label: string; border: string }> = {
-  expense: { label: 'text-negative', border: 'border-negative/30' },
-  income: { label: 'text-positive', border: 'border-positive/30' },
-  transfer: { label: 'text-muted-foreground', border: 'border-border' },
+const AMOUNT_TONE: Record<TransactionType, { label: string; border: string; heading: MsgKey }> = {
+  expense: { label: 'text-negative', border: 'border-negative/30', heading: 'txf.amount.expense' },
+  income: { label: 'text-positive', border: 'border-positive/30', heading: 'txf.amount.income' },
+  transfer: {
+    label: 'text-muted-foreground',
+    border: 'border-border',
+    heading: 'txf.amount.transfer',
+  },
 }
 
 interface SplitRow {
@@ -112,12 +122,15 @@ export function TransactionForm({
   initialTagIds,
   initialSplits,
   initialCounterAmount,
+  initialDraft,
+  defaultType,
 }: Props) {
+  const { t } = useT()
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={transaction ? 'Edit transaction' : 'Add transaction'}
+      title={t(transaction ? 'txf.editTitle' : 'txf.addTitle')}
       className="sm:max-w-2xl"
     >
       {open && (
@@ -128,6 +141,8 @@ export function TransactionForm({
           initialTagIds={initialTagIds}
           initialSplits={initialSplits}
           initialCounterAmount={initialCounterAmount}
+          initialDraft={initialDraft}
+          defaultType={defaultType}
         />
       )}
     </Modal>
@@ -141,6 +156,8 @@ function TransactionFormBody({
   initialTagIds = [],
   initialSplits = [],
   initialCounterAmount = '',
+  initialDraft,
+  defaultType,
 }: {
   onClose: () => void
   defaultAccountId?: string
@@ -148,6 +165,8 @@ function TransactionFormBody({
   initialTagIds?: string[]
   initialSplits?: TransactionSplit[]
   initialCounterAmount?: string
+  initialDraft?: QuickDraft
+  defaultType?: TransactionType
 }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -173,18 +192,27 @@ function TransactionFormBody({
   const fileRef = useRef<HTMLInputElement>(null)
   const scanRef = useRef<HTMLInputElement>(null)
 
-  const [type, setType] = useState<TransactionType>(transaction?.type ?? 'expense')
+  // Express-entry seeds a new (never an edit) entry: type/account/category/amount/
+  // note come pre-filled so the full form opens on what the parser understood.
+  const draft = transaction ? undefined : initialDraft
+  const [type, setType] = useState<TransactionType>(
+    transaction?.type ?? draft?.type ?? defaultType ?? 'expense',
+  )
   const [accountId, setAccountId] = useState(
-    transaction?.account_id ?? (defaultAccountId ?? accounts[0]?.id ?? ''),
+    transaction?.account_id ?? draft?.accountId ?? defaultAccountId ?? accounts[0]?.id ?? '',
   )
   const [counterId, setCounterId] = useState(transaction?.counter_account_id ?? '')
-  const [categoryId, setCategoryId] = useState(transaction?.category_id ?? '')
+  const [categoryId, setCategoryId] = useState(transaction?.category_id ?? draft?.categoryId ?? '')
   const [amount, setAmount] = useState(
-    transaction ? String(fromMinorUnits(transaction.amount, transaction.currency)) : '',
+    transaction
+      ? String(fromMinorUnits(transaction.amount, transaction.currency))
+      : draft?.amountMinor != null
+        ? String(fromMinorUnits(draft.amountMinor, draft.currency))
+        : '',
   )
   const [date, setDate] = useState(transaction ? toLocalDate(transaction.occurred_at) : todayLocal())
   const [payee, setPayee] = useState(transaction?.payee ?? '')
-  const [note, setNote] = useState(transaction?.note ?? '')
+  const [note, setNote] = useState(transaction?.note ?? draft?.note ?? '')
   const [tagIds, setTagIds] = useState<string[]>(editing ? initialTagIds : [])
   const [files, setFiles] = useState<File[]>([])
   const [splitMode, setSplitMode] = useState(initialSplits.length > 0)
@@ -198,7 +226,8 @@ function TransactionFormBody({
   const [counterAmount, setCounterAmount] = useState(initialCounterAmount)
   const [linkedId, setLinkedId] = useState(transaction?.linked_transaction_id ?? '')
   const [counterEdited, setCounterEdited] = useState(editing && !!initialCounterAmount)
-  const [categoryTouched, setCategoryTouched] = useState(editing)
+  // A parser-supplied category counts as an explicit pick, so rules don't clobber it.
+  const [categoryTouched, setCategoryTouched] = useState(editing || !!draft?.categoryId)
   const [tagsTouched, setTagsTouched] = useState(editing)
   const [savingTpl, setSavingTpl] = useState(false)
   const [tplName, setTplName] = useState('')
@@ -258,10 +287,14 @@ function TransactionFormBody({
   // recent window we fetched.
   const linkedMissing =
     !!linkedId && !linkCandidates.some((t) => t.id === linkedId)
-  function linkLabel(t: Transaction) {
-    const who = t.payee || t.note || (t.type === 'income' ? 'Income' : 'Expense')
-    const when = new Date(t.occurred_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
-    return `${when} · ${who} · ${formatMoney(t.amount, t.currency, { signDisplay: 'never' })}`
+  function linkLabel(tx: Transaction) {
+    const who =
+      tx.payee || tx.note || t(tx.type === 'income' ? 'common.income' : 'common.expense')
+    const when = new Date(tx.occurred_at).toLocaleDateString(undefined, {
+      day: 'numeric',
+      month: 'short',
+    })
+    return `${when} · ${who} · ${formatMoney(tx.amount, tx.currency, { signDisplay: 'never' })}`
   }
 
   // Rules auto-fill category & tags as the user types, until they edit those
@@ -350,7 +383,7 @@ function TransactionFormBody({
   function applyScan(doc: ScanDocument) {
     const rows = doc.transactions.filter((r) => r.amount != null && r.amount > 0)
     if (rows.length === 0) {
-      setScanNotice({ kind: 'error', text: 'No amount found on that receipt — enter it by hand.' })
+      setScanNotice({ kind: 'error', text: t('txf.scanNoAmount') })
       return
     }
     const first = rows[0]
@@ -369,25 +402,27 @@ function TransactionFormBody({
     // Let category/tag rules react to the filled-in payee.
     setCategoryTouched(false)
     setTagsTouched(false)
-    const mismatch =
-      doc.currency && doc.currency.toUpperCase() !== currency
-        ? ` Amount is in ${doc.currency.toUpperCase()} — check it matches ${currency}.`
-        : ''
-    setScanNotice({
-      kind: 'ok',
-      text:
-        (rows.length > 1
-          ? `Filled from your photo · ${rows.length} items added up.`
-          : 'Filled from your photo.') +
-        ' Review and save.' +
-        mismatch,
-    })
+    const parts = [
+      rows.length > 1
+        ? t('txf.scanFilledMany', { n: rows.length })
+        : t('txf.scanFilledOne'),
+      t('txf.scanReview'),
+    ]
+    if (doc.currency && doc.currency.toUpperCase() !== currency) {
+      parts.push(
+        t('txf.scanCurrencyMismatch', {
+          found: doc.currency.toUpperCase(),
+          expected: currency,
+        }),
+      )
+    }
+    setScanNotice({ kind: 'ok', text: parts.join(' ') })
   }
 
   async function handleScan(fileList: FileList | null) {
     if (!fileList || fileList.length === 0 || scanning) return
     if (!activeBookId) {
-      setScanNotice({ kind: 'error', text: 'Pick a book first, then try scanning again.' })
+      setScanNotice({ kind: 'error', text: t('txf.scanNoBook') })
       return
     }
     setScanNotice(null)
@@ -405,12 +440,12 @@ function TransactionFormBody({
       }
       const doc = data.scan
       if (!doc || doc.document_type === 'unknown' || doc.transactions.length === 0) {
-        setScanNotice({ kind: 'error', text: 'Couldn’t read a receipt there. Try a clearer photo.' })
+        setScanNotice({ kind: 'error', text: t('txf.scanUnreadable') })
         return
       }
       applyScan(doc)
     } catch {
-      setScanNotice({ kind: 'error', text: 'Couldn’t read that image. Try another photo.' })
+      setScanNotice({ kind: 'error', text: t('txf.scanFailed') })
     } finally {
       setScanning(false)
     }
@@ -419,9 +454,7 @@ function TransactionFormBody({
   if (accounts.length === 0) {
     return (
       <div>
-        <p className="text-sm text-muted-foreground">
-          You need at least one account before logging a transaction.
-        </p>
+        <p className="text-sm text-muted-foreground">{t('txf.needAccount')}</p>
         <Button
           className="mt-4 w-full"
           onClick={() => {
@@ -429,7 +462,7 @@ function TransactionFormBody({
             navigate('/accounts')
           }}
         >
-          Go to Accounts
+          {t('txf.goToAccounts')}
         </Button>
       </div>
     )
@@ -438,11 +471,11 @@ function TransactionFormBody({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    if (!effectiveAccountId) return setError('Pick an account.')
+    if (!effectiveAccountId) return setError(t('txf.errPickAccount'))
 
     if (type === 'transfer') {
-      if (!counterId) return setError('Pick a destination account.')
-      if (counterId === effectiveAccountId) return setError('Choose two different accounts.')
+      if (!counterId) return setError(t('txf.errPickDest'))
+      if (counterId === effectiveAccountId) return setError(t('txf.errSameAccount'))
     }
 
     // Determine the total + whether we'll write splits.
@@ -452,12 +485,11 @@ function TransactionFormBody({
       splitRows = splits
         .map((r) => ({ category_id: r.categoryId || null, amount: amountToMinor(r.amount, currency) }))
         .filter((r) => r.amount > 0)
-      if (splitRows.length < 2)
-        return setError('Add at least two splits, or turn off Split.')
+      if (splitRows.length < 2) return setError(t('txf.errTwoSplits'))
       amountMinor = splitRows.reduce((s, r) => s + r.amount, 0)
     } else {
       amountMinor = amountToMinor(amount, currency)
-      if (amountMinor <= 0) return setError('Enter an amount greater than zero.')
+      if (amountMinor <= 0) return setError(t('txf.errAmountZero'))
     }
 
     // Cross-currency transfer: credit the counter account a different amount in
@@ -467,7 +499,7 @@ function TransactionFormBody({
     if (type === 'transfer' && crossCurrency) {
       counterAmountMinor = amountToMinor(counterValue, destCurrency)
       if (counterAmountMinor <= 0)
-        return setError(`Enter the amount received in ${destCurrency}.`)
+        return setError(t('txf.errCounterAmount', { currency: destCurrency }))
       const srcMajor = fromMinorUnits(amountMinor, currency)
       counterFxRate = srcMajor > 0 ? fromMinorUnits(counterAmountMinor, destCurrency) / srcMajor : null
     }
@@ -518,7 +550,7 @@ function TransactionFormBody({
       }
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save.')
+      setError(err instanceof Error ? err.message : t('txf.errSaveFailed'))
     }
   }
 
@@ -526,7 +558,7 @@ function TransactionFormBody({
     type === 'transfer' ? null : (
       <div>
         <div className="mb-1.5 flex items-center justify-between">
-          <Label className="mb-0">{splitting ? 'Splits' : 'Category'}</Label>
+          <Label className="mb-0">{t(splitting ? 'txf.splits' : 'common.category')}</Label>
           <button
             type="button"
             onClick={toggleSplit}
@@ -539,7 +571,7 @@ function TransactionFormBody({
             aria-pressed={splitting}
           >
             <Split className="h-3.5 w-3.5" />
-            {splitting ? 'Splitting' : 'Split'}
+            {t(splitting ? 'txf.splitting' : 'txf.split')}
           </button>
         </div>
 
@@ -552,7 +584,7 @@ function TransactionFormBody({
                   onChange={(e) => updateSplit(r.key, { categoryId: e.target.value })}
                   className="h-11 flex-1"
                 >
-                  <option value="">Uncategorized</option>
+                  <option value="">{t('txf.uncategorized')}</option>
                   {categoryOptions.map(({ category, depth }) => (
                     <option key={category.id} value={category.id}>
                       {depth ? '  — ' : ''}
@@ -574,7 +606,7 @@ function TransactionFormBody({
                   onClick={() => removeSplit(r.key)}
                   disabled={splits.length <= 1}
                   className="flex h-11 w-9 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-danger/10 hover:text-danger disabled:opacity-40"
-                  aria-label="Remove split"
+                  aria-label={t('txf.removeSplit')}
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -585,7 +617,7 @@ function TransactionFormBody({
               onClick={addSplit}
               className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-primary transition hover:bg-primary/10"
             >
-              <Plus className="h-3.5 w-3.5" /> Add split
+              <Plus className="h-3.5 w-3.5" /> {t('txf.addSplit')}
             </button>
           </div>
         ) : (
@@ -597,7 +629,7 @@ function TransactionFormBody({
                 setCategoryId(e.target.value)
               }}
             >
-              <option value="">Uncategorized</option>
+              <option value="">{t('txf.uncategorized')}</option>
               {categoryOptions.map(({ category, depth }) => (
                 <option key={category.id} value={category.id}>
                   {depth ? '  — ' : ''}
@@ -607,7 +639,8 @@ function TransactionFormBody({
             </Select>
             {!categoryTouched && ruleOutcome.matched.length > 0 && (
               <p className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-primary">
-                <Zap className="h-3 w-3" /> Auto-filled by rule “{ruleOutcome.matched[0].name}”
+                <Zap className="h-3 w-3" />{' '}
+                {t('txf.autoFilledByRule', { name: ruleOutcome.matched[0].name })}
               </p>
             )}
           </>
@@ -646,11 +679,11 @@ function TransactionFormBody({
             </span>
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-1.5 text-sm font-bold text-foreground">
-                {scanning ? 'Reading your receipt…' : 'Scan a receipt'}
+                {t(scanning ? 'txf.scanReading' : 'txf.scanTitle')}
                 {!scanning && <Sparkles className="h-3.5 w-3.5 text-primary" />}
               </span>
               <span className="mt-0.5 block text-xs font-medium text-muted-foreground">
-                {scanning ? 'This takes a few seconds.' : 'Snap a photo — we’ll fill in the details.'}
+                {t(scanning ? 'txf.scanWait' : 'txf.scanHint')}
               </span>
             </span>
           </button>
@@ -686,25 +719,25 @@ function TransactionFormBody({
 
       {!editing && templates.length > 0 && (
         <div className="space-y-1.5">
-          <Label className="mb-0">Quick templates</Label>
+          <Label className="mb-0">{t('txf.quickTemplates')}</Label>
           <div className="flex flex-wrap gap-1.5">
-            {templates.map((t) => (
+            {templates.map((tpl) => (
               <span
-                key={t.id}
+                key={tpl.id}
                 className="inline-flex items-center rounded-full border border-border bg-surface-muted/60 text-xs font-semibold text-foreground"
               >
                 <button
                   type="button"
-                  onClick={() => applyTemplate(t)}
+                  onClick={() => applyTemplate(tpl)}
                   className="rounded-l-full py-1 pl-3 pr-1.5 transition hover:text-primary"
                 >
-                  {t.name}
+                  {tpl.name}
                 </button>
                 <button
                   type="button"
-                  onClick={() => deleteTemplate.mutate(t.id)}
+                  onClick={() => deleteTemplate.mutate(tpl.id)}
                   className="rounded-r-full py-1 pl-0.5 pr-2 text-muted-foreground transition hover:text-danger"
-                  aria-label={`Delete template ${t.name}`}
+                  aria-label={t('txf.deleteTemplate', { name: tpl.name })}
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -716,22 +749,22 @@ function TransactionFormBody({
 
       {/* Type switch */}
       <div className="grid grid-cols-3 gap-1 rounded-xl bg-surface-muted p-1">
-        {TYPES.map((t) => {
-          const Icon = t.icon
+        {TYPES.map((opt) => {
+          const Icon = opt.icon
           return (
             <button
-              key={t.value}
+              key={opt.value}
               type="button"
-              onClick={() => setType(t.value)}
+              onClick={() => setType(opt.value)}
               className={cn(
                 'flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm transition-all duration-200',
-                type === t.value
-                  ? cn('bg-surface font-bold shadow-sm', t.activeText)
+                type === opt.value
+                  ? cn('bg-surface font-bold shadow-sm', opt.activeText)
                   : 'font-semibold text-muted-foreground hover:text-foreground',
               )}
             >
               <Icon className="h-4 w-4" />
-              {t.label}
+              {t(opt.label)}
             </button>
           )
         })}
@@ -750,7 +783,7 @@ function TransactionFormBody({
             AMOUNT_TONE[type].label,
           )}
         >
-          {type} amount
+          {t(AMOUNT_TONE[type].heading)}
         </p>
         <div className="flex items-center justify-center gap-1.5 font-numeric text-4xl font-extrabold">
           <span className="text-muted-foreground">{symbol}</span>
@@ -773,7 +806,9 @@ function TransactionFormBody({
         </div>
         {splitting && (
           <p className="mt-1 text-xs font-semibold text-muted-foreground">
-            Total of {splits.filter((r) => amountToMinor(r.amount, currency) > 0).length} splits
+            {t('txf.splitTotalOf', {
+              n: splits.filter((r) => amountToMinor(r.amount, currency) > 0).length,
+            })}
           </p>
         )}
         {!splitting && amountPreview !== null && (
@@ -786,7 +821,7 @@ function TransactionFormBody({
       {/* Details — two columns on desktop, single column on phones */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className={cn(splitting && 'sm:col-span-2')}>
-          <Field label={type === 'transfer' ? 'From account' : 'Account'}>
+          <Field label={t(type === 'transfer' ? 'txf.fromAccount' : 'common.account')}>
             <Select value={effectiveAccountId} onChange={(e) => setAccountId(e.target.value)}>
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>
@@ -800,9 +835,9 @@ function TransactionFormBody({
         {type === 'transfer' ? (
           <>
             <div>
-              <Field label="To account">
+              <Field label={t('txf.toAccount')}>
                 <Select value={counterId} onChange={(e) => setCounterId(e.target.value)}>
-                  <option value="">Select…</option>
+                  <option value="">{t('txf.selectPlaceholder')}</option>
                   {accounts
                     .filter((a) => a.id !== effectiveAccountId)
                     .map((a) => (
@@ -816,7 +851,7 @@ function TransactionFormBody({
 
             {crossCurrency && (
               <div className="sm:col-span-2">
-                <Field label={`Amount received (${destCurrency})`}>
+                <Field label={t('txf.amountReceived', { currency: destCurrency })}>
                   <div className="flex items-center gap-2">
                     <span className="font-numeric text-sm font-semibold text-muted-foreground">
                       {getCurrency(destCurrency).symbol}
@@ -842,8 +877,8 @@ function TransactionFormBody({
                             fromMinorUnits(amountToMinor(amount, currency), currency),
                         )} ${destCurrency}`
                       : counterEdited
-                        ? 'Enter what the destination account receives.'
-                        : `No saved ${currency}→${destCurrency} rate — enter the received amount, or add a rate in Settings.`}
+                        ? t('txf.counterHint')
+                        : t('txf.noRateHint', { from: currency, to: destCurrency })}
                   </p>
                 </Field>
               </div>
@@ -855,12 +890,14 @@ function TransactionFormBody({
 
         {type !== 'transfer' && (
           <div className="sm:col-span-2">
-            <Field label={type === 'income' ? 'Payer / source' : 'Payee / merchant'}>
+            <Field label={t(type === 'income' ? 'txf.payerLabel' : 'txf.payeeLabel')}>
               <Input
                 list="payee-suggestions"
                 value={payee}
                 onChange={(e) => setPayee(e.target.value)}
-                placeholder={type === 'income' ? 'Who paid you? (optional)' : 'Who did you pay? (optional)'}
+                placeholder={t(
+                  type === 'income' ? 'txf.payerPlaceholder' : 'txf.payeePlaceholder',
+                )}
                 autoComplete="off"
               />
               <datalist id="payee-suggestions">
@@ -874,38 +911,40 @@ function TransactionFormBody({
 
         {type !== 'transfer' && (linkCandidates.length > 0 || linkedId) && (
           <div className="sm:col-span-2">
-            <Field label={type === 'income' ? 'Refund for (optional)' : 'Reimbursed by (optional)'}>
+            <Field label={t(type === 'income' ? 'txf.refundForLabel' : 'txf.reimbursedByLabel')}>
               <Select value={linkedId} onChange={(e) => setLinkedId(e.target.value)}>
-                <option value="">Not linked</option>
-                {linkedMissing && <option value={linkedId}>Currently linked transaction</option>}
-                {linkCandidates.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {linkLabel(t)}
+                <option value="">{t('txf.notLinked')}</option>
+                {linkedMissing && <option value={linkedId}>{t('txf.currentlyLinked')}</option>}
+                {linkCandidates.map((cand) => (
+                  <option key={cand.id} value={cand.id}>
+                    {linkLabel(cand)}
                   </option>
                 ))}
               </Select>
               <p className="mt-1.5 text-xs font-medium text-muted-foreground">
-                {type === 'income'
-                  ? 'Tie this money back to the original expense it refunds.'
-                  : 'Tie this to the income that paid you back for it.'}
+                {t(type === 'income' ? 'txf.refundHint' : 'txf.reimburseHint')}
               </p>
             </Field>
           </div>
         )}
 
         <div>
-          <Field label="Date">
+          <Field label={t('common.date')}>
             <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </Field>
         </div>
         <div>
-          <Field label="Note">
-            <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
+          <Field label={t('common.notes')}>
+            <Input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder={t('common.optional')}
+            />
           </Field>
         </div>
 
         <div className="sm:col-span-2">
-          <Field label="Tags">
+          <Field label={t('section.tags')}>
             <TagPicker
               selected={effectiveTagIds}
               onChange={(ids) => {
@@ -917,7 +956,7 @@ function TransactionFormBody({
         </div>
 
         <div className="sm:col-span-2">
-          <Field label="Receipts">
+          <Field label={t('txf.receipts')}>
             <input
               ref={fileRef}
               type="file"
@@ -934,7 +973,7 @@ function TransactionFormBody({
               onClick={() => fileRef.current?.click()}
               className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border text-sm font-semibold text-muted-foreground transition hover:border-primary/50 hover:text-primary"
             >
-              <Paperclip className="h-4 w-4" /> Attach receipt
+              <Paperclip className="h-4 w-4" /> {t('txf.attachReceipt')}
             </button>
             {files.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1.5">
@@ -948,7 +987,7 @@ function TransactionFormBody({
                       type="button"
                       onClick={() => setFiles((cur) => cur.filter((_, idx) => idx !== i))}
                       className="rounded-full p-0.5 text-muted-foreground hover:text-danger"
-                      aria-label={`Remove ${f.name}`}
+                      aria-label={t('txf.removeFile', { name: f.name })}
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -966,7 +1005,7 @@ function TransactionFormBody({
             <Input
               value={tplName}
               onChange={(e) => setTplName(e.target.value)}
-              placeholder="Template name"
+              placeholder={t('txf.templateName')}
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
@@ -982,10 +1021,10 @@ function TransactionFormBody({
               loading={createTemplate.isPending}
               disabled={!tplName.trim()}
             >
-              Save
+              {t('common.save')}
             </Button>
             <Button type="button" size="sm" variant="secondary" onClick={() => setSavingTpl(false)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
           </div>
         ) : (
@@ -997,7 +1036,7 @@ function TransactionFormBody({
             }}
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition hover:text-primary"
           >
-            <BookmarkPlus className="h-3.5 w-3.5" /> Save as template
+            <BookmarkPlus className="h-3.5 w-3.5" /> {t('txf.saveAsTemplate')}
           </button>
         ))}
 
@@ -1011,7 +1050,7 @@ function TransactionFormBody({
           create.isPending || update.isPending || setTags.isPending || setSplits.isPending || uploadFiles.isPending
         }
       >
-        {editing ? 'Save changes' : 'Save transaction'}
+        {t(editing ? 'txf.saveChanges' : 'txf.saveTransaction')}
         {splitting && splitTotal > 0 ? ` · ${formatMoney(splitTotal, currency, { signDisplay: 'never' })}` : ''}
       </Button>
     </form>

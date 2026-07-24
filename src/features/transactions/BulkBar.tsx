@@ -8,6 +8,7 @@ import { useCategories } from '@/features/categories/api'
 import { flattenWithDepth } from '@/features/categories/tree'
 import { useTags, useBulkAddTags } from '@/features/tags/api'
 import { TagPicker } from '@/features/tags/TagPicker'
+import { useT } from '@/features/settings/language-context'
 import { STATUS_OPTIONS } from './filters'
 import { useBulkDeleteTransactions, useBulkSetCategory, useBulkSetStatus } from './api'
 import type { Transaction, TransactionStatus } from '@/types/db'
@@ -19,6 +20,7 @@ interface Props {
 
 /** Floating action bar shown while transactions are multi-selected. */
 export function BulkBar({ selected, onClear }: Props) {
+  const { t } = useT()
   const { data: categories = [] } = useCategories()
   const { data: tags = [] } = useTags()
   const bulkDelete = useBulkDeleteTransactions()
@@ -157,7 +159,7 @@ export function BulkBar({ selected, onClear }: Props) {
           <Select value={status} onChange={(e) => setStatus(e.target.value as TransactionStatus)}>
             {STATUS_OPTIONS.map((s) => (
               <option key={s.value} value={s.value}>
-                {s.label}
+                {t(s.labelKey)}
               </option>
             ))}
           </Select>
