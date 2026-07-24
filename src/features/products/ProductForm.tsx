@@ -1,11 +1,14 @@
 import { useState } from 'react'
+import { Archive } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input } from '@/components/ui/Input'
+import { useConfirm } from '@/components/ui/confirm-context'
+import { useT } from '@/features/settings/language-context'
 import { getCurrency } from '@/lib/currencies'
 import { amountToMinor, fromMinorUnits } from '@/lib/money'
 import { useAuth } from '@/features/auth/useAuth'
-import { useCreateProduct, useUpdateProduct } from './api'
+import { useArchiveProduct, useCreateProduct, useUpdateProduct } from './api'
 import type { Product } from '@/types/db'
 
 interface Props {
@@ -16,8 +19,9 @@ interface Props {
 }
 
 export function ProductForm({ open, onClose, product }: Props) {
+  const { t } = useT()
   return (
-    <Modal open={open} onClose={onClose} title={product ? 'Edit product' : 'New product'}>
+    <Modal open={open} onClose={onClose} title={product ? t('pform.edit') : t('pform.new')}>
       {open && <ProductFormBody onClose={onClose} product={product ?? null} />}
     </Modal>
   )
@@ -29,12 +33,15 @@ function majorStr(minor: number, currency: string): string {
 }
 
 function ProductFormBody({ onClose, product }: { onClose: () => void; product: Product | null }) {
+  const { t } = useT()
   const { profile } = useAuth()
   const currency = profile?.base_currency ?? 'IDR'
   const symbol = getCurrency(currency).symbol
 
   const createProduct = useCreateProduct()
   const updateProduct = useUpdateProduct()
+  const archiveProduct = useArchiveProduct()
+  const confirm = useConfirm()
 
   const [name, setName] = useState(product?.name ?? '')
   const [price, setPrice] = useState(majorStr(product?.price ?? 0, currency))
@@ -52,8 +59,8 @@ function ProductFormBody({ onClose, product }: { onClose: () => void; product: P
     e.preventDefault()
     setError(null)
 
-    if (!name.trim()) return setError('Give the product a name.')
-    if (priceMinor < 0 || costMinor < 0) return setError('Amounts cannot be negative.')
+    if (!name.trim()) return setError(t('pform.errName'))
+    if (priceMinor < 0 || costMinor < 0) return setError(t('pform.errNeg'))
 
     try {
       if (product) {
@@ -76,33 +83,48 @@ function ProductFormBody({ onClose, product }: { onClose: () => void; product: P
       }
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.')
+      setError(err instanceof Error ? err.message : t('acc.form.errGeneric'))
+    }
+  }
+
+  async function handleArchive() {
+    if (!product) return
+    if (
+      await confirm({
+        title: t('pform.archiveTitle'),
+        message: t('pform.archiveMsg', { name: product.name }),
+        confirmLabel: t('books.archive'),
+        cancelLabel: t('common.cancel'),
+      })
+    ) {
+      archiveProduct.mutate(product.id)
+      onClose()
     }
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <Field label="Name">
+      <Field label={t('common.name')}>
         <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Nasi Goreng"
+          placeholder={t('pform.namePh')}
           autoFocus
         />
       </Field>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field label="Selling price (harga jual)">
+        <Field label={t('pform.price')}>
           <MoneyInput symbol={symbol} currency={currency} value={price} onChange={setPrice} />
         </Field>
-        <Field label="Cost (harga modal)">
+        <Field label={t('pform.cost')}>
           <MoneyInput symbol={symbol} currency={currency} value={cost} onChange={setCost} />
         </Field>
       </div>
 
       {priceMinor > 0 && (
         <p className="text-xs font-medium text-muted-foreground">
-          Profit per {unit.trim() || 'item'}:{' '}
+          {t('pform.profitPer', { unit: unit.trim() || t('pform.item') })}{' '}
           <span className={margin >= 0 ? 'font-bold text-positive' : 'font-bold text-danger'}>
             {symbol}
             {fromMinorUnits(margin, currency).toLocaleString()}
@@ -110,20 +132,31 @@ function ProductFormBody({ onClose, product }: { onClose: () => void; product: P
         </p>
       )}
 
-      <Field label="Unit (optional)">
-        <Input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="e.g. porsi, pcs" />
+      <Field label={t('pform.unit')}>
+        <Input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder={t('pform.unitPh')} />
       </Field>
 
       {error && <p className="text-sm text-danger">{error}</p>}
 
       <div className="flex gap-3 pt-2">
         <Button type="button" variant="secondary" className="flex-1" onClick={onClose}>
-          Cancel
+          {t('common.cancel')}
         </Button>
         <Button type="submit" className="flex-1" loading={pending}>
-          Save
+          {t('common.save')}
         </Button>
       </div>
+
+      {product && (
+        <button
+          type="button"
+          onClick={handleArchive}
+          className="flex w-full items-center justify-center gap-2 pt-1 text-sm font-semibold text-muted-foreground transition-colors hover:text-danger"
+        >
+          <Archive className="h-4 w-4" />
+          {t('pform.archive')}
+        </button>
+      )}
     </form>
   )
 }

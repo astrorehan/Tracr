@@ -200,6 +200,15 @@ h1,
 .dark .brand-hero {
   background-image: linear-gradient(178deg, #0e7cb2 0%, #0a6b9e 40%, #075987 72%, #044a71 100%);
 }
+
+/* Mobile home: the FIXED background slab (never the desktop card or login hero).
+   In dark mode the branded blue reads as a bright block dropped into the dark
+   theme, so drop the blue here and let it sink into the page — a faint navy
+   lift at the top fading to the page bg. The diagonal weave (.brand-hero::after)
+   still paints on top, so the texture stays; only the blue goes. */
+.dark .home-hero-bg {
+  background-image: linear-gradient(178deg, #10202e 0%, #0c1219 74%);
+}
 .brand-hero::after {
   content: '';
   position: absolute;
@@ -219,7 +228,12 @@ h1,
    in @layer utilities and loses to the unlayered .brand-hero rule above, so strip
    the gradient and its weave here, where the cascade still wins. */
 @media (width < 640px) {
-  .home-hero-scroll {
+  /* Both modes: the scrolling section stays transparent over the FIXED layer.
+     `.dark .home-hero-scroll` is spelled out so it outranks `.dark .brand-hero`
+     (0,2,0) — a bare `.home-hero-scroll` (0,1,0) loses to it and the blue leaks
+     back in dark mode. */
+  .home-hero-scroll,
+  .dark .home-hero-scroll {
     background-image: none;
   }
   .home-hero-scroll::after {

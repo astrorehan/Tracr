@@ -6,8 +6,10 @@ import { useT } from '@/features/settings/language-context'
 import { useActiveBook } from './useActiveBook'
 import { BookForm } from './BookForm'
 
-/** Sidebar header control: shows the open book and a dropdown to switch books. */
-export function BookSwitcher() {
+/** Sidebar header control: shows the open book and a dropdown to switch books.
+ *  `expanded` forces the name + chevron to show at any width (mobile home, where
+ *  the collapsed icon-only rail variant would be too cryptic). */
+export function BookSwitcher({ expanded = false }: { expanded?: boolean }) {
   const { t } = useT()
   const { books, activeBook, activeBookId, setActiveBook } = useActiveBook()
   const navigate = useNavigate()
@@ -45,7 +47,7 @@ export function BookSwitcher() {
             <Wallet className="h-4 w-4" />
           )}
         </span>
-        <span className="hidden min-w-0 flex-1 lg:block">
+        <span className={cn('min-w-0 flex-1', expanded ? 'block' : 'hidden lg:block')}>
           <span className="block truncate text-sm font-bold text-foreground">
             {activeBook?.name ?? t('books.title')}
           </span>
@@ -53,7 +55,9 @@ export function BookSwitcher() {
             {t('books.title')}
           </span>
         </span>
-        <ChevronsUpDown className="hidden h-4 w-4 shrink-0 text-muted-foreground lg:block" />
+        <ChevronsUpDown
+          className={cn('h-4 w-4 shrink-0 text-muted-foreground', expanded ? 'block' : 'hidden lg:block')}
+        />
       </button>
 
       {open && (
