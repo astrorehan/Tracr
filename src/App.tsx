@@ -4,6 +4,7 @@ import { isSupabaseConfigured } from './lib/supabase'
 import { useAuth } from './features/auth/useAuth'
 import { CenterSpinner } from './components/ui/States'
 import { AppLayout } from './components/AppLayout'
+import { BizLayout } from './components/BizLayout'
 import { SetupNotice } from './components/SetupNotice'
 import { ConfirmProvider } from './components/ui/confirm'
 import { LoginPage } from './app/LoginPage'
@@ -191,30 +192,34 @@ export default function App() {
             </Suspense>
           }
         />
-        <Route
-          path="debts"
-          element={
-            <Suspense fallback={<CenterSpinner />}>
-              <DebtsPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="products"
-          element={
-            <Suspense fallback={<CenterSpinner />}>
-              <ProductsPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="profit"
-          element={
-            <Suspense fallback={<CenterSpinner />}>
-              <ProfitPage />
-            </Suspense>
-          }
-        />
+        {/* Buku Usaha tools share one parent route so their header and tab bar
+            survive a switch between them — see BizLayout. */}
+        <Route element={<BizLayout />}>
+          <Route
+            path="products"
+            element={
+              <Suspense fallback={<CenterSpinner />}>
+                <ProductsPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="debts"
+            element={
+              <Suspense fallback={<CenterSpinner />}>
+                <DebtsPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="profit"
+            element={
+              <Suspense fallback={<CenterSpinner />}>
+                <ProfitPage />
+              </Suspense>
+            }
+          />
+        </Route>
         <Route
           path="currencies"
           element={

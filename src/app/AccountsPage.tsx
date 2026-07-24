@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Plus, ChevronLeft, Wallet, List, Pencil, Trash2, PieChart } from 'lucide-react'
+import { Plus, Wallet, List, Pencil, Trash2, PieChart } from 'lucide-react'
+import { BackLink } from '@/components/ui/BackLink'
 import { Button } from '@/components/ui/Button'
 import { Pill, ListCard, ListRow, IconChip } from '@/components/ui/list'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
@@ -19,7 +20,6 @@ import type { Account } from '@/types/db'
 import { useT } from '@/features/settings/language-context'
 import { AreaChart, Area, ResponsiveContainer, XAxis, Tooltip } from 'recharts'
 import { chartTooltipStyle as tooltipStyle } from '@/lib/chartTheme'
-import { Link } from 'react-router-dom'
 
 export function AccountsPage() {
   const { profile } = useAuth()
@@ -116,12 +116,7 @@ export function AccountsPage() {
   return (
     <div className="w-full space-y-6 pb-20">
       <div className="space-y-4">
-        <Link to="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground w-max transition-colors">
-          <div className="flex h-6 w-6 items-center justify-center rounded-full border border-border bg-surface">
-            <ChevronLeft className="h-4 w-4" />
-          </div>
-          <span className="text-sm font-semibold">Accounts</span>
-        </Link>
+        <BackLink to="/" label="Accounts" />
         
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-extrabold text-foreground">Accounts</h1>
