@@ -555,17 +555,26 @@ export const MESSAGES = {
     en: 'Tap Record to write down your first one.',
     id: 'Ketuk Catat untuk menulis yang pertama.',
   },
-  'dash.lightOrDark': { en: 'Light or dark?', id: 'Terang atau gelap?' },
-  'dash.flipSwitch': {
-    en: 'Flip the switch — whatever’s easy on your eyes.',
-    id: 'Geser saklarnya — pilih yang nyaman di mata.',
-  },
-  'dash.switchTheme': { en: 'Switch between light and dark mode', id: 'Ganti mode terang atau gelap' },
-  'dash.onePlace': {
-    en: 'One place for every account — Tracr keeps the running total for you.',
-    id: 'Semua dompet di satu tempat — Tracr yang hitung totalnya untukmu.',
-  },
   'dash.loadingHome': { en: 'Loading home', id: 'Memuat beranda' },
+  'dash.moreDetails': { en: 'See more detail', id: 'Lihat detail keuangan' },
+  'dash.hideDetails': { en: 'Hide detail', id: 'Sembunyikan detail' },
+
+  // ── Quick add (express entry bar) ───────────────────────────────────────
+  'qe.title': { en: 'Quick add', id: 'Catat cepat' },
+  'qe.placeholder': { en: 'e.g. 25k coffee BCA', id: 'mis. 25rb kopi BCA' },
+  'qe.hint': {
+    en: 'Type an amount and what it was — we sort out the rest.',
+    id: 'Ketik nominal dan untuk apa — sisanya kami atur.',
+  },
+  'qe.needAmount': { en: 'Add an amount to save', id: 'Isi nominal dulu untuk simpan' },
+  'qe.more': { en: 'More options', id: 'Opsi lain' },
+  'qe.saved': { en: 'Saved {amount}', id: 'Tercatat {amount}' },
+  'qe.saveFailed': { en: 'Could not save — try More options.', id: 'Gagal simpan — coba Opsi lain.' },
+  'qe.noAccount': {
+    en: 'Add a wallet first to use quick add.',
+    id: 'Tambah dompet dulu untuk pakai catat cepat.',
+  },
+  'acc.addRate': { en: 'Add {code} rate', id: 'Tambah kurs {code}' },
 
   // ── Home: today's allowance ──────────────────────────────────────────────
   // Copy rule: going over is stated as a fact plus a way forward, never as a
@@ -790,6 +799,524 @@ export const MESSAGES = {
   'tx.duplicateTx': { en: 'Duplicate transaction', id: 'Gandakan transaksi' },
   'tx.deleteTx': { en: 'Delete transaction', id: 'Hapus transaksi' },
 
+  // ── Record / edit form (the sheet the + button opens) ───────────────────
+  'txf.addTitle': { en: 'Add transaction', id: 'Catat transaksi' },
+  'txf.editTitle': { en: 'Edit transaction', id: 'Ubah transaksi' },
+  'txf.needAccount': {
+    en: 'You need at least one account before logging a transaction.',
+    id: 'Kamu perlu punya minimal satu dompet dulu sebelum mencatat.',
+  },
+  'txf.goToAccounts': { en: 'Go to Accounts', id: 'Buka Dompet' },
+
+  // Receipt scan
+  'txf.scanTitle': { en: 'Scan a receipt', id: 'Foto struk' },
+  'txf.scanHint': {
+    en: 'Snap a photo — we’ll fill in the details.',
+    id: 'Ambil fotonya — nanti kami isikan rinciannya.',
+  },
+  'txf.scanReading': { en: 'Reading your receipt…', id: 'Membaca strukmu…' },
+  'txf.scanWait': { en: 'This takes a few seconds.', id: 'Butuh beberapa detik.' },
+  'txf.scanFilledOne': { en: 'Filled from your photo.', id: 'Sudah diisi dari fotomu.' },
+  'txf.scanFilledMany': {
+    en: 'Filled from your photo · {n} items added up.',
+    id: 'Sudah diisi dari fotomu · {n} item dijumlahkan.',
+  },
+  'txf.scanReview': { en: 'Review and save.', id: 'Periksa dulu, lalu simpan.' },
+  'txf.scanCurrencyMismatch': {
+    en: 'Amount is in {found} — check it matches {expected}.',
+    id: 'Jumlahnya dalam {found} — pastikan cocok dengan {expected}.',
+  },
+  'txf.scanNoAmount': {
+    en: 'No amount found on that receipt — enter it by hand.',
+    id: 'Tidak ketemu jumlahnya di struk itu — isi manual saja.',
+  },
+  'txf.scanNoBook': {
+    en: 'Pick a book first, then try scanning again.',
+    id: 'Pilih buku dulu, baru coba foto lagi.',
+  },
+  'txf.scanUnreadable': {
+    en: 'Couldn’t read a receipt there. Try a clearer photo.',
+    id: 'Tidak terbaca sebagai struk. Coba foto yang lebih jelas.',
+  },
+  'txf.scanFailed': {
+    en: 'Couldn’t read that image. Try another photo.',
+    id: 'Gambarnya tidak terbaca. Coba foto lain.',
+  },
+
+  // Templates
+  'txf.quickTemplates': { en: 'Quick templates', id: 'Catatan cepat' },
+  'txf.deleteTemplate': { en: 'Delete template {name}', id: 'Hapus catatan cepat {name}' },
+  'txf.templateName': { en: 'Template name', id: 'Nama catatan cepat' },
+  'txf.saveAsTemplate': { en: 'Save as template', id: 'Simpan jadi catatan cepat' },
+
+  // Amount
+  'txf.amount.expense': { en: 'Expense amount', id: 'Jumlah keluar' },
+  'txf.amount.income': { en: 'Income amount', id: 'Jumlah masuk' },
+  'txf.amount.transfer': { en: 'Transfer amount', id: 'Jumlah pindahan' },
+  'txf.splitTotalOf': { en: 'Total of {n} splits', id: 'Total dari {n} bagian' },
+
+  // Category & splits
+  'txf.splits': { en: 'Splits', id: 'Bagian' },
+  'txf.split': { en: 'Split', id: 'Bagi' },
+  'txf.splitting': { en: 'Splitting', id: 'Dibagi' },
+  'txf.addSplit': { en: 'Add split', id: 'Tambah bagian' },
+  'txf.removeSplit': { en: 'Remove split', id: 'Hapus bagian' },
+  'txf.uncategorized': { en: 'Uncategorized', id: 'Tanpa kategori' },
+  'txf.autoFilledByRule': {
+    en: 'Auto-filled by rule “{name}”',
+    id: 'Diisi otomatis oleh aturan “{name}”',
+  },
+
+  // Accounts & transfer
+  'txf.fromAccount': { en: 'From account', id: 'Dari dompet' },
+  'txf.toAccount': { en: 'To account', id: 'Ke dompet' },
+  'txf.selectPlaceholder': { en: 'Select…', id: 'Pilih…' },
+  'txf.amountReceived': { en: 'Amount received ({currency})', id: 'Jumlah diterima ({currency})' },
+  'txf.counterHint': {
+    en: 'Enter what the destination account receives.',
+    id: 'Isi jumlah yang benar-benar masuk ke dompet tujuan.',
+  },
+  'txf.noRateHint': {
+    en: 'No saved {from}→{to} rate — enter the received amount, or add a rate in Settings.',
+    id: 'Belum ada kurs {from}→{to} tersimpan — isi jumlah diterimanya, atau tambah kurs di Pengaturan.',
+  },
+
+  // Payee
+  'txf.payerLabel': { en: 'Payer / source', id: 'Dari siapa' },
+  'txf.payeeLabel': { en: 'Payee / merchant', id: 'Bayar ke siapa' },
+  'txf.payerPlaceholder': { en: 'Who paid you? (optional)', id: 'Siapa yang bayar? (boleh kosong)' },
+  'txf.payeePlaceholder': { en: 'Who did you pay? (optional)', id: 'Kamu bayar ke siapa? (boleh kosong)' },
+
+  // Refund / reimbursement link
+  'txf.refundForLabel': { en: 'Refund for (optional)', id: 'Pengembalian untuk (boleh kosong)' },
+  'txf.reimbursedByLabel': { en: 'Reimbursed by (optional)', id: 'Diganti oleh (boleh kosong)' },
+  'txf.notLinked': { en: 'Not linked', id: 'Tidak dikaitkan' },
+  'txf.currentlyLinked': { en: 'Currently linked transaction', id: 'Transaksi yang sekarang dikaitkan' },
+  'txf.refundHint': {
+    en: 'Tie this money back to the original expense it refunds.',
+    id: 'Kaitkan uang ini ke pengeluaran asal yang dikembalikan.',
+  },
+  'txf.reimburseHint': {
+    en: 'Tie this to the income that paid you back for it.',
+    id: 'Kaitkan ini ke pemasukan yang menggantinya.',
+  },
+
+  // Attachments
+  'txf.receipts': { en: 'Receipts', id: 'Struk' },
+  'txf.attachReceipt': { en: 'Attach receipt', id: 'Lampirkan struk' },
+  'txf.removeFile': { en: 'Remove {name}', id: 'Hapus {name}' },
+
+  // Submit & errors
+  'txf.saveChanges': { en: 'Save changes', id: 'Simpan perubahan' },
+  'txf.saveTransaction': { en: 'Save transaction', id: 'Simpan catatan' },
+  'txf.errPickAccount': { en: 'Pick an account.', id: 'Pilih dompetnya dulu.' },
+  'txf.errPickDest': { en: 'Pick a destination account.', id: 'Pilih dompet tujuannya.' },
+  'txf.errSameAccount': { en: 'Choose two different accounts.', id: 'Pilih dua dompet yang berbeda.' },
+  'txf.errTwoSplits': {
+    en: 'Add at least two splits, or turn off Split.',
+    id: 'Tambah minimal dua bagian, atau matikan Bagi.',
+  },
+  'txf.errAmountZero': {
+    en: 'Enter an amount greater than zero.',
+    id: 'Isi jumlahnya, harus lebih dari nol.',
+  },
+  'txf.errCounterAmount': {
+    en: 'Enter the amount received in {currency}.',
+    id: 'Isi jumlah yang diterima dalam {currency}.',
+  },
+  'txf.errSaveFailed': { en: 'Could not save.', id: 'Gagal menyimpan.' },
+  // ── Date-range presets & sort orders (shared: Reports + filter panel) ────
+  'range.all': { en: 'All time', id: 'Semua waktu' },
+  'range.today': { en: 'Today', id: 'Hari ini' },
+  'range.thisWeek': { en: 'This week', id: 'Minggu ini' },
+  'range.lastWeek': { en: 'Last week', id: 'Minggu lalu' },
+  'range.thisMonth': { en: 'This month', id: 'Bulan ini' },
+  'range.lastMonth': { en: 'Last month', id: 'Bulan lalu' },
+  'range.thisQuarter': { en: 'This quarter', id: 'Kuartal ini' },
+  'range.lastQuarter': { en: 'Last quarter', id: 'Kuartal lalu' },
+  'range.ytd': { en: 'Year to date', id: 'Tahun berjalan' },
+  'range.last12Months': { en: 'Last 12 months', id: '12 bulan terakhir' },
+  'range.custom': { en: 'Custom range', id: 'Rentang sendiri' },
+  'sort.dateDesc': { en: 'Newest first', id: 'Terbaru dulu' },
+  'sort.dateAsc': { en: 'Oldest first', id: 'Terlama dulu' },
+  'sort.amountDesc': { en: 'Largest amount', id: 'Nominal terbesar' },
+  'sort.amountAsc': { en: 'Smallest amount', id: 'Nominal terkecil' },
+  'src.web': { en: 'Added in app', id: 'Ditambah di aplikasi' },
+  'src.import': { en: 'Imported', id: 'Diimpor' },
+  'src.telegram': { en: 'Telegram', id: 'Telegram' },
+  'src.whatsapp': { en: 'WhatsApp', id: 'WhatsApp' },
+  'txstatus.pending': { en: 'Pending', id: 'Menunggu' },
+  'txstatus.cleared': { en: 'Cleared', id: 'Sudah masuk' },
+  'txstatus.reconciled': { en: 'Reconciled', id: 'Sudah dicek' },
+
+  // ── Reports page ────────────────────────────────────────────────────────
+  'rep.dateRangeAria': { en: 'Date range', id: 'Rentang tanggal' },
+  'rep.sortAria': { en: 'Sort order', id: 'Urutan' },
+  'rep.rangeTo': { en: 'to', id: 'sampai' },
+  'rep.print': { en: 'Print / PDF', id: 'Cetak / PDF' },
+  'rep.exportCsv': { en: 'Export CSV', id: 'Ekspor CSV' },
+  'rep.skippedNotice': {
+    en: 'Some {codes} transactions are excluded — add an exchange rate in Settings so they can be valued in {base}.',
+    id: 'Sebagian transaksi {codes} tidak dihitung — tambah kursnya di Pengaturan supaya bisa dinilai dalam {base}.',
+  },
+  'rep.emptyTitle': { en: 'No data for this period', id: 'Belum ada data di periode ini' },
+  'rep.emptyDesc': {
+    en: 'Log some income or expenses, or widen the date range to see your reports.',
+    id: 'Catat pemasukan atau pengeluaran dulu, atau lebarkan rentang tanggalnya.',
+  },
+
+  // Summary tiles
+  'rep.statNet': { en: 'Net', id: 'Sisa' },
+  'rep.statAvgDay': { en: 'Avg / day spend', id: 'Rata-rata per hari' },
+  'rep.vsPrev': { en: 'vs prev', id: 'vs sebelumnya' },
+
+  // Charts
+  'rep.netWorthTitle': { en: 'Net worth over time', id: 'Kekayaan bersih dari waktu ke waktu' },
+  'rep.netWorth': { en: 'Net worth', id: 'Kekayaan bersih' },
+  'rep.overThisPeriod': { en: 'over this period', id: 'selama periode ini' },
+  'rep.inVsOut': { en: 'Money in vs money out', id: 'Uang masuk vs uang keluar' },
+  'rep.calendarTitle': { en: 'Spending calendar', id: 'Kalender pengeluaran' },
+  'rep.weekdayTitle': { en: 'Spending by weekday', id: 'Pengeluaran per hari' },
+  'rep.spent': { en: 'Spent', id: 'Keluar' },
+  'rep.less': { en: 'Less', id: 'Sedikit' },
+  'rep.more': { en: 'More', id: 'Banyak' },
+  'rep.dow.mon': { en: 'Mon', id: 'Sen' },
+  'rep.dow.tue': { en: 'Tue', id: 'Sel' },
+  'rep.dow.wed': { en: 'Wed', id: 'Rab' },
+  'rep.dow.thu': { en: 'Thu', id: 'Kam' },
+  'rep.dow.fri': { en: 'Fri', id: 'Jum' },
+  'rep.dow.sat': { en: 'Sat', id: 'Sab' },
+  'rep.dow.sun': { en: 'Sun', id: 'Min' },
+
+  // Category breakdown
+  'rep.byCategoryExpense': { en: 'Spending by category', id: 'Pengeluaran per kategori' },
+  'rep.byCategoryIncome': { en: 'Income by category', id: 'Pemasukan per kategori' },
+  'rep.nothingHere': { en: 'Nothing here', id: 'Kosong' },
+  'rep.noneExpenseInPeriod': {
+    en: 'No expenses in this period.',
+    id: 'Tidak ada pengeluaran di periode ini.',
+  },
+  'rep.noneIncomeInPeriod': {
+    en: 'No income in this period.',
+    id: 'Tidak ada pemasukan di periode ini.',
+  },
+  'rep.total': { en: 'Total', id: 'Total' },
+  'rep.subcategories': { en: 'Subcategories', id: 'Sub-kategori' },
+  'rep.noDrill': {
+    en: 'No subcategories or tags here.',
+    id: 'Tidak ada sub-kategori atau label di sini.',
+  },
+  'rep.biggest': { en: 'Biggest transactions', id: 'Transaksi terbesar' },
+  'rep.topPayees': { en: 'Top payees', id: 'Paling sering dibayar' },
+  'rep.topSources': { en: 'Top sources', id: 'Sumber terbesar' },
+
+  // CSV export headers
+  'rep.csvReport': { en: 'Report', id: 'Laporan' },
+  'rep.csvReportExpense': { en: 'Expenses by category', id: 'Pengeluaran per kategori' },
+  'rep.csvReportIncome': { en: 'Income by category', id: 'Pemasukan per kategori' },
+  'rep.csvPeriod': { en: 'Period', id: 'Periode' },
+  'rep.csvPeriodValue': { en: '{from} to {to}', id: '{from} sampai {to}' },
+  'rep.csvCurrency': { en: 'Currency', id: 'Mata uang' },
+  'rep.csvShare': { en: 'Share %', id: 'Porsi %' },
+  'rep.csvCount': { en: 'Count', id: 'Jumlah transaksi' },
+  'rep.csvTotalIncome': { en: 'Total income', id: 'Total pemasukan' },
+  'rep.csvTotalExpense': { en: 'Total expense', id: 'Total pengeluaran' },
+
+  // ── Categories page ─────────────────────────────────────────────────────
+  'cat.emptyTitle': { en: 'No categories yet', id: 'Belum ada kategori' },
+  'cat.emptyDesc': {
+    en: 'Create categories to organize your spending and income.',
+    id: 'Buat kategori supaya pengeluaran dan pemasukanmu tertata.',
+  },
+  'cat.newCategory': { en: 'New category', id: 'Kategori baru' },
+  'cat.noneExpense': {
+    en: 'No expense categories yet.',
+    id: 'Belum ada kategori pengeluaran.',
+  },
+  'cat.noneIncome': { en: 'No income categories yet.', id: 'Belum ada kategori pemasukan.' },
+  'cat.archived': { en: 'Archived', id: 'Diarsipkan' },
+  'cat.deleteTitle': { en: 'Delete “{name}”?', id: 'Hapus “{name}”?' },
+  'cat.deleteMessage': {
+    en: 'Existing transactions stay but become uncategorized.',
+    id: 'Transaksi lama tetap ada, tapi jadi tanpa kategori.',
+  },
+  'cat.mergeAria': { en: 'Merge {name}', id: 'Gabung {name}' },
+  'cat.editAria': { en: 'Edit {name}', id: 'Ubah {name}' },
+  'cat.archiveAria': { en: 'Archive {name}', id: 'Arsipkan {name}' },
+  'cat.deleteAria': { en: 'Delete {name}', id: 'Hapus {name}' },
+  'cat.restoreAria': { en: 'Restore {name}', id: 'Pulihkan {name}' },
+
+  // Merge modal
+  'cat.mergeTitle': { en: 'Merge category', id: 'Gabung kategori' },
+  'cat.mergeIntro': {
+    en: 'Move every transaction, split and bill from {name} into another category, then delete it. Any subcategories move too. This can’t be undone.',
+    id: 'Pindahkan semua transaksi, bagian dan tagihan dari {name} ke kategori lain, lalu hapus kategori ini. Sub-kategorinya ikut pindah. Ini tidak bisa dibatalkan.',
+  },
+  'cat.mergeNoTargetExpense': {
+    en: 'No other expense category to merge into. Create one first.',
+    id: 'Tidak ada kategori pengeluaran lain untuk digabung. Buat dulu satu.',
+  },
+  'cat.mergeNoTargetIncome': {
+    en: 'No other income category to merge into. Create one first.',
+    id: 'Tidak ada kategori pemasukan lain untuk digabung. Buat dulu satu.',
+  },
+  'cat.mergeIntoLabel': { en: 'Merge “{name}” into', id: 'Gabungkan “{name}” ke' },
+  'cat.mergeSelect': { en: 'Select a category…', id: 'Pilih kategori…' },
+  'cat.mergeAction': { en: 'Merge', id: 'Gabung' },
+  'cat.mergeErrNoTarget': {
+    en: 'Pick a category to merge into.',
+    id: 'Pilih kategori tujuan penggabungan.',
+  },
+  'cat.mergeErrFailed': { en: 'Could not merge.', id: 'Gagal menggabungkan.' },
+
+  // Category form
+  'cat.formEditTitle': { en: 'Edit category', id: 'Ubah kategori' },
+  'cat.formNewTitle': { en: 'New category', id: 'Kategori baru' },
+  'cat.namePlaceholder': {
+    en: 'e.g. Coffee, Rent, Freelance',
+    id: 'Contoh: Kopi, Kontrakan, Freelance',
+  },
+  'cat.parentLabel': { en: 'Parent category', id: 'Kategori induk' },
+  'cat.parentNone': { en: 'None (top level)', id: 'Tidak ada (paling atas)' },
+  'cat.iconLabel': { en: 'Icon', id: 'Ikon' },
+  'cat.colorLabel': { en: 'Color', id: 'Warna' },
+  'cat.colorAria': { en: 'Color {hex}', id: 'Warna {hex}' },
+  'cat.errNoName': { en: 'Please name this category.', id: 'Beri nama kategori ini dulu.' },
+  'cat.errFailed': { en: 'Something went wrong.', id: 'Ada yang tidak beres.' },
+  'cat.create': { en: 'Create', id: 'Buat' },
+
+  // ── Landing page (/welcome) ─────────────────────────────────────────────
+  'land.navFeatures': { en: 'Features', id: 'Fitur' },
+  'land.navTelegram': { en: 'Telegram', id: 'Telegram' },
+  'land.openApp': { en: 'Open app', id: 'Buka aplikasi' },
+  'land.signIn': { en: 'Sign in', id: 'Masuk' },
+  'land.heroBadge': { en: 'Free personal finance app', id: 'Aplikasi keuangan pribadi gratis' },
+  'land.heroTitleA': { en: 'All your money,', id: 'Semua uangmu,' },
+  'land.heroTitleB': { en: 'one clear picture.', id: 'satu gambaran jelas.' },
+  'land.heroBody': {
+    en: 'Cash, bank, e-wallets — Tracr keeps every rupiah in one simple app. Log a purchase in seconds, even straight from Telegram.',
+    id: 'Tunai, bank, e-wallet — Tracr simpan tiap rupiah di satu aplikasi sederhana. Catat belanjaan dalam hitungan detik, bahkan langsung dari Telegram.',
+  },
+  'land.openDashboard': { en: 'Open your dashboard', id: 'Buka berandamu' },
+  'land.startFree': { en: 'Start free', id: 'Mulai gratis' },
+  'land.seeInside': { en: 'See what’s inside', id: 'Lihat isinya' },
+  'land.perkFree': { en: 'Free to use', id: 'Gratis dipakai' },
+  'land.perkNoCard': { en: 'No card needed', id: 'Tanpa kartu' },
+  'land.perkOffline': { en: 'Works offline', id: 'Jalan tanpa internet' },
+
+  // Floating cards over the phone mock
+  'land.botSaved': { en: '✓ Saved — Coffee, Rp 25.000', id: '✓ Tercatat — Kopi, Rp 25.000' },
+  'land.botMsg': { en: 'coffee 25k', id: 'kopi 25k' },
+  'land.aiInsight': { en: 'AI insight', id: 'Wawasan AI' },
+  'land.aiInsightPre': { en: 'You spent', id: 'Minggu ini kamu belanja makan' },
+  'land.aiInsightBold': { en: '12% less on food', id: '12% lebih hemat' },
+  'land.aiInsightPost': { en: 'this week. Nice pace 👍', id: 'dari biasanya. Mantap 👍' },
+
+  // Marquee
+  'land.tickerAccounts': { en: 'Accounts', id: 'Dompet' },
+  'land.tickerBudgets': { en: 'Budgets', id: 'Anggaran' },
+  'land.tickerBills': { en: 'Bills', id: 'Tagihan' },
+  'land.tickerGoals': { en: 'Goals', id: 'Tabungan' },
+  'land.tickerReports': { en: 'Reports', id: 'Laporan' },
+  'land.tickerCurrencies': { en: 'Multi-currency', id: 'Banyak mata uang' },
+  'land.tickerTags': { en: 'Tags & rules', id: 'Label & aturan' },
+  'land.tickerAi': { en: 'AI insights', id: 'Wawasan AI' },
+  'land.tickerBot': { en: 'Telegram bot', id: 'Bot Telegram' },
+  'land.tickerOffline': { en: 'Works offline', id: 'Jalan tanpa internet' },
+
+  // Features grid
+  'land.featuresTitle': {
+    en: 'Everything your money does, in plain sight',
+    id: 'Semua gerak uangmu, kelihatan jelas',
+  },
+  'land.featuresBody': {
+    en: 'No accountant words, no setup homework. Open it, add an account, start logging.',
+    id: 'Tanpa istilah akuntan, tanpa PR setelan. Buka, tambah dompet, mulai catat.',
+  },
+  'land.f1Title': { en: 'Every account, one screen', id: 'Semua dompet, satu layar' },
+  'land.f1Body': {
+    en: 'Cash, bank cards, e-wallets — even crypto and stocks. Your total updates by itself.',
+    id: 'Tunai, kartu bank, e-wallet — bahkan kripto dan saham. Totalnya terhitung sendiri.',
+  },
+  'land.f2Title': { en: 'Budgets that keep up', id: 'Anggaran yang mengikuti' },
+  'land.f2Body': {
+    en: 'Set a monthly limit per category and watch the bar fill up before you overspend.',
+    id: 'Pasang batas bulanan tiap kategori, lihat bilahnya terisi sebelum kebablasan.',
+  },
+  'land.f3Title': { en: 'Never miss a bill', id: 'Tidak ada tagihan yang telat' },
+  'land.f3Body': {
+    en: 'Rent, subscriptions, installments — Tracr remembers the due dates so you don’t have to.',
+    id: 'Kontrakan, langganan, cicilan — Tracr yang ingat tanggal jatuh temponya.',
+  },
+  'land.f4Title': { en: 'Goals you can see', id: 'Target yang kelihatan' },
+  'land.f4Body': {
+    en: 'Saving for a laptop or a trip? Put money aside and watch the ring close in.',
+    id: 'Nabung buat laptop atau jalan-jalan? Sisihkan uangnya, lihat lingkarannya menutup.',
+  },
+  'land.f5Title': { en: 'Reports without spreadsheets', id: 'Laporan tanpa spreadsheet' },
+  'land.f5Body': {
+    en: 'See where the money went each month in simple charts, not exported CSV homework.',
+    id: 'Lihat ke mana uang pergi tiap bulan lewat grafik sederhana, bukan PR ekspor CSV.',
+  },
+  'land.f6Title': { en: 'Currencies and books', id: 'Mata uang dan buku' },
+  'land.f6Body': {
+    en: 'Rupiah, dollars, anything. Keep separate books for personal and business money.',
+    id: 'Rupiah, dolar, apa saja. Pisahkan buku pribadi dan buku usaha.',
+  },
+
+  // Telegram section
+  'land.tgBadge': { en: 'Telegram bot', id: 'Bot Telegram' },
+  'land.tgTitle': {
+    en: 'Log it from the chat you already use',
+    id: 'Catat dari chat yang sudah kamu pakai',
+  },
+  'land.tgBody': {
+    en: 'Bought something on the go? Text the Tracr bot like you’d text a friend. It understands, files the expense, and answers questions about your spending — no need to open the app at all.',
+    id: 'Habis belanja di jalan? Chat bot Tracr seperti chat teman. Dia paham, mencatat pengeluarannya, dan menjawab pertanyaan soal belanjamu — tanpa perlu buka aplikasi sama sekali.',
+  },
+  'land.tgPoint1': {
+    en: 'Type “lunch 35k” and it’s saved to the right category.',
+    id: 'Ketik “makan siang 35k”, langsung masuk kategori yang benar.',
+  },
+  'land.tgPoint2': {
+    en: 'Ask “how much on food this week?” and get a straight answer.',
+    id: 'Tanya “minggu ini habis berapa buat makan?”, dijawab langsung.',
+  },
+  'land.tgPoint3': {
+    en: 'The AI only reads your numbers when you ask it something.',
+    id: 'AI hanya membaca angkamu saat kamu bertanya.',
+  },
+
+  // Chat mock
+  'land.chatOnline': { en: 'online', id: 'aktif' },
+  'land.chatAsk1': { en: 'lunch 35k with gopay', id: 'makan siang 35k pakai gopay' },
+  'land.chatReply1Pre': { en: '✓ Saved', id: '✓ Tercatat' },
+  'land.chatReply1Post': {
+    en: '— Food & Drink, from GoPay 🍚',
+    id: '— Makan & Minum, dari GoPay 🍚',
+  },
+  'land.chatAsk2': {
+    en: 'how much did I spend this week?',
+    id: 'minggu ini aku habis berapa?',
+  },
+  'land.chatReply2Pre': { en: 'About', id: 'Sekitar' },
+  'land.chatReply2Post': {
+    en: 'so far — mostly food. That’s 12% less than last week 👍',
+    id: 'sejauh ini — kebanyakan buat makan. 12% lebih hemat dari minggu lalu 👍',
+  },
+
+  // Getting started
+  'land.startTitle': { en: 'Up and running in a minute', id: 'Siap pakai dalam semenit' },
+  'land.s1Title': { en: 'Sign in with Google', id: 'Masuk pakai Google' },
+  'land.s1Body': {
+    en: 'One tap. No new password to remember, no card, no trial countdown.',
+    id: 'Sekali ketuk. Tidak ada kata sandi baru, tidak ada kartu, tidak ada hitung mundur masa coba.',
+  },
+  'land.s2Title': { en: 'Add your accounts', id: 'Tambah dompetmu' },
+  'land.s2Body': {
+    en: 'Cash in your pocket, the bank card, GoPay — type in what’s in each today.',
+    id: 'Uang di kantong, kartu bank, GoPay — isi berapa saldonya hari ini.',
+  },
+  'land.s3Title': { en: 'Log as you go', id: 'Catat sambil jalan' },
+  'land.s3Body': {
+    en: 'From the app or from Telegram. Tracr does the math and the charts.',
+    id: 'Dari aplikasi atau dari Telegram. Tracr yang hitung dan bikin grafiknya.',
+  },
+  'land.pwaTitle': { en: 'No app store needed', id: 'Tanpa perlu app store' },
+  'land.pwaPre': {
+    en: 'Open Tracr in your phone’s browser, tap',
+    id: 'Buka Tracr di browser HP-mu, ketuk',
+  },
+  'land.pwaBold': { en: 'Add to Home Screen', id: 'Tambahkan ke Layar Utama' },
+  'land.pwaPost': {
+    en: ', and it launches full-screen like a real app — even with spotty internet.',
+    id: ', lalu dia terbuka penuh layar seperti aplikasi sungguhan — bahkan saat internet seret.',
+  },
+
+  // Privacy + final CTA + footer
+  'land.privacyTitle': {
+    en: 'Only you can see your money notes',
+    id: 'Hanya kamu yang bisa lihat catatan uangmu',
+  },
+  'land.privacyBody': {
+    en: 'Your data is locked to your own login — not sold, not shared, not shown to anyone else. Export everything or delete your account any time.',
+    id: 'Datamu terkunci di akunmu sendiri — tidak dijual, tidak dibagikan, tidak diperlihatkan ke siapa pun. Ekspor semuanya atau hapus akunmu kapan saja.',
+  },
+  'land.ctaTitle': { en: 'Start seeing your money clearly', id: 'Mulai lihat uangmu dengan jelas' },
+  'land.ctaBody': {
+    en: 'Takes a minute to set up. Costs nothing. Feels great by payday.',
+    id: 'Setelnya semenit. Gratis. Enak rasanya pas gajian.',
+  },
+  'land.ctaButton': { en: 'Get started — it’s free', id: 'Mulai — gratis' },
+  'land.madeIn': { en: 'Made in Indonesia 🇮🇩', id: 'Dibuat di Indonesia 🇮🇩' },
+  'land.terms': { en: 'Terms', id: 'Ketentuan' },
+  'land.privacy': { en: 'Privacy', id: 'Privasi' },
+
+  // Phone mock
+  'land.mockGreeting': { en: 'Good morning', id: 'Selamat pagi' },
+  'land.mockTotal': { en: 'Total balance', id: 'Total saldo' },
+  'land.mockThisMonth': { en: 'this month', id: 'bulan ini' },
+  'land.mockAskAi': { en: 'Ask AI', id: 'Tanya AI' },
+  'land.mockToday': { en: 'Today', id: 'Hari ini' },
+  'land.mockCoffee': { en: 'Morning coffee', id: 'Kopi pagi' },
+  'land.mockCoffeeSub': { en: 'Cash · 09:12', id: 'Tunai · 09:12' },
+  'land.mockSalary': { en: 'Salary', id: 'Gaji' },
+  'land.mockSalarySub': { en: 'Bank · 08:00', id: 'Bank · 08:00' },
+  'land.mockTopUp': { en: 'Top up e-wallet', id: 'Isi e-wallet' },
+
+  // ── Login / register ────────────────────────────────────────────────────
+  'login.tagline': { en: 'Smart Financial Tracker', id: 'Pencatat Keuangan Pintar' },
+  'login.subtitleSignIn': {
+    en: 'Track and watch your cash flow, all in one place',
+    id: 'Kelola & pantau arus kas Anda dalam satu genggaman',
+  },
+  'login.subtitleRegister': {
+    en: 'Create an account to start tracking your money',
+    id: 'Buat akun baru untuk mulai mencatat keuangan',
+  },
+  'login.fullName': { en: 'Full name', id: 'Nama Lengkap' },
+  'login.fullNamePlaceholder': { en: 'e.g. Budi Santoso', id: 'Contoh: Budi Santoso' },
+  'login.phone': { en: 'Phone number', id: 'Nomor HP' },
+  'login.yourPhone': { en: 'Your phone number', id: 'Nomor HP Anda' },
+  'login.createPin': { en: 'Create a PIN (6 digits)', id: 'Buat PIN (6 Angka)' },
+  'login.enterPin': { en: 'Enter your PIN (6 digits)', id: 'Masukkan PIN Keamanan (6 Angka)' },
+  'login.register': { en: 'Register now', id: 'Daftar Sekarang' },
+  'login.continue': { en: 'Continue', id: 'Lanjut' },
+  'login.signIn': { en: 'Sign in', id: 'Masuk ke Akun' },
+  'login.account': { en: 'Account', id: 'Akun' },
+  'login.change': { en: 'Change', id: 'Ubah' },
+  'login.haveAccount': { en: 'Already have an account? Sign in', id: 'Sudah punya akun? Masuk di sini' },
+  'login.noAccount': { en: 'No account yet? Register now', id: 'Belum punya akun? Daftar sekarang' },
+  'login.orSignInWith': { en: 'Or sign in with', id: 'Atau Masuk Dengan' },
+  'login.continueWithGoogle': { en: 'Continue with Google', id: 'Lanjut dengan Google' },
+  'login.securityNote': {
+    en: 'Private & encrypted, kept secure',
+    id: 'Privat & Terenkripsi dengan Keamanan Tinggi',
+  },
+  'login.errBadPhone': {
+    en: 'Enter a valid phone number (at least 8 digits).',
+    id: 'Masukkan nomor HP yang valid (minimal 8 angka).',
+  },
+  'login.errNoName': { en: 'Enter your full name.', id: 'Masukkan nama lengkap Anda.' },
+  'login.errPinLength': { en: 'Enter a 6-digit PIN.', id: 'Masukkan PIN 6 angka.' },
+  'login.errPinRequired': { en: 'Enter your 6-digit PIN.', id: 'Masukkan 6 angka PIN Anda.' },
+  'login.errRegisterFailed': {
+    en: 'Something went wrong while registering.',
+    id: 'Terjadi kesalahan saat pendaftaran.',
+  },
+  'login.errWrongCredentials': {
+    en: 'Wrong phone number or PIN. Please check again.',
+    id: 'Nomor HP atau PIN salah. Silakan periksa kembali.',
+  },
+  'login.errGoogleFailed': {
+    en: 'Could not sign in with Google.',
+    id: 'Gagal masuk dengan Google.',
+  },
+
+  'txf.noTagsYet': { en: 'No tags yet.', id: 'Belum ada label.' },
+  'txf.createTags': { en: 'Create some', id: 'Buat dulu' },
+  'txf.toLabelTx': { en: 'to label transactions.', id: 'untuk menandai transaksi.' },
+
   'settings.size.sm': { en: 'Small', id: 'Kecil' },
   'settings.size.md': { en: 'Default', id: 'Standar' },
   'settings.size.lg': { en: 'Large', id: 'Besar' },
@@ -996,6 +1523,214 @@ export const MESSAGES = {
   'sale.save': { en: 'Save sale', id: 'Simpan penjualan' },
   'sale.errItem': { en: 'Add at least one item.', id: 'Tambah minimal satu barang.' },
   'sale.errAccount': { en: 'Pick which wallet receives the money.', id: 'Pilih dompet penerima uangnya.' },
+
+  // ── Nav / landing sections ───────────────────────────────────────────────
+  'nav.features': { en: 'Features', id: 'Fitur' },
+  'nav.telegramBot': { en: 'Telegram Bot', id: 'Bot Telegram' },
+  'nav.calculator': { en: 'Calculator', id: 'Kalkulator' },
+
+  // ── Overhaul Landing Keys ────────────────────────────────────────────────
+  'land.heroBadgeNew': { en: 'Smart PWA Financial Tracker', id: 'Smart PWA Financial Tracker' },
+  'land.heroHeadlineA': { en: 'Log Money as Fast as Chatting.', id: 'Catat Uang Secepat Chatting.' },
+  'land.heroHeadlineB': { en: 'No Hassle, Never Forget.', id: 'Tanpa Ribet, Tanpa Lupa.' },
+  'land.heroSubNew': {
+    en: 'Manage personal & UMKM business finances in one lightweight PWA. Log transactions via Telegram bot, monitor safe daily budget, and let AI analyze your spending.',
+    id: 'Kelola uang pribadi & bisnis UMKM dalam satu aplikasi PWA yang ringan. Catat transaksi via Telegram bot, pantau budget harian aman, dan biarkan AI menganalisis pengeluaran Anda.',
+  },
+  'land.tryFreeCta': { en: 'Try Free Now →', id: 'Coba Gratis Sekarang →' },
+  'land.testBotCta': { en: '💬 Test Telegram Bot', id: '💬 Tes Bot Telegram' },
+  'land.perk100Free': { en: '✓ 100% Free', id: '✓ 100% Gratis' },
+  'land.perkNoCardNew': { en: '✓ No Credit Card', id: '✓ Tanpa Kartu Kredit' },
+  'land.perkOfflineReady': { en: '✓ Offline Ready', id: '✓ Bebas Offline' },
+  'land.perkSupabaseSecured': { en: '✓ Supabase Secured', id: '✓ Supabase Secured' },
+
+  // Interactive Mockup
+  'land.heroAiTitle': { en: 'AI Spending Copilot', id: 'AI Spending Copilot' },
+  'land.heroAiBody': {
+    en: 'Safe budget remaining today is {amount}. Great pace! 👍',
+    id: 'Budget aman hari ini tersisa {amount}. Pace bagus! 👍',
+  },
+  'land.heroMockDate': { en: 'Tuesday, 24 July', id: 'Selasa, 24 Juli' },
+  'land.heroMockGreeting': { en: 'Hello, Tracr Friend 👋', id: 'Halo, Sahabat Tracr 👋' },
+  'land.heroMockBalanceTitle': { en: 'Total Cash & E-Wallet Balance', id: 'Total Saldo Kas & E-Wallet' },
+  'land.heroMockYesterday': { en: 'Yesterday', id: 'Kemarin' },
+  'land.heroSimCoffee': { en: 'Starbucks Coffee', id: 'Kopi Kenangan' },
+  'land.heroSimSalary': { en: 'Salary Transfer', id: 'Gaji Transfer' },
+  'land.heroSimFreelance': { en: 'Freelance Fee', id: 'Honor Freelance' },
+  'land.heroSimGroceries': { en: 'Minimarket Groceries', id: 'Belanja Minimarket' },
+  'land.heroSimElectricity': { en: 'Electricity Token', id: 'Token Listrik PLN' },
+  'land.mockDailySafeBudget': { en: 'Daily Safe Budget', id: 'Budget Harian Aman' },
+  'land.mockTapChipHint': { en: '👇 Click quick action chip below to simulate:', id: '👇 Klik chip aksi cepat di bawah untuk simulasi:' },
+  'land.mockAddSuccess': { en: 'Transaction added!', id: 'Transaksi ditambahkan!' },
+
+  // Telegram Simulator
+  'land.tgSimBadge': { en: '🤖 Telegram & AI Copilot', id: '🤖 Telegram & AI Copilot' },
+  'land.tgSimTitle': { en: 'Test Telegram Bot Live Right Here', id: 'Tes Bot Telegram Langsung Di Sini' },
+  'land.tgSimSubtitle': {
+    en: 'Click the presets below or type any message to simulate live Telegram logging.',
+    id: 'Klik tombol di bawah atau ketik pesan untuk mencoba simulasi pencatatan otomatis via Telegram.',
+  },
+  'land.tgSimPreset1': { en: 'Coffee 25k BCA', id: 'Kopi 25k BCA' },
+  'land.tgSimPreset2': { en: 'Salary 8.5M', id: 'Gaji 8.5jt' },
+  'land.tgSimPreset3': { en: 'Transfer 200k to Gopay', id: 'Transfer 200k ke Gopay' },
+  'land.tgSimPreset4': { en: 'How much spent on coffee this month?', id: 'Berapa pengeluaran kopi bulan ini?' },
+  'land.tgSimPlaceholder': { en: 'Type transaction message (e.g. Lunch 35k)...', id: 'Ketik pesan transaksi (cth: Makan 35k)...' },
+  'land.tgSimTyping': { en: 'Tracr Bot is typing...', id: 'Tracr Bot is typing...' },
+  'land.tgSimBotStatus': { en: 'Bot Active · Powered by AI', id: 'Bot Aktif · Powered by AI' },
+  'land.tgSimFeature1Title': { en: 'Natural Language AI:', id: 'Natural Language AI:' },
+  'land.tgSimFeature1Body': {
+    en: 'Just type like normal chatting, Tracr AI understands amount, wallet, and category.',
+    id: 'Cukup ketik seperti chatting biasa, AI Tracr paham jumlah, dompet, dan kategorinya.',
+  },
+  'land.tgSimFeature2Title': { en: 'Financial Q&A:', id: 'Financial Q&A:' },
+  'land.tgSimFeature2Body': {
+    en: '"How much budget left?", "How much spent on food?", bot answers instantly.',
+    id: '"Berapa budget tersisa?", "Habis berapa buat makan?", bot menjawab seketika.',
+  },
+
+  // Book Toggle Section
+  'land.toggleTitle': { en: 'One App for Personal & UMKM Business Finances', id: 'Satu Aplikasi untuk Keuangan Pribadi & Usaha UMKM' },
+  'land.toggleSub': {
+    en: 'Switch views in 1 click. Keep personal wallet and business ledger separate without confusion.',
+    id: 'Beralih antarmuka dengan 1 klik. Pisahkan uang dompet harian dan pembukuan usaha tanpa campur aduk.',
+  },
+  'land.tabPersonal': { en: '👤 Personal E-Wallet', id: '👤 Personal E-Wallet' },
+  'land.tabBusiness': { en: '💼 Business / UMKM Book', id: '💼 Business / UMKM Book' },
+
+  // Book Showcase Cards
+  'land.bookPers1Title': { en: 'Multi-Wallet Balance', id: 'Saldo Multi-Dompet' },
+  'land.bookPers1Desc': {
+    en: 'All cash, bank accounts (BCA, Mandiri), and e-wallets (GoPay, OVO) in 1 clean view.',
+    id: 'Semua uang tunai, rekening bank (BCA, Mandiri), hingga e-wallet (GoPay, OVO) dalam 1 layar bersih.',
+  },
+  'land.bookPers2Title': { en: 'Safe-to-Spend Limit', id: 'Safe-to-Spend Limit' },
+  'land.bookPers2Desc': {
+    en: 'Automatically calculates free spending amount for today after deducting bills & mandatory savings.',
+    id: 'Otomatis menghitung berapa uang yang bebas kamu habiskan hari ini setelah memotong tagihan & tabungan wajib.',
+  },
+  'land.bookPers2LimitLabel': { en: "Today's Safe Limit", id: 'Batas Aman Hari Ini' },
+  'land.bookPers3Title': { en: 'Categories & AI Analytics', id: 'Kategori & AI Analytics' },
+  'land.bookPers3Desc': {
+    en: 'Track coffee expenses, Netflix subscriptions, to monthly groceries without manual math.',
+    id: 'Lacak pengeluaran kopi, langganan Netflix, hingga belanja bulanan tanpa perlu hitung manual.',
+  },
+  'land.bookBiz1Title': { en: 'Sales Revenue & Volume', id: 'Omset Penjualan & Sales' },
+  'land.bookBiz1Desc': {
+    en: 'Record incoming store/UMKM transactions quickly. Track daily and monthly revenue.',
+    id: 'Catat setiap transaksi masuk warung/toko UMKM kamu dengan cepat. Lacak omset harian dan bulanan.',
+  },
+  'land.bookBiz1Today': { en: "Today's Revenue", id: 'Omset Hari Ini' },
+  'land.bookBiz1TotalTx': { en: 'Total Transactions', id: 'Total Transaksi' },
+  'land.bookBiz1SalesCount': { en: '{n} Sales', id: '{n} Penjualan' },
+  'land.bookBiz2Title': { en: 'Profit Margin per Product', id: 'Margin Untung per Produk' },
+  'land.bookBiz2Desc': {
+    en: 'POS-Lite feature: register selling price & cost. Tap once during a sale to calculate net profit.',
+    id: 'Fitur POS-Lite: daftarkan harga jual & modal produk. Ketuk sekali saat jualan untuk menghitung untung bersih.',
+  },
+  'land.bookBiz2ProfitNasi': { en: 'Profit 8k / portion', id: 'Untung 8k / porsi' },
+  'land.bookBiz2ProfitTeh': { en: 'Profit 3k / portion', id: 'Untung 3k / porsi' },
+  'land.bookBiz3Title': { en: 'Debt Book & Receivables', id: 'Buku Piutang / Kasbon' },
+  'land.bookBiz3Desc': {
+    en: 'Log customers owing money for goods. Send settlement reminders via WhatsApp in 1 tap.',
+    id: 'Catat pelanggan yang utang barang. Kirim pengingat pelunasan via WhatsApp dalam 1 ketukan.',
+  },
+  'land.bookBiz3Debt': { en: 'Owes {amount}', id: 'Utang {amount}' },
+  'land.bookBiz3Paid': { en: '✓ Paid in Full', id: '✓ Lunas' },
+
+  // Safe-To-Spend Calculator
+  'land.calcTitle': { en: 'Daily Safe Budget Calculator (Safe-to-Spend)', id: 'Kalkulator Budget Aman Harian (Safe-to-Spend)' },
+  'land.calcHeadingMain': { en: 'Calculate Your Daily Safe Budget Now', id: 'Hitung Budget Aman Harian Anda Sekarang' },
+  'land.calcSub': {
+    en: 'Know exactly how much you can spend today without touching bills or savings.',
+    id: 'Ketahui berapa jumlah uang yang aman kamu belanjakan hari ini tanpa mengganggu tabungan dan tagihan rutin.',
+  },
+  'land.calcIncome': { en: 'Monthly Income', id: 'Pendapatan Bulanan' },
+  'land.calcFixed': { en: 'Fixed Bills & Savings', id: 'Tagihan & Tabungan Wajib' },
+  'land.calcDailyResult': { en: 'Your Daily Safe Budget', id: 'Budget Aman Harian Anda' },
+  'land.calcPerDay': { en: '/ day', id: '/ hari' },
+  'land.calcStatusSafe': { en: 'SAFE ZONE · On Track', id: 'ZONE AMAN · On Track' },
+  'land.calcStatusWarning': { en: 'WARNING · Budget Tight', id: 'PERINGATAN · Budget Mepet' },
+  'land.calcFreeMonthlyNote': {
+    en: 'Tracr automatically sets aside your remaining free money and splits it into 30 days dynamically so you do not stress at month-end.',
+    id: 'Tracr otomatis menyisihkan sisa uang bebas Anda dan membaginya ke 30 hari secara dinamis agar Anda tidak perlu stres di akhir bulan.',
+  },
+  'land.calcFreeMonthlyLabel': { en: 'Remaining Monthly Disposable Cash:', id: 'Sisa Uang Bebas Bulanan:' },
+
+  // Bento Grid
+  'land.bentoTitle': { en: 'Key Features of Tracr', id: 'Fitur Unggulan Tracr' },
+  'land.bentoSub': {
+    en: 'Designed specifically for speed, convenience, and effortless tracking.',
+    id: 'Dirancang khusus untuk kecepatan, kenyamanan, dan kemudahan pencatatan.',
+  },
+  'land.b1Title': { en: 'Instant Telegram & WA Bot', id: 'Instant Telegram & WA Bot' },
+  'land.b1Desc': {
+    en: 'Log transactions in 3 seconds via chat. AI automatically categorizes without filling forms.',
+    id: 'Catat transaksi dalam 3 detik via chat. AI otomatis mengkategorikan tanpa isi form.',
+  },
+  'land.b1Chip1': { en: '⚡ Log in 3 Seconds', id: '⚡ Catat 3 Detik' },
+  'land.b1Chip2': { en: '🤖 AI Parse Automatic', id: '🤖 AI Parse Automatic' },
+  'land.b1Chip3': { en: '💬 Zero App Open Needed', id: '💬 Zero App Open Needed' },
+  'land.b2Title': { en: 'Multi-Account & Multi-Currency', id: 'Multi-Account & Multi-Currency' },
+  'land.b2Desc': {
+    en: 'Combine BCA, Mandiri, GoPay, OVO, Cash, to Crypto in one real-time total balance.',
+    id: 'Gabungkan BCA, Mandiri, GoPay, OVO, Cash, hingga Crypto dalam satu total saldo real-time.',
+  },
+  'land.b2Chip': { en: '✓ Supports IDR, USD, EUR & Crypto', id: '✓ Support IDR, USD, EUR & Crypto' },
+  'land.b3Title': { en: 'AI Spending Copilot', id: 'AI Spending Copilot' },
+  'land.b3Desc': {
+    en: 'Smart analysis of impulse spending, hidden subscriptions, and saving advice.',
+    id: 'Analisis pintar pengeluaran impulsif, langganan tersembunyi, dan saran penghematan.',
+  },
+  'land.b3Chip': { en: '✨ Smart Financial Advice', id: '✨ Smart Financial Advice' },
+  'land.b4Title': { en: 'Offline-First PWA', id: 'Offline-First PWA' },
+  'land.b4Desc': {
+    en: 'Open & log even without internet signal. Data automatically syncs when online.',
+    id: 'Buka & catat walau tanpa sinyal internet. Data otomatis tersinkron saat online kembali.',
+  },
+  'land.b4Chip': { en: '📲 Fast Install (<2MB Memory)', id: '📲 Fast Install (<2MB Memory)' },
+  'land.b5Title': { en: 'Debts & Receivables Tracker', id: 'Piutang & Debt Tracker' },
+  'land.b5Desc': {
+    en: 'Track who owes you, send 1-click WhatsApp reminders, and log payment history.',
+    id: 'Catat siapa yang ngutang, kirim pengingat WhatsApp 1-klik, dan lacak riwayat bayar.',
+  },
+  'land.b5Chip': { en: '💬 1-Tap WhatsApp Reminder', id: '💬 1-Tap WhatsApp Reminder' },
+
+  // Before & After
+  'land.compTitle': { en: 'Why Choose Tracr?', id: 'Mengapa Memilih Tracr?' },
+  'land.compSub': { en: 'Direct comparison between conventional finance apps vs Tracr.', id: 'Perbandingan langsung antara aplikasi keuangan konvensional vs Tracr.' },
+  'land.compOldHead': { en: 'Other Finance Apps ❌', id: 'Aplikasi Keuangan Lain ❌' },
+  'land.compNewHead': { en: 'Tracr (Simple & Fast) ✅', id: 'Tracr (Simple & Fast) ✅' },
+  'land.compRow1Old': { en: 'Confusing 15-input forms', id: 'Form 15-input yang membingungkan' },
+  'land.compRow1New': { en: '3-second Telegram chat (Coffee 25k BCA)', id: 'Chat Telegram 3 detik (Kopi 25k BCA)' },
+  'land.compRow2Old': { en: 'Heavy app (50MB+ download)', id: 'Aplikasi berat (50MB+ download)' },
+  'land.compRow2New': { en: 'Lightweight PWA (< 2MB, install from browser)', id: 'PWA Ringan (< 2MB, install dari browser)' },
+  'land.compRow3Old': { en: 'Overwhelming 17+ chart modules', id: 'Grafik 17+ modul bikin pusing' },
+  'land.compRow3New': { en: 'Daily Safe-to-Spend indicator', id: 'Indikator Safe-to-Spend Harian' },
+  'land.compRow4Old': { en: 'Business features isolated in other apps', id: 'Fitur bisnis terpisah di app lain' },
+  'land.compRow4New': { en: '1-click Personal & Business Book switch', id: 'Switch Personal & Business Book 1-klik' },
+
+  // PWA Banner & QR
+  'land.pwaBannerTitle': { en: 'Install Tracr PWA on Your Phone in 10 Seconds', id: 'Install PWA Tracr di HP Anda Dalam 10 Detik' },
+  'land.pwaBannerSub': {
+    en: 'No App Store or Google Play needed. Lightweight, memory-friendly, and accessible offline.',
+    id: 'Tanpa perlu App Store atau Google Play. Ringan, hemat memori, dan bisa diakses offline.',
+  },
+  'land.pwaIosStep1': { en: '1. Open Tracr in Safari', id: '1. Buka Tracr di Safari' },
+  'land.pwaIosStep2': { en: '2. Tap the Share button', id: '2. Ketuk tombol Bagikan (Share)' },
+  'land.pwaIosStep3': { en: '3. Select Add to Home Screen', id: '3. Pilih Tambahkan ke Layar Utama' },
+  'land.pwaAndroidStep1': { en: '1. Open Tracr in Chrome', id: '1. Buka Tracr di Chrome' },
+  'land.pwaAndroidStep2': { en: '2. Tap the menu dots (⋮)', id: '2. Ketuk menu titik tiga (⋮)' },
+  'land.pwaAndroidStep3': { en: '3. Select Install App', id: '3. Pilih Install Aplikasi' },
+  'land.pwaScanButton': { en: 'Scan QR to Open App', id: 'Scan QR untuk Buka App' },
+  'land.pwaScanHint': { en: 'Scan the QR Code above with your smartphone camera', id: 'Pindai QR Code di atas dengan kamera smartphone Anda' },
+
+  // Privacy & Security
+  'land.secBadge': { en: '🔒 Supabase Row Level Security (RLS) Encrypted', id: '🔒 Supabase Row Level Security (RLS) Encrypted' },
+  'land.secHeading': { en: '100% Guaranteed Data Privacy', id: '100% Privasi Data Terjamin' },
+  'land.secBody': {
+    en: 'Your data is securely stored in an encrypted Supabase database. We never ask for banking credentials.',
+    id: 'Datamu tersimpan aman di database Supabase terenkripsi. Kami tidak pernah meminta kredensial perbankan Anda.',
+  }
 } satisfies Record<string, Entry>
 
 export type MsgKey = keyof typeof MESSAGES

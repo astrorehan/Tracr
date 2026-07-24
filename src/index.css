@@ -1,5 +1,9 @@
 @import 'tailwindcss';
 
+html {
+  scroll-behavior: smooth;
+}
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
@@ -341,6 +345,26 @@ input[type='number'] {
   }
 }
 
+@keyframes riseOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(12px) scale(0.95);
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
 @keyframes marquee {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
@@ -349,8 +373,10 @@ input[type='number'] {
 @theme {
   --animate-slide-up: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-fade-in: fadeIn 0.2s ease-out both;
+  --animate-fade-out: fadeOut 0.2s ease-in both;
   --animate-pop: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-rise: riseIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-rise-out: riseOut 0.2s cubic-bezier(0.4, 0, 1, 1) both;
   /* Chat bubbles settle in fast — long rise feels laggy mid-conversation */
   --animate-msg: riseIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-marquee: marquee 35s linear infinite;
@@ -606,3 +632,84 @@ input[type='number'] {
 .nav-rail[data-active='true']::before {
   height: 60%;
 }
+
+/* ── Overhaul Animations ───────────────────────────────────────────────── */
+@keyframes qrScan {
+  0% {
+    top: 0%;
+    opacity: 0.8;
+  }
+  50% {
+    top: 90%;
+    opacity: 1;
+  }
+  100% {
+    top: 0%;
+    opacity: 0.8;
+  }
+}
+.animate-qr-scan {
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #00aed6, #10b981, transparent);
+  box-shadow: 0 0 12px #00aed6;
+  border-radius: 99px;
+  animation: qrScan 3s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(0, 114, 188, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(0, 174, 214, 0.45);
+  }
+}
+.animate-pulse-glow {
+  animation: pulseGlow 4s ease-in-out infinite;
+}
+
+@keyframes floatSlow {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+.animate-float-slow {
+  animation: floatSlow 6s ease-in-out infinite;
+}
+
+@keyframes cardPop {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-card-pop {
+  animation: cardPop 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-card-pop-1 {
+  animation: cardPop 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.05s forwards;
+  opacity: 0;
+}
+
+.animate-card-pop-2 {
+  animation: cardPop 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.12s forwards;
+  opacity: 0;
+}
+
+.animate-card-pop-3 {
+  animation: cardPop 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.19s forwards;
+  opacity: 0;
+}
+
