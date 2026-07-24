@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Plus, Wallet, List, Pencil, Trash2, PieChart } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Plus, Wallet, List, Pencil, Trash2, PieChart, TriangleAlert } from 'lucide-react'
 import { BackLink } from '@/components/ui/BackLink'
 import { Button } from '@/components/ui/Button'
 import { Pill, ListCard, ListRow, IconChip } from '@/components/ui/list'
@@ -258,11 +259,15 @@ function AccountRow({
   onDelete: (e: React.MouseEvent, account: Account) => void
 }) {
   const { t } = useT()
+  const navigate = useNavigate()
   const meta = accountTypeMeta(account.type)
   const isLiability = account.is_liability
   const color = account.color ?? '#0072BC'
   const baseEstimate =
     account.currency === base ? null : convertMinor(balance, account.currency, base, rateTable)
+  // A foreign-currency wallet with no usable rate is silently skipped from net
+  // worth — surface it here so the total the user sees isn't quietly incomplete.
+  const missingRate = account.currency !== base && baseEstimate == null
 
   const subtitle = [t(meta.label), account.exclude_from_stats ? t('acc.excluded') : null]
     .filter(Boolean)
@@ -304,6 +309,19 @@ function AccountRow({
               <p className="mt-0.5 font-numeric text-xs font-semibold text-muted-foreground">
                 ≈ {formatMoney(baseEstimate, base)}
               </p>
+            )}
+            {missingRate && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  navigate('/currencies')
+                }}
+                className="pressable mt-1 inline-flex items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-bold text-warning transition-colors hover:bg-warning/25"
+              >
+                <TriangleAlert className="h-3 w-3" />
+                {t('acc.addRate', { code: account.currency })}
+              </button>
             )}
           </div>
         </div>
