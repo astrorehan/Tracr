@@ -8,6 +8,7 @@ import {
   BookmarkPlus,
   Camera,
   Check,
+  ChevronDown,
   Loader2,
   Paperclip,
   Plus,
@@ -114,42 +115,14 @@ function toLocalDate(isoString: string) {
   return new Date(d.getTime() - off * 60_000).toISOString().slice(0, 10)
 }
 
-export function TransactionForm({
-  open,
-  onClose,
-  defaultAccountId,
-  transaction,
-  initialTagIds,
-  initialSplits,
-  initialCounterAmount,
-  initialDraft,
-  defaultType,
-}: Props) {
-  const { t } = useT()
-  return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={t(transaction ? 'txf.editTitle' : 'txf.addTitle')}
-      className="sm:max-w-2xl"
-    >
-      {open && (
-        <TransactionFormBody
-          onClose={onClose}
-          defaultAccountId={defaultAccountId}
-          transaction={transaction}
-          initialTagIds={initialTagIds}
-          initialSplits={initialSplits}
-          initialCounterAmount={initialCounterAmount}
-          initialDraft={initialDraft}
-          defaultType={defaultType}
-        />
-      )}
-    </Modal>
-  )
+export function TransactionForm(props: Props) {
+  // The body owns all form state — and the Modal's sticky Save footer, which
+  // needs that state — so it mounts only while open; closing tears the draft down.
+  return props.open ? <TransactionFormBody {...props} /> : null
 }
 
 function TransactionFormBody({
+  open,
   onClose,
   defaultAccountId,
   transaction,
@@ -158,16 +131,7 @@ function TransactionFormBody({
   initialCounterAmount = '',
   initialDraft,
   defaultType,
-}: {
-  onClose: () => void
-  defaultAccountId?: string
-  transaction?: Transaction
-  initialTagIds?: string[]
-  initialSplits?: TransactionSplit[]
-  initialCounterAmount?: string
-  initialDraft?: QuickDraft
-  defaultType?: TransactionType
-}) {
+}: Props) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { profile } = useAuth()
@@ -229,6 +193,12 @@ function TransactionFormBody({
   // A parser-supplied category counts as an explicit pick, so rules don't clobber it.
   const [categoryTouched, setCategoryTouched] = useState(editing || !!draft?.categoryId)
   const [tagsTouched, setTagsTouched] = useState(editing)
+  // Progressive disclosure: the essentials (type/amount/account/category/date)
+  // cover most entries; the rest live behind a "More details" toggle. Expanded by
+  // default when editing or when a draft/scan already carried advanced content.
+  const [showMore, setShowMore] = useState(
+    editing || !!draft?.note || initialTagIds.length > 0,
+  )
   const [savingTpl, setSavingTpl] = useState(false)
   const [tplName, setTplName] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -453,18 +423,25 @@ function TransactionFormBody({
 
   if (accounts.length === 0) {
     return (
-      <div>
-        <p className="text-sm text-muted-foreground">{t('txf.needAccount')}</p>
-        <Button
-          className="mt-4 w-full"
-          onClick={() => {
-            onClose()
-            navigate('/accounts')
-          }}
-        >
-          {t('txf.goToAccounts')}
-        </Button>
-      </div>
+      <Modal
+        open={open}
+        onClose={onClose}
+        title={t(transaction ? 'txf.editTitle' : 'txf.addTitle')}
+        className="sm:max-w-2xl"
+      >
+        <div>
+          <p className="text-sm text-muted-foreground">{t('txf.needAccount')}</p>
+          <Button
+            className="mt-4 w-full"
+            onClick={() => {
+              onClose()
+              navigate('/accounts')
+            }}
+          >
+            {t('txf.goToAccounts')}
+          </Button>
+        </div>
+      </Modal>
     )
   }
 
@@ -648,73 +625,93 @@ function TransactionFormBody({
       </div>
     )
 
+  // Receipt scan (new entries only): a compact AI-tagged icon in the header, with
+  // its hidden file input co-located. The result banner renders in the form flow.
+  const scanAction = !editing ? (
+    <>
+      <input
+        ref={scanRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          void handleScan(e.target.files)
+          e.target.value = '' // let the same photo be picked again
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => scanRef.current?.click()}
+        disabled={scanning}
+        title={t('txf.scanHint')}
+        aria-label={t('txf.scanTitle')}
+        className="pressable flex h-9 items-center gap-1.5 rounded-full border border-primary/30 bg-primary-soft/60 pl-2.5 pr-2 text-xs font-bold text-primary transition-colors hover:bg-primary-soft disabled:cursor-wait disabled:opacity-70"
+      >
+        {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+        <span className="hidden sm:inline">{t('txf.scanTitle')}</span>
+        <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-extrabold uppercase leading-none tracking-wide">
+          <Sparkles className="h-2.5 w-2.5" /> AI
+        </span>
+      </button>
+    </>
+  ) : undefined
+
+  const footer = (
+    <>
+      {error && <p className="mb-2 text-sm text-danger">{error}</p>}
+      <Button
+        type="submit"
+        form="tx-form"
+        className="w-full"
+        size="lg"
+        loading={
+          create.isPending || update.isPending || setTags.isPending || setSplits.isPending || uploadFiles.isPending
+        }
+      >
+        {t(editing ? 'txf.saveChanges' : 'txf.saveTransaction')}
+        {splitting && splitTotal > 0 ? ` · ${formatMoney(splitTotal, currency, { signDisplay: 'never' })}` : ''}
+      </Button>
+    </>
+  )
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      {/* Scan a receipt — auto-fill the whole form from a photo (new entries only) */}
-      {!editing && (
-        <div>
-          <input
-            ref={scanRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            multiple
-            className="hidden"
-            onChange={(e) => {
-              void handleScan(e.target.files)
-              e.target.value = '' // let the same photo be picked again
-            }}
-          />
-          <button
-            type="button"
-            onClick={() => scanRef.current?.click()}
-            disabled={scanning}
-            className="group flex w-full items-center gap-3 rounded-2xl border border-primary/25 bg-primary-soft/50 px-4 py-3.5 text-left transition-colors hover:border-primary/50 hover:bg-primary-soft disabled:cursor-wait disabled:opacity-80"
-          >
-            <span className="brand-gradient flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-sm">
-              {scanning ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <Camera className="h-5 w-5" />
-              )}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-1.5 text-sm font-bold text-foreground">
-                {t(scanning ? 'txf.scanReading' : 'txf.scanTitle')}
-                {!scanning && <Sparkles className="h-3.5 w-3.5 text-primary" />}
-              </span>
-              <span className="mt-0.5 block text-xs font-medium text-muted-foreground">
-                {t(scanning ? 'txf.scanWait' : 'txf.scanHint')}
-              </span>
-            </span>
-          </button>
-          {scanNotice && (
-            <p
-              className={cn(
-                'mt-2 flex flex-wrap items-start gap-x-1.5 gap-y-1 text-xs font-semibold',
-                scanNotice.kind === 'ok'
-                  ? 'text-positive'
-                  : scanNotice.kind === 'limit'
-                    ? 'text-warning'
-                    : 'text-danger',
-              )}
-            >
-              {scanNotice.kind === 'ok' && <Check className="mt-px h-3.5 w-3.5 shrink-0" />}
-              <span>{scanNotice.text}</span>
-              {scanNotice.kind === 'limit' && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClose()
-                    navigate('/billing')
-                  }}
-                  className="font-bold text-primary hover:underline"
-                >
-                  {t('billing.goToBilling')}
-                </button>
-              )}
-            </p>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={t(transaction ? 'txf.editTitle' : 'txf.addTitle')}
+      className="sm:max-w-2xl"
+      headerAction={scanAction}
+      footer={footer}
+    >
+      <form id="tx-form" onSubmit={handleSubmit} className="space-y-5">
+      {/* Receipt scan result — the trigger lives in the header; this reports back. */}
+      {!editing && scanNotice && (
+        <p
+          className={cn(
+            'flex flex-wrap items-start gap-x-1.5 gap-y-1 text-xs font-semibold',
+            scanNotice.kind === 'ok'
+              ? 'text-positive'
+              : scanNotice.kind === 'limit'
+                ? 'text-warning'
+                : 'text-danger',
           )}
-        </div>
+        >
+          {scanNotice.kind === 'ok' && <Check className="mt-px h-3.5 w-3.5 shrink-0" />}
+          <span>{scanNotice.text}</span>
+          {scanNotice.kind === 'limit' && (
+            <button
+              type="button"
+              onClick={() => {
+                onClose()
+                navigate('/billing')
+              }}
+              className="font-bold text-primary hover:underline"
+            >
+              {t('billing.goToBilling')}
+            </button>
+          )}
+        </p>
       )}
 
       {!editing && templates.length > 0 && (
@@ -818,7 +815,7 @@ function TransactionFormBody({
         )}
       </div>
 
-      {/* Details — two columns on desktop, single column on phones */}
+      {/* Essentials — cover most entries. Two columns on desktop, stacked on phones. */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className={cn(splitting && 'sm:col-span-2')}>
           <Field label={t(type === 'transfer' ? 'txf.fromAccount' : 'common.account')}>
@@ -888,8 +885,34 @@ function TransactionFormBody({
           <div className={cn(splitting && 'sm:col-span-2')}>{categoryBlock}</div>
         )}
 
-        {type !== 'transfer' && (
-          <div className="sm:col-span-2">
+        <div className="sm:col-span-2">
+          <Field label={t('common.date')}>
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </Field>
+        </div>
+      </div>
+
+      {/* More details — everything the average entry doesn't need, tucked away. */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowMore((v) => !v)}
+          aria-expanded={showMore}
+          className="flex w-full items-center justify-center gap-1.5 border-t border-border pt-4 text-sm font-semibold text-muted-foreground transition hover:text-foreground"
+        >
+          <ChevronDown className={cn('h-4 w-4 transition-transform', showMore && 'rotate-180')} />
+          {t('txf.moreDetails')}
+          {!showMore && (
+            <span className="hidden text-xs font-medium text-muted-foreground/70 sm:inline">
+              · {t('txf.moreDetailsHint')}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {showMore && (
+        <div className="space-y-4">
+          {type !== 'transfer' && (
             <Field label={t(type === 'income' ? 'txf.payerLabel' : 'txf.payeeLabel')}>
               <Input
                 list="payee-suggestions"
@@ -906,11 +929,9 @@ function TransactionFormBody({
                 ))}
               </datalist>
             </Field>
-          </div>
-        )}
+          )}
 
-        {type !== 'transfer' && (linkCandidates.length > 0 || linkedId) && (
-          <div className="sm:col-span-2">
+          {type !== 'transfer' && (linkCandidates.length > 0 || linkedId) && (
             <Field label={t(type === 'income' ? 'txf.refundForLabel' : 'txf.reimbursedByLabel')}>
               <Select value={linkedId} onChange={(e) => setLinkedId(e.target.value)}>
                 <option value="">{t('txf.notLinked')}</option>
@@ -925,15 +946,8 @@ function TransactionFormBody({
                 {t(type === 'income' ? 'txf.refundHint' : 'txf.reimburseHint')}
               </p>
             </Field>
-          </div>
-        )}
+          )}
 
-        <div>
-          <Field label={t('common.date')}>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-          </Field>
-        </div>
-        <div>
           <Field label={t('common.notes')}>
             <Input
               value={note}
@@ -941,9 +955,7 @@ function TransactionFormBody({
               placeholder={t('common.optional')}
             />
           </Field>
-        </div>
 
-        <div className="sm:col-span-2">
           <Field label={t('section.tags')}>
             <TagPicker
               selected={effectiveTagIds}
@@ -953,9 +965,7 @@ function TransactionFormBody({
               }}
             />
           </Field>
-        </div>
 
-        <div className="sm:col-span-2">
           <Field label={t('txf.receipts')}>
             <input
               ref={fileRef}
@@ -996,63 +1006,50 @@ function TransactionFormBody({
               </div>
             )}
           </Field>
+
+          {type !== 'transfer' &&
+            (savingTpl ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  value={tplName}
+                  onChange={(e) => setTplName(e.target.value)}
+                  placeholder={t('txf.templateName')}
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      void saveTemplate()
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => void saveTemplate()}
+                  loading={createTemplate.isPending}
+                  disabled={!tplName.trim()}
+                >
+                  {t('common.save')}
+                </Button>
+                <Button type="button" size="sm" variant="secondary" onClick={() => setSavingTpl(false)}>
+                  {t('common.cancel')}
+                </Button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setTplName(payee.trim() || note.trim() || '')
+                  setSavingTpl(true)
+                }}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition hover:text-primary"
+              >
+                <BookmarkPlus className="h-3.5 w-3.5" /> {t('txf.saveAsTemplate')}
+              </button>
+            ))}
         </div>
-      </div>
-
-      {type !== 'transfer' &&
-        (savingTpl ? (
-          <div className="flex items-center gap-2">
-            <Input
-              value={tplName}
-              onChange={(e) => setTplName(e.target.value)}
-              placeholder={t('txf.templateName')}
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  void saveTemplate()
-                }
-              }}
-            />
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => void saveTemplate()}
-              loading={createTemplate.isPending}
-              disabled={!tplName.trim()}
-            >
-              {t('common.save')}
-            </Button>
-            <Button type="button" size="sm" variant="secondary" onClick={() => setSavingTpl(false)}>
-              {t('common.cancel')}
-            </Button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => {
-              setTplName(payee.trim() || note.trim() || '')
-              setSavingTpl(true)
-            }}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition hover:text-primary"
-          >
-            <BookmarkPlus className="h-3.5 w-3.5" /> {t('txf.saveAsTemplate')}
-          </button>
-        ))}
-
-      {error && <p className="text-sm text-danger">{error}</p>}
-
-      <Button
-        type="submit"
-        className="w-full"
-        size="lg"
-        loading={
-          create.isPending || update.isPending || setTags.isPending || setSplits.isPending || uploadFiles.isPending
-        }
-      >
-        {t(editing ? 'txf.saveChanges' : 'txf.saveTransaction')}
-        {splitting && splitTotal > 0 ? ` · ${formatMoney(splitTotal, currency, { signDisplay: 'never' })}` : ''}
-      </Button>
-    </form>
+      )}
+      </form>
+    </Modal>
   )
 }

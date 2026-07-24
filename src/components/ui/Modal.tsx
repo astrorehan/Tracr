@@ -11,13 +11,15 @@ interface ModalProps {
   description?: string
   children: ReactNode
   footer?: ReactNode
+  /** Optional control rendered in the header, left of the close button. */
+  headerAction?: ReactNode
   className?: string
 }
 
 /** Centered dialog on desktop, bottom sheet on mobile. Supports vertical dragging
  *  (drag down to dismiss) and sticky action footers. Rendered via portal into
  *  document.body to guarantee supreme z-index above all navigation bars. */
-export function Modal({ open, onClose, title, description, children, footer, className }: ModalProps) {
+export function Modal({ open, onClose, title, description, children, footer, headerAction, className }: ModalProps) {
   const [dragY, setDragY] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const startYRef = useRef(0)
@@ -124,14 +126,17 @@ export function Modal({ open, onClose, title, description, children, footer, cla
                     <p className="mt-1 text-sm text-muted-foreground">{description}</p>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="pressable -mr-1.5 -mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-surface-muted text-muted-foreground transition-colors hover:text-foreground"
-                  aria-label="Close"
-                >
-                  <X className="h-[18px] w-[18px]" />
-                </button>
+                <div className="-mr-1.5 -mt-1 flex shrink-0 items-center gap-2">
+                  {headerAction}
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="pressable flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-surface-muted text-muted-foreground transition-colors hover:text-foreground"
+                    aria-label="Close"
+                  >
+                    <X className="h-[18px] w-[18px]" />
+                  </button>
+                </div>
               </div>
             </header>
           )}

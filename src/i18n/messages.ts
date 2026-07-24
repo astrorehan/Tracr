@@ -848,6 +848,11 @@ export const MESSAGES = {
   'txf.deleteTemplate': { en: 'Delete template {name}', id: 'Hapus catatan cepat {name}' },
   'txf.templateName': { en: 'Template name', id: 'Nama catatan cepat' },
   'txf.saveAsTemplate': { en: 'Save as template', id: 'Simpan jadi catatan cepat' },
+  'txf.moreDetails': { en: 'More details', id: 'Detail lainnya' },
+  'txf.moreDetailsHint': {
+    en: 'Note, payee, tags, receipt, split',
+    id: 'Catatan, penerima, tag, struk, patungan',
+  },
 
   // Amount
   'txf.amount.expense': { en: 'Expense amount', id: 'Jumlah keluar' },
@@ -884,12 +889,12 @@ export const MESSAGES = {
   // Payee
   'txf.payerLabel': { en: 'Payer / source', id: 'Dari siapa' },
   'txf.payeeLabel': { en: 'Payee / merchant', id: 'Bayar ke siapa' },
-  'txf.payerPlaceholder': { en: 'Who paid you? (optional)', id: 'Siapa yang bayar? (boleh kosong)' },
-  'txf.payeePlaceholder': { en: 'Who did you pay? (optional)', id: 'Kamu bayar ke siapa? (boleh kosong)' },
+  'txf.payerPlaceholder': { en: 'Who paid you?', id: 'Siapa yang bayar?' },
+  'txf.payeePlaceholder': { en: 'Who did you pay?', id: 'Kamu bayar ke siapa?' },
 
   // Refund / reimbursement link
-  'txf.refundForLabel': { en: 'Refund for (optional)', id: 'Pengembalian untuk (boleh kosong)' },
-  'txf.reimbursedByLabel': { en: 'Reimbursed by (optional)', id: 'Diganti oleh (boleh kosong)' },
+  'txf.refundForLabel': { en: 'Refund for', id: 'Pengembalian untuk' },
+  'txf.reimbursedByLabel': { en: 'Reimbursed by', id: 'Diganti oleh' },
   'txf.notLinked': { en: 'Not linked', id: 'Tidak dikaitkan' },
   'txf.currentlyLinked': { en: 'Currently linked transaction', id: 'Transaksi yang sekarang dikaitkan' },
   'txf.refundHint': {
