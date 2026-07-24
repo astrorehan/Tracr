@@ -26,10 +26,27 @@ import {
 import { CategoryForm } from '@/features/categories/CategoryForm'
 import { CategoryIcon } from '@/features/categories/CategoryIcon'
 import { groupByParent } from '@/features/categories/tree'
+import { useT } from '@/features/settings/language-context'
+import type { MsgKey } from '@/i18n'
 import { cn } from '@/lib/utils'
 import type { Category, CategoryKind } from '@/types/db'
 
+/** Per-kind copy, so a group renders its own heading and empty line. */
+const KIND_COPY: Record<CategoryKind, { title: MsgKey; empty: MsgKey; noMergeTarget: MsgKey }> = {
+  expense: {
+    title: 'common.expense',
+    empty: 'cat.noneExpense',
+    noMergeTarget: 'cat.mergeNoTargetExpense',
+  },
+  income: {
+    title: 'common.income',
+    empty: 'cat.noneIncome',
+    noMergeTarget: 'cat.mergeNoTargetIncome',
+  },
+}
+
 export function CategoriesPage() {
+  const { t } = useT()
   const { data: categories, isLoading } = useCategories()
   const del = useDeleteCategory()
   const setArchived = useSetCategoryArchived()
@@ -52,10 +69,10 @@ export function CategoriesPage() {
   async function remove(c: Category) {
     if (
       await confirm({
-        title: `Delete "${c.name}"?`,
-        message: 'Existing transactions stay but become uncategorized.',
+        title: t('cat.deleteTitle', { name: c.name }),
+        message: t('cat.deleteMessage'),
         tone: 'danger',
-        confirmLabel: 'Delete',
+        confirmLabel: t('common.delete'),
       })
     )
       del.mutate(c.id)
@@ -63,25 +80,25 @@ export function CategoriesPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <PageHeader title="Categories" />
+      <PageHeader title={t('section.categories')} />
 
       {isLoading ? (
         <CenterSpinner />
       ) : (categories?.length ?? 0) === 0 ? (
         <EmptyState
           icon={<Tag className="h-8 w-8" />}
-          title="No categories yet"
-          description="Create categories to organize your spending and income."
+          title={t('cat.emptyTitle')}
+          description={t('cat.emptyDesc')}
           action={
             <Button size="sm" onClick={() => setCreatingKind('expense')}>
-              <Plus className="h-4 w-4" /> New category
+              <Plus className="h-4 w-4" /> {t('cat.newCategory')}
             </Button>
           }
         />
       ) : (
         <div className="space-y-6">
           <CategoryGroup
-            title="Expense"
+            kind="expense"
             items={activeByKind.expense}
             onAdd={() => setCreatingKind('expense')}
             onEdit={setEditing}
@@ -91,7 +108,7 @@ export function CategoriesPage() {
             onReorder={(ids) => reorder.mutate(ids)}
           />
           <CategoryGroup
-            title="Income"
+            kind="income"
             items={activeByKind.income}
             onAdd={() => setCreatingKind('income')}
             onEdit={setEditing}
@@ -139,28 +156,29 @@ interface RowActions {
 }
 
 function CategoryGroup({
-  title,
+  kind,
   items,
   onAdd,
   onReorder,
   ...actions
 }: {
-  title: string
+  kind: CategoryKind
   items: Category[]
   onAdd: () => void
   onReorder: (orderedIds: string[]) => void
 } & RowActions) {
+  const { t } = useT()
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between px-1">
-        <h2 className="section-head text-[17px] text-foreground">{title}</h2>
+        <h2 className="section-head text-[17px] text-foreground">{t(KIND_COPY[kind].title)}</h2>
         <Button variant="ghost" size="sm" onClick={onAdd} className="h-8 rounded-xl">
-          <Plus className="h-3.5 w-3.5" /> Add
+          <Plus className="h-3.5 w-3.5" /> {t('common.add')}
         </Button>
       </div>
       {items.length === 0 ? (
         <Card className="text-sm font-semibold text-muted-foreground p-5 text-center bg-surface-muted/30">
-          No {title.toLowerCase()} categories yet.
+          {t(KIND_COPY[kind].empty)}
         </Card>
       ) : (
         <Card className="divide-y divide-border/60 py-1 px-4 shadow-sm">
@@ -285,6 +303,7 @@ function CategoryRow({
   onDragOver: (e: React.DragEvent) => void
   onDrop: () => void
 } & RowActions) {
+  const { t } = useT()
   const color = c.color ?? '#64748b'
   return (
     <div
@@ -309,16 +328,16 @@ function CategoryRow({
       </span>
       <span className="flex-1 truncate text-sm font-bold text-foreground">{c.name}</span>
       <div className="flex gap-1">
-        <IconButton label={`Merge ${c.name}`} onClick={() => onMerge(c)}>
+        <IconButton label={t('cat.mergeAria', { name: c.name })} onClick={() => onMerge(c)}>
           <GitMerge className="h-3.5 w-3.5" />
         </IconButton>
-        <IconButton label={`Edit ${c.name}`} onClick={() => onEdit(c)}>
+        <IconButton label={t('cat.editAria', { name: c.name })} onClick={() => onEdit(c)}>
           <Pencil className="h-3.5 w-3.5" />
         </IconButton>
-        <IconButton label={`Archive ${c.name}`} onClick={() => onArchive(c)}>
+        <IconButton label={t('cat.archiveAria', { name: c.name })} onClick={() => onArchive(c)}>
           <Archive className="h-3.5 w-3.5" />
         </IconButton>
-        <IconButton label={`Delete ${c.name}`} danger onClick={() => onDelete(c)}>
+        <IconButton label={t('cat.deleteAria', { name: c.name })} danger onClick={() => onDelete(c)}>
           <Trash2 className="h-3.5 w-3.5" />
         </IconButton>
       </div>
@@ -362,9 +381,10 @@ function ArchivedSection({
   onRestore: (c: Category) => void
   onDelete: (c: Category) => void
 }) {
+  const { t } = useT()
   return (
     <div className="space-y-2">
-      <h2 className="section-head px-1 text-[17px] text-foreground">Archived</h2>
+      <h2 className="section-head px-1 text-[17px] text-foreground">{t('cat.archived')}</h2>
       <Card className="divide-y divide-border/60 py-1 px-4 shadow-sm">
         {items.map((c) => {
           const color = c.color ?? '#64748b'
@@ -379,14 +399,14 @@ function ArchivedSection({
               <span className="flex-1 truncate text-sm font-semibold text-muted-foreground">
                 {c.name}
                 <span className="ml-2 text-xs font-bold uppercase tracking-wide text-muted-foreground/60">
-                  {c.kind}
+                  {t(KIND_COPY[c.kind].title)}
                 </span>
               </span>
               <div className="flex gap-1">
-                <IconButton label={`Restore ${c.name}`} onClick={() => onRestore(c)}>
+                <IconButton label={t('cat.restoreAria', { name: c.name })} onClick={() => onRestore(c)}>
                   <ArchiveRestore className="h-3.5 w-3.5" />
                 </IconButton>
-                <IconButton label={`Delete ${c.name}`} danger onClick={() => onDelete(c)}>
+                <IconButton label={t('cat.deleteAria', { name: c.name })} danger onClick={() => onDelete(c)}>
                   <Trash2 className="h-3.5 w-3.5" />
                 </IconButton>
               </div>
@@ -407,6 +427,7 @@ function MergeModal({
   categories: Category[]
   onClose: () => void
 }) {
+  const { t } = useT()
   const merge = useMergeCategories()
   // Parent remounts this via key={source.id}, so fresh state per source.
   const [targetId, setTargetId] = useState('')
@@ -428,34 +449,32 @@ function MergeModal({
     if (!source) return
     const target = targets.find((c) => c.id === targetId)
     if (!target) {
-      setError('Pick a category to merge into.')
+      setError(t('cat.mergeErrNoTarget'))
       return
     }
     try {
       await merge.mutateAsync({ source, target })
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not merge.')
+      setError(err instanceof Error ? err.message : t('cat.mergeErrFailed'))
     }
   }
 
   return (
-    <Modal open={Boolean(source)} onClose={onClose} title="Merge category">
+    <Modal open={Boolean(source)} onClose={onClose} title={t('cat.mergeTitle')}>
       {source && (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Move every transaction, split and bill from{' '}
-            <span className="font-semibold text-foreground">{source.name}</span> into another
-            category, then delete it. Any subcategories move too. This can’t be undone.
+            {t('cat.mergeIntro', { name: source.name })}
           </p>
           {targets.length === 0 ? (
             <p className="rounded-xl bg-surface-muted/60 p-3 text-sm font-medium text-muted-foreground">
-              No other {source.kind} category to merge into. Create one first.
+              {t(KIND_COPY[source.kind].noMergeTarget)}
             </p>
           ) : (
-            <Field label={`Merge "${source.name}" into`}>
+            <Field label={t('cat.mergeIntoLabel', { name: source.name })}>
               <Select value={targetId} onChange={(e) => setTargetId(e.target.value)}>
-                <option value="">Select a category…</option>
+                <option value="">{t('cat.mergeSelect')}</option>
                 {targets.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.parent_id ? '— ' : ''}
@@ -470,7 +489,7 @@ function MergeModal({
 
           <div className="flex gap-3 pt-1">
             <Button type="button" variant="secondary" className="flex-1" onClick={onClose}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               type="button"
@@ -479,7 +498,7 @@ function MergeModal({
               disabled={!targetId || targets.length === 0}
               onClick={handleMerge}
             >
-              Merge
+              {t('cat.mergeAction')}
             </Button>
           </div>
         </div>

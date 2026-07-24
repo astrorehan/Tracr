@@ -17,6 +17,7 @@ import {
 } from './filters'
 import { useSavedViews } from './savedViews'
 import { usePayees } from './api'
+import { useT } from '@/features/settings/language-context'
 
 interface Props {
   filter: TxFilter
@@ -27,6 +28,7 @@ interface Props {
 }
 
 export function FilterPanel({ filter, onChange, accounts, categories, tags }: Props) {
+  const { t } = useT()
   const { data: payeeSuggestions = [] } = usePayees()
   const [open, setOpen] = useState(false)
   const { views, save, remove } = useSavedViews()
@@ -67,20 +69,28 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
     { value: 'income', label: 'Income' },
     { value: 'transfer', label: 'Transfer' },
   ]
+  const presetDropdown = useMemo<DropdownOption<TxFilter['datePreset']>[]>(
+    () => DATE_PRESETS.map((p) => ({ value: p.value, label: t(p.labelKey) })),
+    [t],
+  )
+  const sortDropdown = useMemo<DropdownOption<TxFilter['sort']>[]>(
+    () => SORT_OPTIONS.map((s) => ({ value: s.value, label: t(s.labelKey) })),
+    [t],
+  )
   const sourceDropdown: DropdownOption<TxFilter['source']>[] = [
     { value: '', label: 'Any source' },
-    ...SOURCE_OPTIONS,
+    ...SOURCE_OPTIONS.map((s) => ({ value: s.value, label: t(s.labelKey) })),
   ]
   const statusDropdown: DropdownOption<TxFilter['status']>[] = [
     { value: '', label: 'Any status' },
-    ...STATUS_OPTIONS,
+    ...STATUS_OPTIONS.map((s) => ({ value: s.value, label: t(s.labelKey) })),
   ]
 
   function set<K extends keyof TxFilter>(key: K, value: TxFilter[K]) {
     onChange({ ...filter, [key]: value })
   }
   function toggleTag(id: string) {
-    set('tagIds', filter.tagIds.includes(id) ? filter.tagIds.filter((t) => t !== id) : [...filter.tagIds, id])
+    set('tagIds', filter.tagIds.includes(id) ? filter.tagIds.filter((x) => x !== id) : [...filter.tagIds, id])
   }
 
   function handleSaveView() {
@@ -95,7 +105,7 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
   if (filter.datePreset !== 'all')
     chips.push({
       key: 'date',
-      label: DATE_PRESETS.find((p) => p.value === filter.datePreset)?.label ?? 'Date',
+      label: presetDropdown.find((p) => p.value === filter.datePreset)?.label ?? 'Date',
       onRemove: () => onChange({ ...filter, datePreset: 'all', customFrom: '', customTo: '' }),
     })
   if (filter.accountId)
@@ -137,13 +147,13 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
   if (filter.source)
     chips.push({
       key: 'source',
-      label: SOURCE_OPTIONS.find((s) => s.value === filter.source)?.label ?? 'Source',
+      label: sourceDropdown.find((s) => s.value === filter.source)?.label ?? 'Source',
       onRemove: () => set('source', ''),
     })
   if (filter.status)
     chips.push({
       key: 'status',
-      label: STATUS_OPTIONS.find((s) => s.value === filter.status)?.label ?? 'Status',
+      label: statusDropdown.find((s) => s.value === filter.status)?.label ?? 'Status',
       onRemove: () => set('status', ''),
     })
 
@@ -165,14 +175,14 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
         <Dropdown
           value={filter.datePreset}
           onChange={(v) => set('datePreset', v)}
-          options={DATE_PRESETS}
-          aria-label="Date range"
+          options={presetDropdown}
+          aria-label={t('rep.dateRangeAria')}
         />
         <Dropdown
           value={filter.sort}
           onChange={(v) => set('sort', v)}
-          options={SORT_OPTIONS}
-          aria-label="Sort order"
+          options={sortDropdown}
+          aria-label={t('rep.sortAria')}
         />
         <button
           type="button"

@@ -13,6 +13,7 @@ import {
   subWeeks,
 } from 'date-fns'
 import type { TransactionSource, TransactionStatus, TransactionType } from '@/types/db'
+import type { MsgKey } from '@/i18n'
 
 export type DatePreset =
   | 'all'
@@ -67,38 +68,40 @@ export const defaultFilter: TxFilter = {
   sort: 'date_desc',
 }
 
-export const DATE_PRESETS: { value: DatePreset; label: string }[] = [
-  { value: 'all', label: 'All time' },
-  { value: 'today', label: 'Today' },
-  { value: 'this_week', label: 'This week' },
-  { value: 'last_week', label: 'Last week' },
-  { value: 'this_month', label: 'This month' },
-  { value: 'last_month', label: 'Last month' },
-  { value: 'this_quarter', label: 'This quarter' },
-  { value: 'last_quarter', label: 'Last quarter' },
-  { value: 'ytd', label: 'Year to date' },
-  { value: 'last_12_months', label: 'Last 12 months' },
-  { value: 'custom', label: 'Custom range' },
+// Option lists carry a message key, not a literal — the consumer runs it through
+// `t()` at render so the dropdowns follow the active language.
+export const DATE_PRESETS: { value: DatePreset; labelKey: MsgKey }[] = [
+  { value: 'all', labelKey: 'range.all' },
+  { value: 'today', labelKey: 'range.today' },
+  { value: 'this_week', labelKey: 'range.thisWeek' },
+  { value: 'last_week', labelKey: 'range.lastWeek' },
+  { value: 'this_month', labelKey: 'range.thisMonth' },
+  { value: 'last_month', labelKey: 'range.lastMonth' },
+  { value: 'this_quarter', labelKey: 'range.thisQuarter' },
+  { value: 'last_quarter', labelKey: 'range.lastQuarter' },
+  { value: 'ytd', labelKey: 'range.ytd' },
+  { value: 'last_12_months', labelKey: 'range.last12Months' },
+  { value: 'custom', labelKey: 'range.custom' },
 ]
 
-export const SORT_OPTIONS: { value: TxSort; label: string }[] = [
-  { value: 'date_desc', label: 'Newest first' },
-  { value: 'date_asc', label: 'Oldest first' },
-  { value: 'amount_desc', label: 'Largest amount' },
-  { value: 'amount_asc', label: 'Smallest amount' },
+export const SORT_OPTIONS: { value: TxSort; labelKey: MsgKey }[] = [
+  { value: 'date_desc', labelKey: 'sort.dateDesc' },
+  { value: 'date_asc', labelKey: 'sort.dateAsc' },
+  { value: 'amount_desc', labelKey: 'sort.amountDesc' },
+  { value: 'amount_asc', labelKey: 'sort.amountAsc' },
 ]
 
-export const SOURCE_OPTIONS: { value: TransactionSource; label: string }[] = [
-  { value: 'web', label: 'Added in app' },
-  { value: 'import', label: 'Imported' },
-  { value: 'telegram', label: 'Telegram' },
-  { value: 'whatsapp', label: 'WhatsApp' },
+export const SOURCE_OPTIONS: { value: TransactionSource; labelKey: MsgKey }[] = [
+  { value: 'web', labelKey: 'src.web' },
+  { value: 'import', labelKey: 'src.import' },
+  { value: 'telegram', labelKey: 'src.telegram' },
+  { value: 'whatsapp', labelKey: 'src.whatsapp' },
 ]
 
-export const STATUS_OPTIONS: { value: TransactionStatus; label: string }[] = [
-  { value: 'pending', label: 'Pending' },
-  { value: 'cleared', label: 'Cleared' },
-  { value: 'reconciled', label: 'Reconciled' },
+export const STATUS_OPTIONS: { value: TransactionStatus; labelKey: MsgKey }[] = [
+  { value: 'pending', labelKey: 'txstatus.pending' },
+  { value: 'cleared', labelKey: 'txstatus.cleared' },
+  { value: 'reconciled', labelKey: 'txstatus.reconciled' },
 ]
 
 const WEEK_OPTS = { weekStartsOn: 1 } as const // Monday-based weeks

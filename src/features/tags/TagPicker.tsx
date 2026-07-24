@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { cn } from '@/lib/utils'
+import { useT } from '@/features/settings/language-context'
 import { useTags } from './api'
 
 interface Props {
@@ -10,9 +11,10 @@ interface Props {
 /** Toggleable chip multi-select over the user's tags. */
 export function TagPicker({ selected, onChange }: Props) {
   const { data: tags = [], isLoading } = useTags()
+  const { t } = useT()
 
   function toggle(id: string) {
-    onChange(selected.includes(id) ? selected.filter((t) => t !== id) : [...selected, id])
+    onChange(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id])
   }
 
   if (isLoading) return null
@@ -20,25 +22,25 @@ export function TagPicker({ selected, onChange }: Props) {
   if (tags.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        No tags yet.{' '}
+        {t('txf.noTagsYet')}{' '}
         <Link to="/tags" className="font-medium text-primary hover:underline">
-          Create some
+          {t('txf.createTags')}
         </Link>{' '}
-        to label transactions.
+        {t('txf.toLabelTx')}
       </p>
     )
   }
 
   return (
     <div className="flex flex-wrap gap-2">
-      {tags.map((t) => {
-        const active = selected.includes(t.id)
-        const color = t.color ?? '#64748b'
+      {tags.map((tag) => {
+        const active = selected.includes(tag.id)
+        const color = tag.color ?? '#64748b'
         return (
           <button
             type="button"
-            key={t.id}
-            onClick={() => toggle(t.id)}
+            key={tag.id}
+            onClick={() => toggle(tag.id)}
             className={cn(
               'rounded-full border px-3 py-1 text-sm font-medium transition',
               active ? 'text-white' : 'text-foreground hover:bg-surface-muted',
@@ -50,7 +52,7 @@ export function TagPicker({ selected, onChange }: Props) {
             }
             aria-pressed={active}
           >
-            {t.name}
+            {tag.name}
           </button>
         )
       })}

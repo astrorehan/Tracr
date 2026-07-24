@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button'
 import { Field, Input, Select } from '@/components/ui/Input'
 import { cn } from '@/lib/utils'
 import { ACCOUNT_COLORS } from '@/features/accounts/meta'
+import { useT } from '@/features/settings/language-context'
 import { useCategories, useCreateCategory, useUpdateCategory } from './api'
 import { CATEGORY_ICONS } from './icons'
 import type { Category, CategoryKind } from '@/types/db'
@@ -16,8 +17,13 @@ interface Props {
 }
 
 export function CategoryForm({ open, onClose, category, defaultKind }: Props) {
+  const { t } = useT()
   return (
-    <Modal open={open} onClose={onClose} title={category ? 'Edit category' : 'New category'}>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={t(category ? 'cat.formEditTitle' : 'cat.formNewTitle')}
+    >
       {open && (
         <CategoryFormBody
           onClose={onClose}
@@ -38,6 +44,7 @@ function CategoryFormBody({
   category: Category | null
   defaultKind: CategoryKind
 }) {
+  const { t } = useT()
   const create = useCreateCategory()
   const update = useUpdateCategory()
   const { data: categories = [] } = useCategories()
@@ -74,7 +81,7 @@ function CategoryFormBody({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim()) {
-      setError('Please name this category.')
+      setError(t('cat.errNoName'))
       return
     }
     const patch = {
@@ -92,32 +99,32 @@ function CategoryFormBody({
       }
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.')
+      setError(err instanceof Error ? err.message : t('cat.errFailed'))
     }
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <Field label="Name">
+      <Field label={t('common.name')}>
         <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Coffee, Rent, Freelance"
+          placeholder={t('cat.namePlaceholder')}
           autoFocus
         />
       </Field>
 
-      <Field label="Type">
+      <Field label={t('common.type')}>
         <Select value={kind} onChange={(e) => changeKind(e.target.value as CategoryKind)}>
-          <option value="expense">Expense</option>
-          <option value="income">Income</option>
+          <option value="expense">{t('common.expense')}</option>
+          <option value="income">{t('common.income')}</option>
         </Select>
       </Field>
 
       {!hasChildren && parentOptions.length > 0 && (
-        <Field label="Parent category">
+        <Field label={t('cat.parentLabel')}>
           <Select value={parentId} onChange={(e) => setParentId(e.target.value)}>
-            <option value="">None (top level)</option>
+            <option value="">{t('cat.parentNone')}</option>
             {parentOptions.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -127,7 +134,7 @@ function CategoryFormBody({
         </Field>
       )}
 
-      <Field label="Icon">
+      <Field label={t('cat.iconLabel')}>
         <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto rounded-xl border border-border p-2">
           {CATEGORY_ICONS.map(({ name: iconName, Icon }) => {
             const active = icon === iconName
@@ -153,7 +160,7 @@ function CategoryFormBody({
         </div>
       </Field>
 
-      <Field label="Color">
+      <Field label={t('cat.colorLabel')}>
         <div className="flex flex-wrap gap-2">
           {ACCOUNT_COLORS.map((c) => (
             <button
@@ -165,7 +172,7 @@ function CategoryFormBody({
                 backgroundColor: c,
                 borderColor: color === c ? 'var(--foreground)' : 'transparent',
               }}
-              aria-label={`Color ${c}`}
+              aria-label={t('cat.colorAria', { hex: c })}
             />
           ))}
         </div>
@@ -175,10 +182,10 @@ function CategoryFormBody({
 
       <div className="flex gap-3 pt-2">
         <Button type="button" variant="secondary" className="flex-1" onClick={onClose}>
-          Cancel
+          {t('common.cancel')}
         </Button>
         <Button type="submit" className="flex-1" loading={pending}>
-          {editing ? 'Save' : 'Create'}
+          {t(editing ? 'common.save' : 'cat.create')}
         </Button>
       </div>
     </form>
