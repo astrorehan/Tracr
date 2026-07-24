@@ -15,6 +15,10 @@ import {
   Moon,
   Sun,
   ChevronRight,
+  Store,
+  Package,
+  HandCoins,
+  TrendingUp,
   type LucideProps,
 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
@@ -24,6 +28,8 @@ import { EmptyState, Skeleton } from '@/components/ui/States'
 import { formatMoney } from '@/lib/money'
 import { getCurrency } from '@/lib/currencies'
 import { useAuth } from '@/features/auth/useAuth'
+import { useActiveBook } from '@/features/books/useActiveBook'
+import { BookSwitcher } from '@/features/books/BookSwitcher'
 import { useTheme } from '@/features/settings/theme-context'
 import { useT } from '@/features/settings/language-context'
 import { dateLocale } from '@/i18n'
@@ -62,6 +68,7 @@ const CHIP: Record<string, string> = {
 
 export function DashboardPage() {
   const { profile } = useAuth()
+  const { activeBook } = useActiveBook()
   const { theme, toggle } = useTheme()
   const { t } = useT()
   const base = profile?.base_currency ?? 'IDR'
@@ -127,7 +134,7 @@ export function DashboardPage() {
     <div className="mx-auto max-w-2xl lg:max-w-none lg:px-8">
       {/* Mobile: the blue is a FIXED background layer. The hero text below scrolls
           in normal flow over it, then slides under the white sheet. */}
-      <div aria-hidden className="brand-hero pointer-events-none fixed inset-x-0 top-0 h-[45vh] z-0 sm:hidden" />
+      <div aria-hidden className="brand-hero home-hero-bg pointer-events-none fixed inset-x-0 top-0 h-[45vh] z-0 sm:hidden" />
 
       {/* Desktop splits into a primary column (hero, actions, assistant) and a
           right rail (accounts + activity summary). Below lg it all stacks into the
@@ -248,6 +255,28 @@ export function DashboardPage() {
           Order answers the three questions in the order people actually ask
           them: what can I spend today, is anything wrong, how am I doing. */}
       <div className="relative z-10 -mt-5 space-y-5 rounded-t-[26px] bg-background px-4 pb-2 pt-5 sm:mt-6 sm:rounded-none sm:bg-transparent sm:px-0 sm:pt-0">
+        {/* Mobile book switcher — desktop has one in the sidebar; without this a
+            phone can't reach a Business book at all. */}
+        <div className="sm:hidden">
+          <BookSwitcher expanded />
+        </div>
+
+        {/* Business tools live only in the desktop sidebar; surface them here so
+            a phone (whose dock has no room for them) can reach Kasbon/Produk. */}
+        {activeBook?.type === 'business' && (
+          <Card className="p-4">
+            <div className="mb-2.5 flex items-center gap-1.5 px-1">
+              <Store className="h-[18px] w-[18px] text-primary" />
+              <h2 className="text-base font-bold text-foreground">{t('biz.ledger')}</h2>
+            </div>
+            <div className="grid grid-cols-3 gap-1">
+              <QuickTile label={t('debt.title')} icon={HandCoins} chip="green" to="/debts" />
+              <QuickTile label={t('nav.products')} icon={Package} chip="orange" to="/products" />
+              <QuickTile label={t('nav.profit')} icon={TrendingUp} chip="blue" to="/profit" />
+            </div>
+          </Card>
+        )}
+
         <TodayCard allowance={allowance} base={base} />
 
         <ForecastCard forecast={health.forecast} base={base} />
