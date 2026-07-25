@@ -4,6 +4,8 @@ import { qk } from '@/lib/queryClient'
 import type { NewTransaction, Transaction, TransactionStatus } from '@/types/db'
 import { computeFxSnapshot } from '@/features/fx/snapshot'
 import { useActiveBook } from '@/features/books/useActiveBook'
+import { enqueueOfflineMutation } from '@/lib/offlineQueue'
+import { getAuthenticatedUserId } from '@/lib/authHelpers'
 
 /**
  * Freeze a base-currency snapshot on the transaction at create time so reports
@@ -88,17 +90,56 @@ export function useCreateTransaction() {
   const { activeBookId } = useActiveBook()
   return useMutation({
     mutationFn: async (input: NewTransaction): Promise<Transaction> => {
-      const { data: userData } = await supabase.auth.getUser()
-      const userId = userData.user?.id
-      if (!userId) throw new Error('Not authenticated')
+      const userId = await getAuthenticatedUserId()
       const valued = await withFxSnapshot(input)
-      const { data, error } = await supabase
-        .from('transactions')
-        .insert({ ...valued, user_id: userId, book_id: activeBookId })
-        .select()
-        .single()
-      if (error) throw error
-      return data as Transaction
+      const payload = { ...valued, user_id: userId, book_id: activeBookId }
+
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const tempId = `temp-tx-${Date.now()}`
+        const dummyTx: Transaction = {
+          id: tempId,
+          user_id: userId,
+          book_id: activeBookId || '',
+          account_id: payload.account_id,
+          counter_account_id: payload.counter_account_id ?? null,
+          category_id: payload.category_id ?? null,
+          type: payload.type,
+          amount: payload.amount,
+          currency: payload.currency,
+          counter_amount: payload.counter_amount ?? null,
+          counter_fx_rate: payload.counter_fx_rate ?? null,
+          occurred_at: payload.occurred_at || new Date().toISOString(),
+          payee: payload.payee ?? null,
+          note: payload.note ?? null,
+          source: payload.source ?? 'web',
+          status: payload.status ?? 'pending',
+          linked_transaction_id: payload.linked_transaction_id ?? null,
+          external_ref: null,
+          base_amount: payload.base_amount ?? null,
+          fx_rate: payload.fx_rate ?? null,
+          created_at: new Date().toISOString(),
+        }
+        enqueueOfflineMutation('CREATE_TRANSACTION', { ...payload, tempId })
+        qc.setQueriesData({ queryKey: ['transactions'] }, (old: Transaction[] | undefined) =>
+          old ? [dummyTx, ...old] : [dummyTx],
+        )
+        return dummyTx
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('transactions')
+          .insert(payload)
+          .select()
+          .single()
+        if (error) throw error
+        return data as Transaction
+      } catch (err) {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          enqueueOfflineMutation('CREATE_TRANSACTION', payload)
+        }
+        throw err
+      }
     },
     onSuccess: () => invalidateAll(qc),
   })
@@ -122,30 +163,57 @@ export function useDuplicateTransaction() {
       tagIds?: string[]
       splits?: { category_id: string | null; amount: number; note?: string | null }[]
     }): Promise<Transaction> => {
-      const { data: userData } = await supabase.auth.getUser()
-      const userId = userData.user?.id
-      if (!userId) throw new Error('Not authenticated')
+      const userId = await getAuthenticatedUserId()
 
       const snap = await computeFxSnapshot(tx.amount, tx.currency)
+      const payload = {
+        user_id: userId,
+        book_id: activeBookId,
+        account_id: tx.account_id,
+        counter_account_id: tx.counter_account_id,
+        category_id: tx.category_id,
+        type: tx.type,
+        amount: tx.amount,
+        currency: tx.currency,
+        counter_amount: tx.counter_amount,
+        counter_fx_rate: tx.counter_fx_rate,
+        occurred_at: new Date().toISOString(),
+        payee: tx.payee,
+        note: tx.note,
+        source: 'web' as const,
+        ...snap,
+      }
+
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const tempId = `temp-tx-${Date.now()}`
+        const copy: Transaction = {
+          id: tempId,
+          ...payload,
+          user_id: userId,
+          book_id: activeBookId || '',
+          counter_account_id: payload.counter_account_id ?? null,
+          category_id: payload.category_id ?? null,
+          counter_amount: payload.counter_amount ?? null,
+          counter_fx_rate: payload.counter_fx_rate ?? null,
+          payee: payload.payee ?? null,
+          note: payload.note ?? null,
+          status: 'pending',
+          linked_transaction_id: null,
+          external_ref: null,
+          base_amount: payload.base_amount ?? null,
+          fx_rate: payload.fx_rate ?? null,
+          created_at: new Date().toISOString(),
+        }
+        enqueueOfflineMutation('CREATE_TRANSACTION', { ...payload, tempId })
+        qc.setQueriesData({ queryKey: ['transactions'] }, (old: Transaction[] | undefined) =>
+          old ? [copy, ...old] : [copy],
+        )
+        return copy
+      }
+
       const { data, error } = await supabase
         .from('transactions')
-        .insert({
-          user_id: userId,
-          book_id: activeBookId,
-          account_id: tx.account_id,
-          counter_account_id: tx.counter_account_id,
-          category_id: tx.category_id,
-          type: tx.type,
-          amount: tx.amount,
-          currency: tx.currency,
-          counter_amount: tx.counter_amount,
-          counter_fx_rate: tx.counter_fx_rate,
-          occurred_at: new Date().toISOString(),
-          payee: tx.payee,
-          note: tx.note,
-          source: 'web' as const,
-          ...snap,
-        })
+        .insert(payload)
         .select()
         .single()
       if (error) throw error
@@ -187,8 +255,23 @@ export function useUpdateTransaction() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: Partial<Transaction> }) => {
-      const { error } = await supabase.from('transactions').update(patch).eq('id', id)
-      if (error) throw error
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        enqueueOfflineMutation('UPDATE_TRANSACTION', { id, ...patch })
+        qc.setQueriesData({ queryKey: ['transactions'] }, (old: Transaction[] | undefined) =>
+          old ? old.map((t) => (t.id === id ? { ...t, ...patch } : t)) : [],
+        )
+        return
+      }
+
+      try {
+        const { error } = await supabase.from('transactions').update(patch).eq('id', id)
+        if (error) throw error
+      } catch (err) {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          enqueueOfflineMutation('UPDATE_TRANSACTION', { id, ...patch })
+        }
+        throw err
+      }
     },
     onSuccess: () => invalidateAll(qc),
   })
@@ -198,8 +281,23 @@ export function useDeleteTransaction() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('transactions').delete().eq('id', id)
-      if (error) throw error
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        enqueueOfflineMutation('DELETE_TRANSACTION', { id })
+        qc.setQueriesData({ queryKey: ['transactions'] }, (old: Transaction[] | undefined) =>
+          old ? old.filter((t) => t.id !== id) : [],
+        )
+        return
+      }
+
+      try {
+        const { error } = await supabase.from('transactions').delete().eq('id', id)
+        if (error) throw error
+      } catch (err) {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          enqueueOfflineMutation('DELETE_TRANSACTION', { id })
+        }
+        throw err
+      }
     },
     onSuccess: () => invalidateAll(qc),
   })
@@ -211,6 +309,17 @@ export function useBulkDeleteTransactions() {
   return useMutation({
     mutationFn: async (ids: string[]) => {
       if (ids.length === 0) return
+
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        for (const id of ids) {
+          enqueueOfflineMutation('DELETE_TRANSACTION', { id })
+        }
+        qc.setQueriesData({ queryKey: ['transactions'] }, (old: Transaction[] | undefined) =>
+          old ? old.filter((t) => !ids.includes(t.id)) : [],
+        )
+        return
+      }
+
       const { error } = await supabase.from('transactions').delete().in('id', ids)
       if (error) throw error
     },
@@ -224,6 +333,17 @@ export function useBulkSetCategory() {
   return useMutation({
     mutationFn: async ({ ids, categoryId }: { ids: string[]; categoryId: string | null }) => {
       if (ids.length === 0) return
+
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        for (const id of ids) {
+          enqueueOfflineMutation('UPDATE_TRANSACTION', { id, category_id: categoryId })
+        }
+        qc.setQueriesData({ queryKey: ['transactions'] }, (old: Transaction[] | undefined) =>
+          old ? old.map((t) => (ids.includes(t.id) ? { ...t, category_id: categoryId } : t)) : [],
+        )
+        return
+      }
+
       const { error } = await supabase
         .from('transactions')
         .update({ category_id: categoryId })
@@ -240,6 +360,17 @@ export function useBulkSetStatus() {
   return useMutation({
     mutationFn: async ({ ids, status }: { ids: string[]; status: TransactionStatus }) => {
       if (ids.length === 0) return
+
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        for (const id of ids) {
+          enqueueOfflineMutation('UPDATE_TRANSACTION', { id, status })
+        }
+        qc.setQueriesData({ queryKey: ['transactions'] }, (old: Transaction[] | undefined) =>
+          old ? old.map((t) => (ids.includes(t.id) ? { ...t, status } : t)) : [],
+        )
+        return
+      }
+
       const { error } = await supabase.from('transactions').update({ status }).in('id', ids)
       if (error) throw error
     },

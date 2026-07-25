@@ -30,6 +30,7 @@ import { useLiveRatesSync } from '@/features/fx/useLiveRatesSync'
 import { TransactionForm } from '@/features/transactions/TransactionForm'
 import { NotificationBell } from '@/features/notifications/NotificationBell'
 import { CreditChip } from '@/features/billing/CreditChip'
+import { OfflineBanner } from '@/components/OfflineBanner'
 
 type IconType = ComponentType<{ className?: string }>
 
@@ -234,6 +235,7 @@ export function AppLayout() {
 
       {/* ───────────────────────── Main column ───────────────────────── */}
       <div className="relative z-10 flex min-w-0 flex-1 flex-col">
+        <OfflineBanner />
         {/* Floating top right controls — desktop only. On mobile the home hero
             carries its own copy of these, and on other routes the bottom dock
             covers navigation, so the floating pill was just overlapping content. */}

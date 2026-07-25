@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { qk } from '@/lib/queryClient'
 import type { Category, CategoryKind, NewCategory } from '@/types/db'
 import { useActiveBook } from '@/features/books/useActiveBook'
+import { enqueueOfflineMutation } from '@/lib/offlineQueue'
 
 /**
  * Name of the auto-managed category that holds balance adjustments created by
@@ -83,13 +84,44 @@ export function useCreateCategory() {
       const { data: userData } = await supabase.auth.getUser()
       const userId = userData.user?.id
       if (!userId) throw new Error('Not authenticated')
-      const { data, error } = await supabase
-        .from('categories')
-        .insert({ ...input, user_id: userId, book_id: activeBookId })
-        .select()
-        .single()
-      if (error) throw error
-      return data as Category
+      const payload = { ...input, user_id: userId, book_id: activeBookId }
+
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const tempId = `temp-cat-${Date.now()}`
+        const dummyCategory: Category = {
+          id: tempId,
+          user_id: userId,
+          book_id: activeBookId || '',
+          name: payload.name,
+          kind: payload.kind,
+          parent_id: payload.parent_id ?? null,
+          icon: payload.icon ?? null,
+          color: payload.color ?? null,
+          sort_order: 999,
+          is_archived: false,
+          created_at: new Date().toISOString(),
+        }
+        enqueueOfflineMutation('CREATE_CATEGORY', { ...payload, tempId })
+        qc.setQueriesData({ queryKey: qk.categories }, (old: Category[] | undefined) =>
+          old ? [...old, dummyCategory] : [dummyCategory],
+        )
+        return dummyCategory
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('categories')
+          .insert(payload)
+          .select()
+          .single()
+        if (error) throw error
+        return data as Category
+      } catch (err) {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          enqueueOfflineMutation('CREATE_CATEGORY', payload)
+        }
+        throw err
+      }
     },
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.categories }),
   })
@@ -99,8 +131,23 @@ export function useUpdateCategory() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: Partial<Category> }) => {
-      const { error } = await supabase.from('categories').update(patch).eq('id', id)
-      if (error) throw error
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        enqueueOfflineMutation('UPDATE_CATEGORY', { id, ...patch })
+        qc.setQueriesData({ queryKey: qk.categories }, (old: Category[] | undefined) =>
+          old ? old.map((c) => (c.id === id ? { ...c, ...patch } : c)) : [],
+        )
+        return
+      }
+
+      try {
+        const { error } = await supabase.from('categories').update(patch).eq('id', id)
+        if (error) throw error
+      } catch (err) {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          enqueueOfflineMutation('UPDATE_CATEGORY', { id, ...patch })
+        }
+        throw err
+      }
     },
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.categories }),
   })
@@ -112,8 +159,23 @@ export function useDeleteCategory() {
     // Transactions reference category_id with ON DELETE SET NULL, so deleting a
     // category keeps its transactions — they just become uncategorized.
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('categories').delete().eq('id', id)
-      if (error) throw error
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        enqueueOfflineMutation('DELETE_CATEGORY', { id })
+        qc.setQueriesData({ queryKey: qk.categories }, (old: Category[] | undefined) =>
+          old ? old.filter((c) => c.id !== id) : [],
+        )
+        return
+      }
+
+      try {
+        const { error } = await supabase.from('categories').delete().eq('id', id)
+        if (error) throw error
+      } catch (err) {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          enqueueOfflineMutation('DELETE_CATEGORY', { id })
+        }
+        throw err
+      }
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: qk.categories })
@@ -127,11 +189,26 @@ export function useSetCategoryArchived() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, archived }: { id: string; archived: boolean }) => {
-      const { error } = await supabase
-        .from('categories')
-        .update({ is_archived: archived })
-        .eq('id', id)
-      if (error) throw error
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        enqueueOfflineMutation('UPDATE_CATEGORY', { id, is_archived: archived })
+        qc.setQueriesData({ queryKey: qk.categories }, (old: Category[] | undefined) =>
+          old ? old.map((c) => (c.id === id ? { ...c, is_archived: archived } : c)) : [],
+        )
+        return
+      }
+
+      try {
+        const { error } = await supabase
+          .from('categories')
+          .update({ is_archived: archived })
+          .eq('id', id)
+        if (error) throw error
+      } catch (err) {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          enqueueOfflineMutation('UPDATE_CATEGORY', { id, is_archived: archived })
+        }
+        throw err
+      }
     },
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.categories }),
   })

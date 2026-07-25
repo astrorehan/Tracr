@@ -4,17 +4,8 @@ import { qk } from '@/lib/queryClient'
 import { useActiveBook } from '@/features/books/useActiveBook'
 import type { Contact, Debt, NewContact, NewDebt, NewDebtPayment } from '@/types/db'
 
-/** A debt row with its contact joined (null if the contact was deleted). */
-export type DebtWithContact = Debt & {
-  contact: Pick<Contact, 'id' | 'name' | 'phone' | 'kind'> | null
-}
-
-async function currentUserId(): Promise<string> {
-  const { data } = await supabase.auth.getUser()
-  const id = data.user?.id
-  if (!id) throw new Error('Not authenticated')
-  return id
-}
+import { enqueueOfflineMutation } from '@/lib/offlineQueue'
+import { getAuthenticatedUserId } from '@/lib/authHelpers'
 
 export function useContacts() {
   const { activeBookId } = useActiveBook()
@@ -37,7 +28,7 @@ export function useCreateContact() {
   const { activeBookId } = useActiveBook()
   return useMutation({
     mutationFn: async (input: NewContact): Promise<Contact> => {
-      const userId = await currentUserId()
+      const userId = await getAuthenticatedUserId()
       const { data, error } = await supabase
         .from('contacts')
         .insert({ ...input, user_id: userId, book_id: activeBookId })
@@ -73,14 +64,46 @@ export function useCreateDebt() {
   const { activeBookId } = useActiveBook()
   return useMutation({
     mutationFn: async (input: NewDebt): Promise<Debt> => {
-      const userId = await currentUserId()
-      const { data, error } = await supabase
-        .from('debts')
-        .insert({ ...input, user_id: userId, book_id: activeBookId })
-        .select()
-        .single()
-      if (error) throw error
-      return data as Debt
+      const userId = await getAuthenticatedUserId()
+      const payload = { ...input, user_id: userId, book_id: activeBookId }
+
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const tempId = `temp-debt-${Date.now()}`
+        const dummyDebt: Debt = {
+          id: tempId,
+          user_id: userId,
+          book_id: activeBookId || '',
+          contact_id: payload.contact_id ?? null,
+          direction: payload.direction,
+          amount: payload.amount,
+          paid: payload.paid ?? 0,
+          currency: payload.currency,
+          due_date: payload.due_date ?? null,
+          status: 'open',
+          note: payload.note ?? null,
+          created_at: new Date().toISOString(),
+        }
+        enqueueOfflineMutation('CREATE_DEBT', { ...payload, tempId })
+        qc.setQueriesData({ queryKey: [...qk.debts, activeBookId] }, (old: DebtWithContact[] | undefined) =>
+          old ? [dummyDebt as unknown as DebtWithContact, ...old] : [dummyDebt as unknown as DebtWithContact],
+        )
+        return dummyDebt
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('debts')
+          .insert(payload)
+          .select()
+          .single()
+        if (error) throw error
+        return data as Debt
+      } catch (err) {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          enqueueOfflineMutation('CREATE_DEBT', payload)
+        }
+        throw err
+      }
     },
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.debts }),
   })
@@ -88,9 +111,7 @@ export function useCreateDebt() {
 
 /**
  * Record a payment against a debt: append a debt_payments row, then advance the
- * debt's `paid` running total and flip it to 'paid' once fully settled. The
- * form caps the amount at the remaining balance, so `paid` never exceeds
- * `amount`; the Math.min is a defensive belt-and-braces.
+ * debt's `paid` running total and flip it to 'paid' once fully settled.
  */
 export function useRecordPayment() {
   const qc = useQueryClient()
@@ -107,24 +128,43 @@ export function useRecordPayment() {
       paid_on?: string
       note?: string | null
     }) => {
-      const userId = await currentUserId()
+      const userId = await getAuthenticatedUserId()
       const payment: NewDebtPayment = {
         debt_id: debt.id,
         amount,
         paid_on: paid_on ?? new Date().toISOString().slice(0, 10),
         note: note ?? null,
       }
-      const { error: payErr } = await supabase
-        .from('debt_payments')
-        .insert({ ...payment, user_id: userId, book_id: activeBookId })
-      if (payErr) throw payErr
-
       const newPaid = Math.min(debt.amount, debt.paid + amount)
-      const { error: updErr } = await supabase
-        .from('debts')
-        .update({ paid: newPaid, status: newPaid >= debt.amount ? 'paid' : 'open' })
-        .eq('id', debt.id)
-      if (updErr) throw updErr
+      const newStatus = newPaid >= debt.amount ? 'paid' : 'open'
+
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        enqueueOfflineMutation('ADD_DEBT_PAYMENT', { ...payment, user_id: userId, book_id: activeBookId })
+        enqueueOfflineMutation('UPDATE_DEBT', { id: debt.id, paid: newPaid, status: newStatus })
+        qc.setQueriesData({ queryKey: [...qk.debts, activeBookId] }, (old: DebtWithContact[] | undefined) =>
+          old ? old.map((d) => (d.id === debt.id ? { ...d, paid: newPaid, status: newStatus } : d)) : [],
+        )
+        return
+      }
+
+      try {
+        const { error: payErr } = await supabase
+          .from('debt_payments')
+          .insert({ ...payment, user_id: userId, book_id: activeBookId })
+        if (payErr) throw payErr
+
+        const { error: updErr } = await supabase
+          .from('debts')
+          .update({ paid: newPaid, status: newStatus })
+          .eq('id', debt.id)
+        if (updErr) throw updErr
+      } catch (err) {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          enqueueOfflineMutation('CREATE_DEBT_PAYMENT', { ...payment, user_id: userId, book_id: activeBookId })
+          enqueueOfflineMutation('UPDATE_DEBT', { id: debt.id, paid: newPaid, status: newStatus })
+        }
+        throw err
+      }
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: qk.debts })
@@ -136,10 +176,26 @@ export function useRecordPayment() {
 /** Permanent delete — FK cascade removes the debt's payment history too. */
 export function useDeleteDebt() {
   const qc = useQueryClient()
+  const { activeBookId } = useActiveBook()
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('debts').delete().eq('id', id)
-      if (error) throw error
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        enqueueOfflineMutation('DELETE_DEBT', { id })
+        qc.setQueriesData({ queryKey: [...qk.debts, activeBookId] }, (old: DebtWithContact[] | undefined) =>
+          old ? old.filter((d) => d.id !== id) : [],
+        )
+        return
+      }
+
+      try {
+        const { error } = await supabase.from('debts').delete().eq('id', id)
+        if (error) throw error
+      } catch (err) {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          enqueueOfflineMutation('DELETE_DEBT', { id })
+        }
+        throw err
+      }
     },
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.debts }),
   })
