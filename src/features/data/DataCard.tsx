@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase'
 import { downloadTextFile } from '@/lib/csv'
 import { indexById } from '@/lib/collections'
 import { useAuth } from '@/features/auth/useAuth'
+import { useT } from '@/features/settings/language-context'
 import { useActiveBook } from '@/features/books/useActiveBook'
 import { useAccounts } from '@/features/accounts/api'
 import { useCategories } from '@/features/categories/api'
@@ -29,6 +30,7 @@ import { useImportTransactions } from './api'
 import type { Transaction } from '@/types/db'
 
 export function DataCard() {
+  const { t } = useT()
   const { profile } = useAuth()
   const { activeBookId } = useActiveBook()
   const qc = useQueryClient()
@@ -60,7 +62,7 @@ export function DataCard() {
       )
       downloadTextFile(`tracr-transactions-${format(new Date(), 'yyyy-MM-dd')}.csv`, csv)
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Export failed.')
+      alert(err instanceof Error ? err.message : t('data.errExport'))
     } finally {
       setBusy(null)
     }
@@ -82,7 +84,7 @@ export function DataCard() {
       setImported(n)
       setPreview(null)
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Import failed.')
+      alert(err instanceof Error ? err.message : t('data.errImport'))
     }
   }
 
@@ -100,7 +102,7 @@ export function DataCard() {
         'application/json',
       )
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Backup failed.')
+      alert(err instanceof Error ? err.message : t('data.errBackup'))
     } finally {
       setBusy(null)
     }
@@ -114,7 +116,7 @@ export function DataCard() {
     try {
       setRestorePreview(parseBackup(await file.text()))
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Could not read that file.')
+      alert(err instanceof Error ? err.message : t('data.errReadFile'))
     }
   }
 
@@ -127,7 +129,7 @@ export function DataCard() {
       setRestored(n)
       setRestorePreview(null)
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Restore failed.')
+      alert(err instanceof Error ? err.message : t('data.errRestore'))
     } finally {
       setBusy(null)
     }
@@ -138,20 +140,20 @@ export function DataCard() {
       <Card className="space-y-3">
         <div className="flex gap-3">
           <Button variant="secondary" className="flex-1" loading={busy === 'export'} onClick={handleExport}>
-            <Download className="h-4 w-4" /> Export CSV
+            <Download className="h-4 w-4" /> {t('data.exportCsv')}
           </Button>
           <Button variant="secondary" className="flex-1" onClick={() => fileRef.current?.click()}>
-            <Upload className="h-4 w-4" /> Import CSV
+            <Upload className="h-4 w-4" /> {t('data.importCsv')}
           </Button>
         </div>
         <button
           onClick={downloadTemplate}
           className="flex items-center gap-1.5 px-1 text-xs text-muted-foreground hover:text-foreground"
         >
-          <FileSpreadsheet className="h-3.5 w-3.5" /> Download import template
+          <FileSpreadsheet className="h-3.5 w-3.5" /> {t('data.downloadTemplate')}
         </button>
         {imported !== null && (
-          <p className="px-1 text-xs text-primary">Imported {imported} transaction(s).</p>
+          <p className="px-1 text-xs text-primary">{t('data.importedCount', { n: imported })}</p>
         )}
         <input
           ref={fileRef}
@@ -164,7 +166,7 @@ export function DataCard() {
         {/* Full JSON backup / restore */}
         <div className="border-t border-border pt-3">
           <p className="mb-2 flex items-center gap-1.5 px-1 text-xs font-semibold text-muted-foreground">
-            <Database className="h-3.5 w-3.5" /> Full backup
+            <Database className="h-3.5 w-3.5" /> {t('data.fullBackup')}
           </p>
           <div className="flex gap-3">
             <Button
@@ -173,21 +175,21 @@ export function DataCard() {
               loading={busy === 'backup'}
               onClick={handleBackup}
             >
-              <HardDriveDownload className="h-4 w-4" /> Backup JSON
+              <HardDriveDownload className="h-4 w-4" /> {t('data.backupJson')}
             </Button>
             <Button
               variant="secondary"
               className="flex-1"
               onClick={() => backupRef.current?.click()}
             >
-              <Upload className="h-4 w-4" /> Restore JSON
+              <Upload className="h-4 w-4" /> {t('data.restoreJson')}
             </Button>
           </div>
           <p className="mt-2 px-1 text-xs text-muted-foreground">
-            Everything — accounts, transactions, budgets, bills, goals & more — in one portable file.
+            {t('data.backupNote')}
           </p>
           {restored !== null && (
-            <p className="mt-1 px-1 text-xs text-primary">Restored {restored} record(s).</p>
+            <p className="mt-1 px-1 text-xs text-primary">{t('data.restoredCount', { n: restored })}</p>
           )}
         </div>
         <input
@@ -199,18 +201,16 @@ export function DataCard() {
         />
       </Card>
 
-      <Modal open={Boolean(preview)} onClose={() => setPreview(null)} title="Import preview">
+      <Modal open={Boolean(preview)} onClose={() => setPreview(null)} title={t('data.importPreviewTitle')}>
         {preview && (
           <div className="space-y-4">
             <div className="rounded-xl bg-surface-muted p-3 text-sm">
               <p>
-                <span className="font-semibold text-primary">{preview.valid.length}</span> valid row(s)
-                ready to import.
+                {t('data.validRowsReady', { n: preview.valid.length })}
               </p>
               {preview.errors.length > 0 && (
                 <p className="text-muted-foreground">
-                  <span className="font-semibold text-danger">{preview.errors.length}</span> row(s)
-                  skipped.
+                  {t('data.skippedRows', { n: preview.errors.length })}
                 </p>
               )}
             </div>
@@ -219,7 +219,7 @@ export function DataCard() {
               <div className="max-h-40 overflow-y-auto rounded-xl border border-border p-3 text-xs">
                 {preview.errors.slice(0, 50).map((err, i) => (
                   <p key={i} className="text-muted-foreground">
-                    Line {err.line}: {err.message}
+                    {t('data.lineErr', { line: err.line, msg: err.message })}
                   </p>
                 ))}
               </div>
@@ -227,7 +227,7 @@ export function DataCard() {
 
             <div className="flex gap-3">
               <Button variant="secondary" className="flex-1" onClick={() => setPreview(null)}>
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button
                 className="flex-1"
@@ -235,19 +235,18 @@ export function DataCard() {
                 disabled={preview.valid.length === 0}
                 onClick={confirmImport}
               >
-                Import {preview.valid.length}
+                {t('data.importBtn', { n: preview.valid.length })}
               </Button>
             </div>
           </div>
         )}
       </Modal>
 
-      <Modal open={Boolean(restorePreview)} onClose={() => setRestorePreview(null)} title="Restore backup">
+      <Modal open={Boolean(restorePreview)} onClose={() => setRestorePreview(null)} title={t('data.restorePreviewTitle')}>
         {restorePreview && (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              This will add the backup’s data to your account. Records with the same id are
-              overwritten; anything not in the backup is left untouched.
+              {t('data.restoreWarning')}
             </p>
             <div className="max-h-56 space-y-1 overflow-y-auto rounded-xl bg-surface-muted p-3 text-sm">
               {backupCounts(restorePreview)
@@ -261,15 +260,15 @@ export function DataCard() {
             </div>
             {restorePreview.exported_at && (
               <p className="px-1 text-xs text-muted-foreground">
-                Exported {format(new Date(restorePreview.exported_at), 'd MMM yyyy, HH:mm')}
+                {t('data.exportedAt', { date: format(new Date(restorePreview.exported_at), 'd MMM yyyy, HH:mm') })}
               </p>
             )}
             <div className="flex gap-3">
               <Button variant="secondary" className="flex-1" onClick={() => setRestorePreview(null)}>
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button className="flex-1" loading={busy === 'restore'} onClick={confirmRestore}>
-                Restore
+                {t('books.unarchive')}
               </Button>
             </div>
           </div>

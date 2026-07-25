@@ -10,6 +10,7 @@ import { CURRENCIES, CURRENCY_CODES, getCurrency } from '@/lib/currencies'
 import { cn } from '@/lib/utils'
 import { qk } from '@/lib/queryClient'
 import { useAuth } from '@/features/auth/useAuth'
+import { useT } from '@/features/settings/language-context'
 import { useFxRates, useUpsertFxRate, useDeleteFxRate } from '@/features/fx/api'
 import { syncLiveRates } from '@/features/fx/liveRates'
 import type { FxRate } from '@/types/db'
@@ -25,6 +26,7 @@ function formatRate(rate: number, base: string) {
 }
 
 export function CurrenciesPage() {
+  const { t } = useT()
   const { profile } = useAuth()
   const base = profile?.base_currency ?? 'IDR'
   const qc = useQueryClient()
@@ -80,7 +82,7 @@ export function CurrenciesPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">
-      <PageHeader title="Currencies" subtitle="Value foreign accounts in your base currency." />
+      <PageHeader title={t('fx.title')} subtitle={t('fx.subtitle')} />
 
       {/* Base + refresh strip */}
       <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
@@ -90,7 +92,7 @@ export function CurrenciesPage() {
           </span>
           <div>
             <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-              Base currency
+              {t('fx.baseCurrency')}
             </p>
             <p className="font-numeric text-lg font-extrabold leading-tight text-foreground">
               {base} · {getCurrency(base).name}
@@ -99,10 +101,10 @@ export function CurrenciesPage() {
         </div>
         <div className="flex flex-col items-end gap-1">
           <Button variant="secondary" size="sm" onClick={refresh} loading={refreshing}>
-            <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} /> Refresh
+            <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} /> {t('fx.refresh')}
           </Button>
           <span className="text-xs font-medium text-muted-foreground">
-            {lastUpdated ? `Updated ${lastUpdated}` : 'Auto-updates daily'}
+            {lastUpdated ? t('fx.updated', { date: lastUpdated }) : t('fx.autoUpdates')}
           </span>
         </div>
       </Card>
@@ -110,10 +112,10 @@ export function CurrenciesPage() {
       {/* Add / override */}
       <Card className="space-y-3 p-5">
         <p className="flex items-center gap-2 text-sm font-bold text-foreground">
-          <Plus className="h-4 w-4 text-primary" /> Add or override a rate
+          <Plus className="h-4 w-4 text-primary" /> {t('fx.addOverride')}
         </p>
         <div className="grid gap-3 sm:grid-cols-[1.1fr_1.3fr_auto]">
-          <Field label="1 unit of">
+          <Field label={t('fx.oneUnit')}>
             <Select value={quote} onChange={(e) => setQuote(e.target.value)}>
               {foreigns.map((c) => (
                 <option key={c} value={c}>
@@ -122,7 +124,7 @@ export function CurrenciesPage() {
               ))}
             </Select>
           </Field>
-          <Field label={`equals, in ${base}`}>
+          <Field label={t('fx.equalsIn', { base })}>
             <div className="relative">
               <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">
                 {getCurrency(base).symbol}
@@ -136,12 +138,12 @@ export function CurrenciesPage() {
               />
             </div>
           </Field>
-          <Field label="As of">
+          <Field label={t('fx.asOf')}>
             <Input type="date" value={asOf} max={today()} onChange={(e) => setAsOf(e.target.value)} />
           </Field>
         </div>
         <Button onClick={save} disabled={upsert.isPending || !parseRate(rate)} className="w-full sm:w-auto">
-          Save rate
+          {t('fx.saveRate')}
         </Button>
       </Card>
 
@@ -150,15 +152,15 @@ export function CurrenciesPage() {
         <Card className="p-2">
           <EmptyState
             icon={<Coins className="h-7 w-7" />}
-            title="No rates yet"
-            description="Rates sync automatically when you open the app, or add one above."
+            title={t('fx.emptyTitle')}
+            description={t('fx.emptyDesc')}
           />
         </Card>
       ) : (
         <Card className="space-y-4 p-5">
           {fiat.length > 0 && (
             <RateGroup
-              title="Fiat"
+              title={t('fx.fiat')}
               rows={fiat}
               base={base}
               onDelete={(id) => del.mutate(id)}
@@ -167,7 +169,7 @@ export function CurrenciesPage() {
           )}
           {crypto.length > 0 && (
             <RateGroup
-              title="Crypto"
+              title={t('fx.crypto')}
               rows={crypto}
               base={base}
               onDelete={(id) => del.mutate(id)}
@@ -175,8 +177,7 @@ export function CurrenciesPage() {
             />
           )}
           <p className="border-t border-border/60 pt-3 text-xs font-medium text-muted-foreground">
-            Estimates use the latest rate. Logged transactions keep the rate frozen at their own date,
-            so past reports never shift.
+            {t('fx.note')}
           </p>
         </Card>
       )}
@@ -197,6 +198,7 @@ function RateGroup({
   onDelete: (id: string) => void
   deleting: boolean
 }) {
+  const { t } = useT()
   return (
     <div>
       <h2 className="section-head mb-1 px-1 text-[17px] text-foreground">{title}</h2>
@@ -220,23 +222,23 @@ function RateGroup({
                     )}
                   >
                     {live && <span className="h-1 w-1 rounded-full bg-positive" />}
-                    {live ? 'Live' : 'Manual'}
+                    {t(live ? 'fx.live' : 'fx.manual')}
                   </span>
                 </div>
-                <p className="text-xs font-medium text-muted-foreground">as of {r.as_of}</p>
+                <p className="text-xs font-medium text-muted-foreground">{t('fx.asOf')} {r.as_of}</p>
               </div>
               <div className="text-right">
                 <p className="font-numeric text-sm font-extrabold text-foreground">
                   {formatRate(r.rate, base)}
                 </p>
-                <p className="text-xs font-medium text-muted-foreground">per 1 {r.base}</p>
+                <p className="text-xs font-medium text-muted-foreground">{t('fx.perOne', { code: r.base })}</p>
               </div>
               <button
                 type="button"
                 onClick={() => onDelete(r.id)}
                 disabled={deleting}
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-danger/10 hover:text-danger disabled:opacity-40"
-                aria-label={`Delete ${r.base} rate`}
+                aria-label={t('fx.deleteAria', { code: r.base })}
               >
                 <Trash2 className="h-4 w-4" />
               </button>

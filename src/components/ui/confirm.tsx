@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
+import { useT } from '@/features/settings/language-context'
 import { ConfirmContext, type ConfirmFn, type ConfirmOptions } from './confirm-context'
 
 export function ConfirmProvider({ children }: { children: ReactNode }) {
@@ -34,11 +35,12 @@ function ConfirmDialog({
   options: ConfirmOptions
   onResolve: (value: boolean) => void
 }) {
+  const { t } = useT()
   const {
     title,
     message,
-    confirmLabel = 'Confirm',
-    cancelLabel = 'Cancel',
+    confirmLabel = t('common.done'),
+    cancelLabel = t('common.cancel'),
     tone = 'default',
   } = options
 
