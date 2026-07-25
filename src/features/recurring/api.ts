@@ -6,6 +6,9 @@ import { computeFxSnapshot } from '@/features/fx/snapshot'
 import type { NewRecurringTransaction, RecurringTransaction } from '@/types/db'
 import { useActiveBook } from '@/features/books/useActiveBook'
 
+import { enqueueOfflineMutation } from '@/lib/offlineQueue'
+import { getAuthenticatedUserId } from '@/lib/authHelpers'
+
 export function useRecurring() {
   const { activeBookId } = useActiveBook()
   return useQuery({
@@ -27,16 +30,51 @@ export function useCreateRecurring() {
   const { activeBookId } = useActiveBook()
   return useMutation({
     mutationFn: async (input: NewRecurringTransaction): Promise<RecurringTransaction> => {
-      const { data: userData } = await supabase.auth.getUser()
-      const userId = userData.user?.id
-      if (!userId) throw new Error('Not authenticated')
-      const { data, error } = await supabase
-        .from('recurring_transactions')
-        .insert({ ...input, user_id: userId, book_id: activeBookId })
-        .select()
-        .single()
-      if (error) throw error
-      return data as RecurringTransaction
+      const userId = await getAuthenticatedUserId()
+      const payload = { ...input, user_id: userId, book_id: activeBookId }
+
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const tempId = `temp-rec-${Date.now()}`
+        const dummyRec: RecurringTransaction = {
+          id: tempId,
+          user_id: userId,
+          book_id: activeBookId || '',
+          name: payload.name,
+          account_id: payload.account_id,
+          category_id: payload.category_id ?? null,
+          type: payload.type,
+          amount: payload.amount,
+          currency: payload.currency,
+          frequency: payload.frequency,
+          interval: payload.interval ?? 1,
+          next_due: payload.next_due,
+          auto_post: payload.auto_post ?? false,
+          is_active: true,
+          note: payload.note ?? null,
+          last_paid_at: null,
+          created_at: new Date().toISOString(),
+        }
+        enqueueOfflineMutation('CREATE_RECURRING', { ...payload, tempId })
+        qc.setQueriesData({ queryKey: [...qk.recurring, activeBookId] }, (old: RecurringTransaction[] | undefined) =>
+          old ? [...old, dummyRec] : [dummyRec],
+        )
+        return dummyRec
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('recurring_transactions')
+          .insert(payload)
+          .select()
+          .single()
+        if (error) throw error
+        return data as RecurringTransaction
+      } catch (err) {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          enqueueOfflineMutation('CREATE_RECURRING', payload)
+        }
+        throw err
+      }
     },
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.recurring }),
   })
@@ -44,10 +82,26 @@ export function useCreateRecurring() {
 
 export function useUpdateRecurring() {
   const qc = useQueryClient()
+  const { activeBookId } = useActiveBook()
   return useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: Partial<RecurringTransaction> }) => {
-      const { error } = await supabase.from('recurring_transactions').update(patch).eq('id', id)
-      if (error) throw error
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        enqueueOfflineMutation('UPDATE_RECURRING', { id, ...patch })
+        qc.setQueriesData({ queryKey: [...qk.recurring, activeBookId] }, (old: RecurringTransaction[] | undefined) =>
+          old ? old.map((r) => (r.id === id ? { ...r, ...patch } : r)) : [],
+        )
+        return
+      }
+
+      try {
+        const { error } = await supabase.from('recurring_transactions').update(patch).eq('id', id)
+        if (error) throw error
+      } catch (err) {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          enqueueOfflineMutation('UPDATE_RECURRING', { id, ...patch })
+        }
+        throw err
+      }
     },
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.recurring }),
   })
@@ -55,10 +109,26 @@ export function useUpdateRecurring() {
 
 export function useDeleteRecurring() {
   const qc = useQueryClient()
+  const { activeBookId } = useActiveBook()
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('recurring_transactions').delete().eq('id', id)
-      if (error) throw error
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        enqueueOfflineMutation('DELETE_RECURRING', { id })
+        qc.setQueriesData({ queryKey: [...qk.recurring, activeBookId] }, (old: RecurringTransaction[] | undefined) =>
+          old ? old.filter((r) => r.id !== id) : [],
+        )
+        return
+      }
+
+      try {
+        const { error } = await supabase.from('recurring_transactions').delete().eq('id', id)
+        if (error) throw error
+      } catch (err) {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          enqueueOfflineMutation('DELETE_RECURRING', { id })
+        }
+        throw err
+      }
     },
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.recurring }),
   })
@@ -72,9 +142,7 @@ export function useMarkRecurringPaid() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ rec, on }: { rec: RecurringTransaction; on?: string }) => {
-      const { data: userData } = await supabase.auth.getUser()
-      const userId = userData.user?.id
-      if (!userId) throw new Error('Not authenticated')
+      const userId = await getAuthenticatedUserId()
 
       const occurredAt = new Date(`${on ?? rec.next_due}T12:00:00`).toISOString()
       const snap = await computeFxSnapshot(rec.amount, rec.currency)

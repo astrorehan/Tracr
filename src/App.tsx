@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { isSupabaseConfigured } from './lib/supabase'
 import { useAuth } from './features/auth/useAuth'
@@ -8,6 +8,8 @@ import { BizLayout } from './components/BizLayout'
 import { SetupNotice } from './components/SetupNotice'
 import { ConfirmProvider } from './components/ui/confirm'
 import { LoginPage } from './app/LoginPage'
+import { queryClient } from './lib/queryClient'
+import { setupQueryCachePersister } from './lib/queryPersister'
 
 // Route-level code splitting keeps the initial bundle small (charts load on demand).
 const DashboardPage = lazy(() =>
@@ -66,6 +68,11 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  useEffect(() => {
+    const cleanup = setupQueryCachePersister(queryClient)
+    return () => cleanup()
+  }, [])
+
   if (!isSupabaseConfigured) return <SetupNotice />
 
   return (

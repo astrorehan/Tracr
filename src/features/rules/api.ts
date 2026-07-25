@@ -5,6 +5,20 @@ import type { NewRule, Rule, Transaction } from '@/types/db'
 import { evaluateRules } from './engine'
 import { useActiveBook } from '@/features/books/useActiveBook'
 
+import { enqueueOfflineMutation } from '@/lib/offlineQueue'
+
+async function getUserId(): Promise<string | null> {
+  try {
+    const { data: sessionData } = await supabase.auth.getSession()
+    if (sessionData.session?.user?.id) return sessionData.session.user.id
+    const { data: userData } = await supabase.auth.getUser()
+    return userData.user?.id ?? null
+  } catch {
+    const { data: sessionData } = await supabase.auth.getSession()
+    return sessionData.session?.user?.id ?? null
+  }
+}
+
 export function useRules() {
   const { activeBookId } = useActiveBook()
   return useQuery({
@@ -27,16 +41,46 @@ export function useCreateRule() {
   const { activeBookId } = useActiveBook()
   return useMutation({
     mutationFn: async (input: NewRule): Promise<Rule> => {
-      const { data: userData } = await supabase.auth.getUser()
-      const userId = userData.user?.id
+      const userId = await getUserId()
       if (!userId) throw new Error('Not authenticated')
-      const { data, error } = await supabase
-        .from('rules')
-        .insert({ ...input, user_id: userId, book_id: activeBookId })
-        .select()
-        .single()
-      if (error) throw error
-      return data as Rule
+      const payload = { ...input, user_id: userId, book_id: activeBookId }
+
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const tempId = `temp-rule-${Date.now()}`
+        const dummyRule: Rule = {
+          id: tempId,
+          user_id: userId,
+          book_id: activeBookId || '',
+          name: payload.name,
+          is_active: payload.is_active ?? true,
+          match_type: payload.match_type ?? 'all',
+          conditions: payload.conditions ?? [],
+          actions: payload.actions ?? {},
+          stop_after: payload.stop_after ?? true,
+          sort_order: 999,
+          created_at: new Date().toISOString(),
+        }
+        enqueueOfflineMutation('CREATE_RULE', { ...payload, tempId })
+        qc.setQueriesData({ queryKey: [...qk.rules, activeBookId] }, (old: Rule[] | undefined) =>
+          old ? [...old, dummyRule] : [dummyRule],
+        )
+        return dummyRule
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('rules')
+          .insert(payload)
+          .select()
+          .single()
+        if (error) throw error
+        return data as Rule
+      } catch (err) {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          enqueueOfflineMutation('CREATE_RULE', payload)
+        }
+        throw err
+      }
     },
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.rules }),
   })
@@ -44,10 +88,26 @@ export function useCreateRule() {
 
 export function useUpdateRule() {
   const qc = useQueryClient()
+  const { activeBookId } = useActiveBook()
   return useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: Partial<Rule> }) => {
-      const { error } = await supabase.from('rules').update(patch).eq('id', id)
-      if (error) throw error
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        enqueueOfflineMutation('UPDATE_RULE', { id, ...patch })
+        qc.setQueriesData({ queryKey: [...qk.rules, activeBookId] }, (old: Rule[] | undefined) =>
+          old ? old.map((r) => (r.id === id ? { ...r, ...patch } : r)) : [],
+        )
+        return
+      }
+
+      try {
+        const { error } = await supabase.from('rules').update(patch).eq('id', id)
+        if (error) throw error
+      } catch (err) {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          enqueueOfflineMutation('UPDATE_RULE', { id, ...patch })
+        }
+        throw err
+      }
     },
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.rules }),
   })
@@ -55,10 +115,26 @@ export function useUpdateRule() {
 
 export function useDeleteRule() {
   const qc = useQueryClient()
+  const { activeBookId } = useActiveBook()
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('rules').delete().eq('id', id)
-      if (error) throw error
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        enqueueOfflineMutation('DELETE_RULE', { id })
+        qc.setQueriesData({ queryKey: [...qk.rules, activeBookId] }, (old: Rule[] | undefined) =>
+          old ? old.filter((r) => r.id !== id) : [],
+        )
+        return
+      }
+
+      try {
+        const { error } = await supabase.from('rules').delete().eq('id', id)
+        if (error) throw error
+      } catch (err) {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          enqueueOfflineMutation('DELETE_RULE', { id })
+        }
+        throw err
+      }
     },
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.rules }),
   })
