@@ -7,6 +7,11 @@ import type { Contact, Debt, NewContact, NewDebt, NewDebtPayment } from '@/types
 import { enqueueOfflineMutation } from '@/lib/offlineQueue'
 import { getAuthenticatedUserId } from '@/lib/authHelpers'
 
+/** A debt row with its contact joined (null if the contact was deleted). */
+export type DebtWithContact = Debt & {
+  contact: Pick<Contact, 'id' | 'name' | 'phone' | 'kind'> | null
+}
+
 export function useContacts() {
   const { activeBookId } = useActiveBook()
   return useQuery({

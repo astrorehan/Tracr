@@ -167,7 +167,7 @@ export function useOnlineStatus() {
           return true
         }
 
-        if (type === 'ADD_GOAL_CONTRIBUTION') {
+        if (type === 'ADD_GOAL_CONTRIBUTION' || type === 'CREATE_GOAL_CONTRIBUTION') {
           const { error } = await supabase.from('goal_contributions').insert(payload)
           if (error) throw error
           return true
@@ -205,7 +205,7 @@ export function useOnlineStatus() {
           return true
         }
 
-        if (type === 'ADD_DEBT_PAYMENT') {
+        if (type === 'ADD_DEBT_PAYMENT' || type === 'CREATE_DEBT_PAYMENT') {
           const { error } = await supabase.from('debt_payments').insert(payload)
           if (error) throw error
           return true
@@ -268,6 +268,31 @@ export function useOnlineStatus() {
           return true
         }
 
+        // --- RULES ---
+        if (type === 'CREATE_RULE') {
+          const { tempId, ...rest } = payload
+          const { data, error } = await supabase.from('rules').insert(rest).select().single()
+          if (error) throw error
+          if (tempId && data?.id) {
+            remapQueuedTempIds(tempId, data.id)
+          }
+          return true
+        }
+
+        if (type === 'UPDATE_RULE') {
+          const { id, ...patch } = payload
+          const { error } = await supabase.from('rules').update(patch).eq('id', id)
+          if (error) throw error
+          return true
+        }
+
+        if (type === 'DELETE_RULE') {
+          const { id } = payload
+          const { error } = await supabase.from('rules').delete().eq('id', id)
+          if (error) throw error
+          return true
+        }
+
         return true
       })
 
@@ -287,6 +312,7 @@ export function useOnlineStatus() {
         queryClient.invalidateQueries({ queryKey: qk.debtPayments })
         queryClient.invalidateQueries({ queryKey: qk.recurring })
         queryClient.invalidateQueries({ queryKey: qk.products })
+        queryClient.invalidateQueries({ queryKey: qk.rules })
       }
     } catch {
       // ignore
