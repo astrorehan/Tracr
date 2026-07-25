@@ -38,6 +38,7 @@ export const MESSAGES = {
   'common.back': { en: 'Back', id: 'Kembali' },
 
   // ── Nav / sections ───────────────────────────────────────────────────────
+  'nav.backTo': { en: 'Back to {page}', id: 'Kembali ke {page}' },
   'nav.home': { en: 'Home', id: 'Beranda' },
   'nav.accounts': { en: 'Accounts', id: 'Dompet' },
   'nav.activity': { en: 'Activity', id: 'Aktivitas' },
@@ -972,8 +973,55 @@ export const MESSAGES = {
 
   // Summary tiles
   'rep.statNet': { en: 'Net', id: 'Sisa' },
-  'rep.statAvgDay': { en: 'Avg / day spend', id: 'Rata-rata per hari' },
+  'rep.statAvgDay': { en: 'Daily spend', id: 'Belanja harian' },
   'rep.vsPrev': { en: 'vs prev', id: 'vs sebelumnya' },
+  'rep.tapForDetail': { en: 'Tap for detail', id: 'Ketuk untuk detail' },
+  'rep.explainIncome': {
+    en: 'Everything that came in during this period.',
+    id: 'Semua uang yang masuk di periode ini.',
+  },
+  'rep.explainExpense': {
+    en: 'Everything that went out during this period.',
+    id: 'Semua uang yang keluar di periode ini.',
+  },
+  'rep.explainNet': {
+    en: 'What is left after money out is taken off money in.',
+    id: 'Sisa uang masuk setelah dikurangi uang keluar.',
+  },
+  'rep.explainAvgDay': {
+    en: 'What you spent so far, spread evenly over the days counted.',
+    id: 'Pengeluaranmu sejauh ini, dibagi rata ke jumlah hari yang dihitung.',
+  },
+  'rep.prevPeriod': { en: 'Period before this', id: 'Periode sebelumnya' },
+  'rep.changeMore': { en: '{amount} more than before', id: '{amount} lebih banyak dari sebelumnya' },
+  'rep.changeLess': { en: '{amount} less than before', id: '{amount} lebih sedikit dari sebelumnya' },
+  'rep.changeSame': { en: 'Exactly the same as before', id: 'Sama persis dengan sebelumnya' },
+  'rep.noBaseline': {
+    en: 'No earlier period to compare this with.',
+    id: 'Belum ada periode sebelumnya untuk dibandingkan.',
+  },
+  'rep.trendLabel': { en: 'How it moved', id: 'Pergerakannya' },
+  'rep.txCount': { en: 'How many times', id: 'Berapa kali' },
+  'rep.avgPerTx': { en: 'Average each time', id: 'Rata-rata sekali transaksi' },
+  'rep.topCategory': { en: 'Biggest category', id: 'Kategori terbesar' },
+  'rep.biggestOne': { en: 'Biggest single one', id: 'Satu transaksi terbesar' },
+  'rep.moneyIn': { en: 'Money in', id: 'Uang masuk' },
+  'rep.moneyOut': { en: 'Money out', id: 'Uang keluar' },
+  'rep.keptPct': { en: 'Kept from income', id: 'Sisa dari pemasukan' },
+  'rep.keptPctHint': {
+    en: 'of everything that came in',
+    id: 'dari semua uang yang masuk',
+  },
+  'rep.daysCounted': { en: 'Days counted', id: 'Hari yang dihitung' },
+  'rep.daysUnit': { en: '{n} days', id: '{n} hari' },
+  'rep.priciestDay': { en: 'Priciest day', id: 'Hari paling boros' },
+  'rep.zeroDays': { en: 'Days you spent nothing', id: 'Hari tanpa pengeluaran' },
+  'rep.projected': { en: 'Heading for', id: 'Kira-kira jadi' },
+  'rep.projectedHint': {
+    en: 'by {date}, at this pace',
+    id: 'sampai {date}, kalau segini terus',
+  },
+  'rep.seeTransactions': { en: 'See these transactions', id: 'Lihat transaksinya' },
 
   // Charts
   'rep.netWorthTitle': { en: 'Net worth over time', id: 'Kekayaan bersih dari waktu ke waktu' },

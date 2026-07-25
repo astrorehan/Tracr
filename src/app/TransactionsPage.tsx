@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { format } from 'date-fns'
 import { ArrowLeftRight, ListChecks } from 'lucide-react'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
@@ -21,7 +22,12 @@ import { TransactionForm } from '@/features/transactions/TransactionForm'
 import { TransactionRow } from '@/features/transactions/TransactionRow'
 import { BulkBar } from '@/features/transactions/BulkBar'
 import { FilterPanel } from '@/features/transactions/FilterPanel'
-import { defaultFilter, isFilterEmpty, resolveDateRange } from '@/features/transactions/filters'
+import {
+  defaultFilter,
+  isFilterEmpty,
+  resolveDateRange,
+  type TxFilter,
+} from '@/features/transactions/filters'
 import { indexById } from '@/lib/collections'
 import { fromMinorUnits, formatMoney } from '@/lib/money'
 import { cn } from '@/lib/utils'
@@ -29,7 +35,10 @@ import type { Tag, Transaction } from '@/types/db'
 
 export function TransactionsPage() {
   const { t } = useT()
-  const [filter, setFilter] = useState(defaultFilter)
+  // Other screens (e.g. a report summary tile) can hand us a starting filter
+  // through router state — read once, then the page owns it like any other.
+  const routedFilter = (useLocation().state as { filter?: Partial<TxFilter> } | null)?.filter
+  const [filter, setFilter] = useState<TxFilter>(() => ({ ...defaultFilter, ...routedFilter }))
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [attachmentsTxId, setAttachmentsTxId] = useState<string | null>(null)
