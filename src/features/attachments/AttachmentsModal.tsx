@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { FileText, Plus, Trash2 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
+import { useT } from '@/features/settings/language-context'
 import {
   signedUrls,
   useDeleteAttachment,
@@ -16,14 +17,16 @@ interface Props {
 }
 
 export function AttachmentsModal({ transactionId, onClose }: Props) {
+  const { t } = useT()
   return (
-    <Modal open={Boolean(transactionId)} onClose={onClose} title="Receipts & attachments">
+    <Modal open={Boolean(transactionId)} onClose={onClose} title={t('att.title')}>
       {transactionId && <Body transactionId={transactionId} />}
     </Modal>
   )
 }
 
 function Body({ transactionId }: { transactionId: string }) {
+  const { t } = useT()
   const { data: byTx = {} } = useTransactionAttachments()
   const upload = useUploadAttachments()
   const del = useDeleteAttachment()
@@ -57,7 +60,7 @@ function Body({ transactionId }: { transactionId: string }) {
   return (
     <div className="space-y-4">
       {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No receipts attached yet.</p>
+        <p className="text-sm text-muted-foreground">{t('att.empty')}</p>
       ) : (
         <div className="grid grid-cols-3 gap-3">
           {rows.map((att) => (
@@ -80,9 +83,9 @@ function Body({ transactionId }: { transactionId: string }) {
         loading={upload.isPending}
         onClick={() => fileRef.current?.click()}
       >
-        <Plus className="h-4 w-4" /> Add files
+        <Plus className="h-4 w-4" /> {t('att.addFiles')}
       </Button>
-      <p className="text-center text-xs text-muted-foreground">Images or PDF, stored privately.</p>
+      <p className="text-center text-xs text-muted-foreground">{t('att.formatNote')}</p>
     </div>
   )
 }
@@ -96,6 +99,7 @@ function AttachmentTile({
   url?: string
   onDelete: () => void
 }) {
+  const { t } = useT()
   const isImage = (att.mime ?? '').startsWith('image/')
   return (
     <div className="group relative aspect-square overflow-hidden rounded-xl border border-border bg-surface-muted">
@@ -120,7 +124,7 @@ function AttachmentTile({
       <button
         onClick={onDelete}
         className="absolute right-1 top-1 rounded-lg bg-black/50 p-1 text-white opacity-0 transition group-hover:opacity-100"
-        aria-label={`Delete ${att.name}`}
+        aria-label={t('att.deleteAria', { name: att.name })}
       >
         <Trash2 className="h-3.5 w-3.5" />
       </button>

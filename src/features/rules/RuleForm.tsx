@@ -4,6 +4,8 @@ import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Label, Select } from '@/components/ui/Input'
 import { cn } from '@/lib/utils'
+import { useT } from '@/features/settings/language-context'
+import type { MsgKey } from '@/i18n'
 import { useCategories } from '@/features/categories/api'
 import { flattenWithDepth } from '@/features/categories/tree'
 import { TagPicker } from '@/features/tags/TagPicker'
@@ -16,30 +18,30 @@ interface Props {
   rule?: Rule | null
 }
 
-const FIELD_LABELS: Record<RuleField, string> = {
-  payee: 'Payee',
-  note: 'Note',
-  amount: 'Amount',
-  type: 'Type',
+const FIELD_KEYS: Record<RuleField, MsgKey> = {
+  payee: 'rules.field.payee',
+  note: 'rules.field.note',
+  amount: 'rules.field.amount',
+  type: 'rules.field.type',
 }
 
-const OPS_BY_FIELD: Record<RuleField, { value: RuleOp; label: string }[]> = {
+const OPS_BY_FIELD: Record<RuleField, { value: RuleOp; key: MsgKey }[]> = {
   payee: [
-    { value: 'contains', label: 'contains' },
-    { value: 'equals', label: 'is exactly' },
-    { value: 'starts_with', label: 'starts with' },
+    { value: 'contains', key: 'rules.op.contains' },
+    { value: 'equals', key: 'rules.op.equals' },
+    { value: 'starts_with', key: 'rules.op.startsWith' },
   ],
   note: [
-    { value: 'contains', label: 'contains' },
-    { value: 'equals', label: 'is exactly' },
-    { value: 'starts_with', label: 'starts with' },
+    { value: 'contains', key: 'rules.op.contains' },
+    { value: 'equals', key: 'rules.op.equals' },
+    { value: 'starts_with', key: 'rules.op.startsWith' },
   ],
   amount: [
-    { value: 'gt', label: 'greater than' },
-    { value: 'lt', label: 'less than' },
-    { value: 'equals', label: 'equals' },
+    { value: 'gt', key: 'rules.op.gt' },
+    { value: 'lt', key: 'rules.op.lt' },
+    { value: 'equals', key: 'rules.op.equals' },
   ],
-  type: [{ value: 'equals', label: 'is' }],
+  type: [{ value: 'equals', key: 'rules.op.equals' }],
 }
 
 function newCondition(): RuleCondition {
@@ -47,14 +49,16 @@ function newCondition(): RuleCondition {
 }
 
 export function RuleForm({ open, onClose, rule }: Props) {
+  const { t } = useT()
   return (
-    <Modal open={open} onClose={onClose} title={rule ? 'Edit rule' : 'New rule'}>
+    <Modal open={open} onClose={onClose} title={t(rule ? 'rules.editTitle' : 'rules.newTitle')}>
       {open && <RuleFormBody onClose={onClose} rule={rule ?? null} />}
     </Modal>
   )
 }
 
 function RuleFormBody({ onClose, rule }: { onClose: () => void; rule: Rule | null }) {
+  const { t } = useT()
   const create = useCreateRule()
   const update = useUpdateRule()
   const { data: categories = [] } = useCategories()
@@ -101,14 +105,14 @@ function RuleFormBody({ onClose, rule }: { onClose: () => void; rule: Rule | nul
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    if (!name.trim()) return setError('Give this rule a name.')
+    if (!name.trim()) return setError(t('rules.errName'))
 
     const cleaned = conditions
       .map((c) => ({ ...c, value: c.value.trim() }))
       .filter((c) => c.field === 'type' || c.value)
-    if (cleaned.length === 0) return setError('Add at least one condition with a value.')
+    if (cleaned.length === 0) return setError(t('rules.errCondition'))
     if (!categoryId && tagIds.length === 0)
-      return setError('Set a category and/or at least one tag for the action.')
+      return setError(t('rules.errAction'))
 
     const patch = {
       name: name.trim(),
@@ -124,24 +128,24 @@ function RuleFormBody({ onClose, rule }: { onClose: () => void; rule: Rule | nul
       else await create.mutateAsync(patch)
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save the rule.')
+      setError(err instanceof Error ? err.message : t('rules.errSave'))
     }
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <Field label="Rule name">
+      <Field label={t('rules.formName')}>
         <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. GoFood → Food + delivery"
+          placeholder={t('rules.formNamePlaceholder')}
           autoFocus
         />
       </Field>
 
       <div>
         <div className="mb-1.5 flex items-center justify-between">
-          <Label className="mb-0">Conditions</Label>
+          <Label className="mb-0">{t('rules.conditions')}</Label>
           <div className="inline-flex overflow-hidden rounded-lg border border-border text-xs font-semibold">
             {(['all', 'any'] as const).map((m) => (
               <button
@@ -155,7 +159,7 @@ function RuleFormBody({ onClose, rule }: { onClose: () => void; rule: Rule | nul
                     : 'bg-surface text-muted-foreground hover:text-foreground',
                 )}
               >
-                {m === 'all' ? 'Match all' : 'Match any'}
+                {t(m === 'all' ? 'rules.matchAll' : 'rules.matchAny')}
               </button>
             ))}
           </div>
@@ -167,11 +171,11 @@ function RuleFormBody({ onClose, rule }: { onClose: () => void; rule: Rule | nul
               <Select
                 value={c.field}
                 onChange={(e) => updateCondition(i, { field: e.target.value as RuleField })}
-                className="h-10 w-[5.5rem] flex-none bg-surface"
+                className="h-10 w-[6rem] flex-none bg-surface"
               >
-                {(Object.keys(FIELD_LABELS) as RuleField[]).map((f) => (
+                {(Object.keys(FIELD_KEYS) as RuleField[]).map((f) => (
                   <option key={f} value={f}>
-                    {FIELD_LABELS[f]}
+                    {t(FIELD_KEYS[f])}
                   </option>
                 ))}
               </Select>
@@ -182,7 +186,7 @@ function RuleFormBody({ onClose, rule }: { onClose: () => void; rule: Rule | nul
               >
                 {OPS_BY_FIELD[c.field].map((o) => (
                   <option key={o.value} value={o.value}>
-                    {o.label}
+                    {t(o.key)}
                   </option>
                 ))}
               </Select>
@@ -192,9 +196,9 @@ function RuleFormBody({ onClose, rule }: { onClose: () => void; rule: Rule | nul
                   onChange={(e) => updateCondition(i, { value: e.target.value })}
                   className="h-10 min-w-0 flex-1 bg-surface"
                 >
-                  <option value="expense">Expense</option>
-                  <option value="income">Income</option>
-                  <option value="transfer">Transfer</option>
+                  <option value="expense">{t('common.expense')}</option>
+                  <option value="income">{t('common.income')}</option>
+                  <option value="transfer">{t('common.transfer')}</option>
                 </Select>
               ) : (
                 <Input
@@ -222,16 +226,16 @@ function RuleFormBody({ onClose, rule }: { onClose: () => void; rule: Rule | nul
             onClick={addCondition}
             className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-primary transition hover:bg-primary/10"
           >
-            <Plus className="h-3.5 w-3.5" /> Add condition
+            <Plus className="h-3.5 w-3.5" /> {t('rules.addCondition')}
           </button>
         </div>
       </div>
 
       <div className="space-y-3 rounded-xl border border-border p-3">
-        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Then</p>
-        <Field label="Set category">
+        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('rules.then')}</p>
+        <Field label={t('rules.setCategory')}>
           <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-            <option value="">Don’t change</option>
+            <option value="">{t('rules.dontChange')}</option>
             {categoryOptions.map(({ category, depth }) => (
               <option key={category.id} value={category.id}>
                 {depth ? '  — ' : ''}
@@ -240,21 +244,21 @@ function RuleFormBody({ onClose, rule }: { onClose: () => void; rule: Rule | nul
             ))}
           </Select>
         </Field>
-        <Field label="Add tags">
+        <Field label={t('rules.addTags')}>
           <TagPicker selected={tagIds} onChange={setTagIds} />
         </Field>
       </div>
 
       <div className="space-y-2">
         <ToggleRow
-          label="Active"
-          desc="Apply this rule on new transactions & imports"
+          label={t('rules.activeLabel')}
+          desc={t('rules.activeDesc')}
           checked={isActive}
           onChange={setIsActive}
         />
         <ToggleRow
-          label="Stop after match"
-          desc="Skip later rules once this one matches"
+          label={t('rules.stopLabel')}
+          desc={t('rules.stopDesc')}
           checked={stopAfter}
           onChange={setStopAfter}
         />
@@ -264,10 +268,10 @@ function RuleFormBody({ onClose, rule }: { onClose: () => void; rule: Rule | nul
 
       <div className="flex gap-3 pt-1">
         <Button type="button" variant="secondary" className="flex-1" onClick={onClose}>
-          Cancel
+          {t('common.cancel')}
         </Button>
         <Button type="submit" className="flex-1" loading={pending}>
-          {rule ? 'Save' : 'Create rule'}
+          {t(rule ? 'common.save' : 'rules.new')}
         </Button>
       </div>
     </form>

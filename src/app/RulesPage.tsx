@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/Button'
 import { PageHeader, Pill } from '@/components/ui/list'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
 import { useConfirm } from '@/components/ui/confirm-context'
+import { useT } from '@/features/settings/language-context'
+import type { MsgKey } from '@/i18n'
 import { CategoryIcon } from '@/features/categories/CategoryIcon'
 import { TagChip } from '@/features/tags/TagChip'
 import { useCategories } from '@/features/categories/api'
@@ -21,21 +23,22 @@ import { indexById } from '@/lib/collections'
 import { cn } from '@/lib/utils'
 import type { Category, Rule, RuleCondition, RuleField, Tag } from '@/types/db'
 
-const FIELD_LABELS: Record<RuleField, string> = {
-  payee: 'Payee',
-  note: 'Note',
-  amount: 'Amount',
-  type: 'Type',
+const FIELD_KEYS: Record<RuleField, MsgKey> = {
+  payee: 'rules.field.payee',
+  note: 'rules.field.note',
+  amount: 'rules.field.amount',
+  type: 'rules.field.type',
 }
-const OP_LABELS: Record<RuleCondition['op'], string> = {
-  contains: 'contains',
-  equals: 'is',
-  starts_with: 'starts with',
-  gt: '>',
-  lt: '<',
+const OP_KEYS: Record<RuleCondition['op'], MsgKey> = {
+  contains: 'rules.op.contains',
+  equals: 'rules.op.equals',
+  starts_with: 'rules.op.startsWith',
+  gt: 'rules.op.gt',
+  lt: 'rules.op.lt',
 }
 
 export function RulesPage() {
+  const { t } = useT()
   const { data: rules, isLoading } = useRules()
   const { data: categories = [] } = useCategories()
   const { data: tags = [] } = useTags()
@@ -86,24 +89,28 @@ export function RulesPage() {
     const res = await apply.mutateAsync(rules ?? [])
     setApplyMsg(
       res.categorized === 0 && res.tagged === 0
-        ? `Scanned ${res.scanned} uncategorized — nothing matched.`
-        : `Categorized ${res.categorized} and tagged ${res.tagged} of ${res.scanned} uncategorized.`,
+        ? t('rules.scannedNone', { scanned: res.scanned })
+        : t('rules.scannedResult', {
+            categorized: res.categorized,
+            tagged: res.tagged,
+            scanned: res.scanned,
+          }),
     )
   }
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader
-        title="Rules"
+        title={t('rules.title')}
         action={
           <Pill variant="tint" icon={Plus} onClick={() => setCreating(true)}>
-            New rule
+            {t('rules.new')}
           </Pill>
         }
       />
 
       <p className="text-sm font-medium text-muted-foreground">
-        Auto-categorize and tag transactions as you add or import them. Rules run top to bottom.
+        {t('rules.subtitle')}
       </p>
 
       {isLoading ? (
@@ -111,11 +118,11 @@ export function RulesPage() {
       ) : ordered.length === 0 ? (
         <EmptyState
           icon={<Zap className="h-8 w-8" />}
-          title="No rules yet"
-          description="Create a rule like “if payee contains GoFood → category Food, tag delivery”."
+          title={t('rules.emptyTitle')}
+          description={t('rules.emptyDesc')}
           action={
             <Button size="sm" onClick={() => setCreating(true)}>
-              <Plus className="h-4 w-4" /> New rule
+              <Plus className="h-4 w-4" /> {t('rules.new')}
             </Button>
           }
         />
@@ -135,7 +142,13 @@ export function RulesPage() {
                 onToggle={() => update.mutate({ id: rule.id, patch: { is_active: !rule.is_active } })}
                 onEdit={() => setEditing(rule)}
                 onDelete={async () => {
-                  if (await confirm({ title: `Delete rule "${rule.name}"?`, tone: 'danger', confirmLabel: 'Delete' }))
+                  if (
+                    await confirm({
+                      title: t('rules.deleteTitle', { name: rule.name }),
+                      tone: 'danger',
+                      confirmLabel: t('common.delete'),
+                    })
+                  )
                     del.mutate(rule.id)
                 }}
               />
@@ -144,14 +157,14 @@ export function RulesPage() {
 
           <Card className="flex flex-wrap items-center justify-between gap-3 p-4 shadow-sm">
             <div className="min-w-0">
-              <p className="text-sm font-bold text-foreground">Apply to existing</p>
+              <p className="text-sm font-bold text-foreground">{t('rules.applyTitle')}</p>
               <p className="text-xs font-medium text-muted-foreground">
-                Run active rules over uncategorized income & expenses.
+                {t('rules.applyDesc')}
               </p>
               {applyMsg && <p className="mt-1 text-xs font-semibold text-primary">{applyMsg}</p>}
             </div>
             <Button variant="secondary" onClick={runApply} loading={apply.isPending}>
-              <Wand2 className="h-4 w-4" /> Run now
+              <Wand2 className="h-4 w-4" /> {t('rules.runNow')}
             </Button>
           </Card>
         </>
@@ -192,9 +205,13 @@ function RuleRow({
   onEdit: () => void
   onDelete: () => void
 }) {
-  const joiner = rule.match_type === 'all' ? ' and ' : ' or '
+  const { t } = useT()
+  const joiner = rule.match_type === 'all' ? ' AND ' : ' OR '
   const condText = rule.conditions
-    .map((c) => `${FIELD_LABELS[c.field]} ${OP_LABELS[c.op]} ${c.field === 'amount' ? c.value : `“${c.value}”`}`)
+    .map(
+      (c) =>
+        `${t(FIELD_KEYS[c.field])} ${t(OP_KEYS[c.op])} ${c.field === 'amount' ? c.value : `“${c.value}”`}`,
+    )
     .join(joiner)
   const cat = rule.actions?.category_id ? categoryMap[rule.actions.category_id] : undefined
   const ruleTags = (rule.actions?.tag_ids ?? []).map((id) => tagMap[id]).filter(Boolean) as Tag[]
@@ -224,7 +241,7 @@ function RuleRow({
           )}
         </div>
         <p className="mt-0.5 truncate text-xs font-medium text-muted-foreground">
-          If {condText || '…'}
+          {t('rules.ifCond', { cond: condText || '…' })}
         </p>
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
           {cat && (
@@ -236,11 +253,11 @@ function RuleRow({
               {cat.name}
             </span>
           )}
-          {ruleTags.map((t) => (
-            <TagChip key={t.id} tag={t} />
+          {ruleTags.map((tItem) => (
+            <TagChip key={tItem.id} tag={tItem} />
           ))}
           {!cat && ruleTags.length === 0 && (
-            <span className="text-xs font-medium text-muted-foreground">No action set</span>
+            <span className="text-xs font-medium text-muted-foreground">{t('rules.noAction')}</span>
           )}
         </div>
       </div>
@@ -265,14 +282,14 @@ function RuleRow({
         <button
           onClick={onEdit}
           className="rounded-xl p-1.5 text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
-          aria-label={`Edit ${rule.name}`}
+          aria-label={`${t('common.edit')} ${rule.name}`}
         >
           <Pencil className="h-3.5 w-3.5" />
         </button>
         <button
           onClick={onDelete}
           className="rounded-xl p-1.5 text-muted-foreground transition-colors hover:bg-danger/10 hover:text-danger"
-          aria-label={`Delete ${rule.name}`}
+          aria-label={`${t('common.delete')} ${rule.name}`}
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>
