@@ -12,7 +12,6 @@ import type { MsgKey } from '@/i18n'
 import { useT } from '@/features/settings/language-context'
 import { useActiveBook } from '@/features/books/useActiveBook'
 import { BizTabs } from '@/components/BizTabs'
-import { BackLink } from '@/components/ui/BackLink'
 
 type BizRoute = { title: MsgKey; subtitle: MsgKey; bizOnly: MsgKey }
 
@@ -73,9 +72,7 @@ export function BizLayout() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 pb-24 pt-6 sm:pt-8">
-      <BackLink to="/" label={t('nav.home')} className="mb-4" />
-
+    <div className="mx-auto max-w-2xl px-4 pb-24">
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <span className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.14em] text-primary">
