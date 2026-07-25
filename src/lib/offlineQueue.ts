@@ -15,11 +15,13 @@ export type OfflineMutationType =
   | 'UPDATE_GOAL'
   | 'DELETE_GOAL'
   | 'ADD_GOAL_CONTRIBUTION'
+  | 'CREATE_GOAL_CONTRIBUTION'
   | 'DELETE_GOAL_CONTRIBUTION'
   | 'CREATE_DEBT'
   | 'UPDATE_DEBT'
   | 'DELETE_DEBT'
   | 'ADD_DEBT_PAYMENT'
+  | 'CREATE_DEBT_PAYMENT'
   | 'DELETE_DEBT_PAYMENT'
   | 'CREATE_RECURRING'
   | 'UPDATE_RECURRING'
@@ -27,6 +29,9 @@ export type OfflineMutationType =
   | 'CREATE_PRODUCT'
   | 'UPDATE_PRODUCT'
   | 'DELETE_PRODUCT'
+  | 'CREATE_RULE'
+  | 'UPDATE_RULE'
+  | 'DELETE_RULE'
 
 export interface QueuedMutation<T = Record<string, any>> {
   id: string
