@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Wallet, List, Pencil, Trash2, PieChart, TriangleAlert } from 'lucide-react'
-import { BackLink } from '@/components/ui/BackLink'
 import { Button } from '@/components/ui/Button'
 import { Pill, ListCard, ListRow, IconChip } from '@/components/ui/list'
 import { CenterSpinner, EmptyState } from '@/components/ui/States'
@@ -117,8 +116,6 @@ export function AccountsPage() {
   return (
     <div className="w-full space-y-6 pb-20">
       <div className="space-y-4">
-        <BackLink to="/" label="Accounts" />
-        
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-extrabold text-foreground">Accounts</h1>
           <Pill variant="line" icon={Plus} onClick={openNew}>

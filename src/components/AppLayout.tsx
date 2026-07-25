@@ -24,6 +24,7 @@ import { useAuth } from '@/features/auth/useAuth'
 import { useActiveBook } from '@/features/books/useActiveBook'
 import { BookSwitcher } from '@/features/books/BookSwitcher'
 import { CenterSpinner } from '@/components/ui/States'
+import { PageBack } from '@/components/PageBack'
 import { useTheme } from '@/features/settings/theme-context'
 import { useLiveRatesSync } from '@/features/fx/useLiveRatesSync'
 import { TransactionForm } from '@/features/transactions/TransactionForm'
@@ -279,6 +280,9 @@ export function AppLayout() {
             key={animationKeyFor(pathname)}
             className="mx-auto w-full max-w-[1500px] animate-fade-in"
           >
+            {/* One back control for the whole shell, in the same spot on every
+                route (Home is the root, so PageBack renders nothing there). */}
+            <PageBack className="mb-4 print:hidden" />
             <Outlet />
           </div>
         </main>

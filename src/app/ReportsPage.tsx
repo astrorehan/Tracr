@@ -13,16 +13,7 @@ import {
   Tooltip,
   XAxis,
 } from 'recharts'
-import {
-  BarChart3,
-  ChevronRight,
-  Download,
-  Printer,
-  Tag as TagIcon,
-  TrendingDown,
-  TrendingUp,
-  Wallet,
-} from 'lucide-react'
+import { BarChart3, ChevronRight, Download, Printer, Tag as TagIcon } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { PageHeader } from '@/components/ui/list'
@@ -50,7 +41,6 @@ import {
   dailyTotals,
   netWorthSeries,
   payeeBreakdown,
-  pctChange,
   periodTotals,
   pickGranularity,
   tagBreakdownForCategory,
@@ -58,6 +48,7 @@ import {
   totalsInBase,
   type NetWorthDelta,
 } from '@/features/reports/reports'
+import { StatTiles } from '@/features/reports/StatTiles'
 import { toCsv, downloadTextFile } from '@/lib/csv'
 import { AiInsightCard } from '@/features/ai/AiInsightCard'
 import { formatMoney, fromMinorUnits } from '@/lib/money'
@@ -263,11 +254,14 @@ export function ReportsPage() {
 
   // Average over days elapsed so far (cap the end at today), not the whole period —
   // spending Rp3m on the 1st reads as Rp3m/day, then Rp1.5m/day on the 2nd, etc.
-  const avgDailySpend = useMemo(() => {
+  // `daysTotal` (the full range) is what the tile sheet projects the pace onto.
+  const daily = useMemo(() => {
     const elapsedEnd = Math.min(+to, +now)
-    const dayCount = Math.max(1, Math.floor((elapsedEnd - +from) / 86_400_000) + 1)
-    return totals.expense / dayCount
+    const daysElapsed = Math.max(1, Math.floor((elapsedEnd - +from) / 86_400_000) + 1)
+    const daysTotal = Math.max(daysElapsed, Math.floor((+to - +from) / 86_400_000) + 1)
+    return { avg: totals.expense / daysElapsed, daysElapsed, daysTotal }
   }, [from, to, now, totals.expense])
+  const avgDailySpend = daily.avg
 
   // Avg/day for the previous period spreads over its full length (it's fully elapsed).
   const prevAvgDaily = useMemo(() => {
@@ -389,37 +383,24 @@ export function ReportsPage() {
         />
       ) : (
         <div className="space-y-5">
-          {/* Summary cards */}
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <Stat
-              label={t('common.income')}
-              value={formatMoney(totals.income, base, { signDisplay: 'never' })}
-              tone="positive"
-              icon={TrendingUp}
-              delta={hasComparison ? deltaFor(totals.income, prevTotals.income, true) : undefined}
-            />
-            <Stat
-              label={t('common.expense')}
-              value={formatMoney(totals.expense, base, { signDisplay: 'never' })}
-              tone="negative"
-              icon={TrendingDown}
-              delta={hasComparison ? deltaFor(totals.expense, prevTotals.expense, false) : undefined}
-            />
-            <Stat
-              label={t('rep.statNet')}
-              value={formatMoney(totals.net, base, { signDisplay: 'always' })}
-              tone={totals.net >= 0 ? 'positive' : 'negative'}
-              icon={Wallet}
-              delta={hasComparison ? deltaFor(totals.net, prevTotals.net, true) : undefined}
-            />
-            <Stat
-              label={t('rep.statAvgDay')}
-              value={formatMoney(Math.round(avgDailySpend), base, { signDisplay: 'never' })}
-              tone="neutral"
-              icon={BarChart3}
-              delta={hasComparison ? deltaFor(avgDailySpend, prevAvgDaily, false) : undefined}
-            />
-          </div>
+          {/* Summary tiles — each one opens a detail sheet */}
+          <StatTiles
+            base={base}
+            from={from}
+            to={to}
+            prevRange={hasComparison ? prevResolved : {}}
+            totals={totals}
+            prevTotals={prevTotals}
+            avgDaily={avgDailySpend}
+            prevAvgDaily={prevAvgDaily}
+            daysElapsed={daily.daysElapsed}
+            daysTotal={daily.daysTotal}
+            timeline={timeline}
+            txns={baseTxns}
+            categories={categories}
+            splits={scaledSplits}
+            dateFilter={{ datePreset: preset, customFrom, customTo }}
+          />
 
           {/* Net worth over time */}
           <Card className="p-5">
@@ -748,69 +729,6 @@ function LegendDot({ color, label }: { color: string; label: string }) {
       <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
       {label}
     </span>
-  )
-}
-
-interface Delta {
-  pct: number
-  /** Whether this direction of change is good (drives the color). */
-  good: boolean
-}
-
-/** Build a vs-previous delta, or undefined when there's no comparable baseline. */
-function deltaFor(cur: number, prev: number, higherIsBetter: boolean): Delta | undefined {
-  const pct = pctChange(cur, prev)
-  if (pct == null) return undefined
-  return { pct, good: higherIsBetter ? pct >= 0 : pct <= 0 }
-}
-
-function Stat({
-  label,
-  value,
-  tone,
-  icon: Icon,
-  delta,
-}: {
-  label: string
-  value: string
-  tone: 'positive' | 'negative' | 'neutral'
-  icon: React.ComponentType<{ className?: string }>
-  delta?: Delta
-}) {
-  const { t } = useT()
-  const toneCls =
-    tone === 'positive'
-      ? 'text-positive bg-positive/10'
-      : tone === 'negative'
-        ? 'text-negative bg-negative/10'
-        : 'text-muted-foreground bg-surface-muted'
-  return (
-    <Card className="flex items-center gap-3 p-4">
-      <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', toneCls)}>
-        <Icon className="h-5 w-5 stroke-[2.2]" />
-      </div>
-      <div className="min-w-0">
-        <p className="truncate text-xs font-bold uppercase tracking-wide text-muted-foreground">
-          {label}
-        </p>
-        <p className="mt-0.5 truncate font-numeric text-base font-extrabold leading-tight text-foreground">
-          {value}
-        </p>
-        {delta && (
-          <p
-            className={cn(
-              'mt-0.5 flex items-center gap-1 text-xs font-bold',
-              delta.good ? 'text-positive' : 'text-negative',
-            )}
-          >
-            <span>
-              {delta.pct >= 0 ? '▲' : '▼'} {Math.abs(delta.pct).toFixed(0)}%
-            </span>
-            <span className="font-medium text-muted-foreground">{t('rep.vsPrev')}</span>
-          </p>
-        )}
-      </div>
-    </Card>
   )
 }
 

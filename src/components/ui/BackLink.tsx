@@ -2,22 +2,25 @@ import { Link } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-/** Small circled chevron + label, sitting above a page title. Used by any page
- *  reached from somewhere else (Accounts, the Buku Usaha tools). */
+/** Small circled chevron + label, sitting above a page title. Rendered for every
+ *  route by PageBack; `label` names where the link goes, not where you are. */
 export function BackLink({
   to,
   label,
   className,
+  'aria-label': ariaLabel,
 }: {
   to: string
   label: string
   className?: string
+  'aria-label'?: string
 }) {
   return (
     <Link
       to={to}
+      aria-label={ariaLabel}
       className={cn(
-        'flex w-max items-center gap-2 text-muted-foreground transition-colors hover:text-foreground',
+        'pressable flex w-max items-center gap-2 text-muted-foreground transition-colors hover:text-foreground',
         className,
       )}
     >

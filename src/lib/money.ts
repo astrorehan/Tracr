@@ -75,6 +75,48 @@ export function formatMoney(
   return `${meta.symbol}${number}`
 }
 
+/**
+ * Shortened currency for tight spots — "IDR 1.2M". Only kicks in past 100k
+ * major units; below that the full number already fits and precision is worth
+ * more than the saved characters. Currency display matches {@link formatMoney}
+ * so a shortened figure sits next to a full one without looking foreign.
+ */
+export function formatMoneyCompact(
+  minor: number,
+  currencyCode: string,
+  opts: { locale?: string; signDisplay?: 'auto' | 'never' | 'always' } = {},
+): string {
+  const meta = getCurrency(currencyCode)
+  const value = fromMinorUnits(minor, currencyCode)
+  if (Math.abs(value) < 100_000) return formatMoney(minor, currencyCode, opts)
+
+  // Three significant figures keeps the width constant ("IDR 1.18M", "IDR 123M")
+  // while still telling 1.18M and 1.22M apart — one fraction digit would round
+  // both to the same "1.2M".
+  const shared = {
+    notation: 'compact',
+    maximumSignificantDigits: 3,
+    signDisplay: opts.signDisplay ?? 'auto',
+  } as const
+
+  if (!meta.crypto) {
+    try {
+      return new Intl.NumberFormat(opts.locale, {
+        style: 'currency',
+        currency: meta.code,
+        ...shared,
+      }).format(value)
+    } catch {
+      // Unknown ISO code — fall through to manual formatting.
+    }
+  }
+  try {
+    return `${meta.symbol}${new Intl.NumberFormat(opts.locale, shared).format(value)}`
+  } catch {
+    return formatMoney(minor, currencyCode, opts)
+  }
+}
+
 /** Signed delta a transaction applies to its account balance. */
 export function signedAmount(type: 'income' | 'expense' | 'transfer', amountMinor: number): number {
   if (type === 'income') return amountMinor
