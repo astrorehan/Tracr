@@ -795,8 +795,9 @@ function TransactionFormBody({
               step="any"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
+              onWheel={(e) => e.currentTarget.blur()}
               placeholder="0"
-              autoFocus
+              autoFocus={!editing}
               className="w-44 bg-transparent text-center outline-none placeholder:text-muted-foreground/40"
             />
           )}

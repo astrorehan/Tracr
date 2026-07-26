@@ -597,3 +597,47 @@ export type NewTransactionItem = Omit<
   TransactionItem,
   'id' | 'user_id' | 'book_id' | 'created_at'
 >
+
+export type InterestType = 'zero' | 'flat' | 'annuity'
+
+export type InstallmentStatus = 'active' | 'completed' | 'cancelled'
+
+export interface Installment {
+  id: string
+  book_id: string
+  user_id: string
+  name: string
+  account_id: string | null
+  category_id: string | null
+  total_amount: number
+  tenor_months: number
+  monthly_amount: number
+  interest_rate?: number | null
+  interest_type?: InterestType | null
+  start_date: string
+  due_day: number
+  paid_months: number
+  status: InstallmentStatus
+  note: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface InstallmentPayment {
+  id: string
+  user_id: string
+  book_id: string
+  installment_id: string
+  transaction_id: string | null
+  payment_number: number
+  amount: number
+  paid_at: string
+  created_at: string
+}
+
+export type CreateInstallmentInput = Omit<
+  Installment,
+  'id' | 'book_id' | 'user_id' | 'created_at' | 'updated_at' | 'status' | 'paid_months'
+> &
+  Partial<Pick<Installment, 'paid_months' | 'status'>>
+

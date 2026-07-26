@@ -293,6 +293,79 @@ export function useOnlineStatus() {
           return true
         }
 
+        // --- INSTALLMENTS ---
+        if (type === 'CREATE_INSTALLMENT') {
+          const { tempId, ...rest } = payload
+          const { data, error } = await supabase.from('installments').insert(rest).select().single()
+          if (error) throw error
+          if (tempId && data?.id) {
+            remapQueuedTempIds(tempId, data.id)
+          }
+          return true
+        }
+
+        if (type === 'UPDATE_INSTALLMENT') {
+          const { id, ...patch } = payload
+          const { error } = await supabase.from('installments').update(patch).eq('id', id)
+          if (error) throw error
+          return true
+        }
+
+        if (type === 'DELETE_INSTALLMENT') {
+          const { id } = payload
+          const { error } = await supabase.from('installments').delete().eq('id', id)
+          if (error) throw error
+          return true
+        }
+
+        if (type === 'PAY_INSTALLMENT') {
+          const { installmentId, txPayload, paymentPayload, nextPaidMonths, nextStatus } = payload
+          if (txPayload) {
+            const { data: txData, error: txError } = await supabase
+              .from('transactions')
+              .insert(txPayload)
+              .select('id')
+              .single()
+            if (!txError && txData) {
+              paymentPayload.transaction_id = txData.id
+            }
+          }
+          const { error: payErr } = await supabase.from('installment_payments').insert(paymentPayload)
+          if (payErr) throw payErr
+          const { error: updateErr } = await supabase
+            .from('installments')
+            .update({ paid_months: nextPaidMonths, status: nextStatus })
+            .eq('id', installmentId)
+          if (updateErr) throw updateErr
+          return true
+        }
+
+        if (type === 'EARLY_PAYOFF_INSTALLMENT') {
+          const { installmentId, txPayload, paymentPayloads, nextPaidMonths, nextStatus } = payload
+          if (txPayload) {
+            const { data: txData, error: txError } = await supabase
+              .from('transactions')
+              .insert(txPayload)
+              .select('id')
+              .single()
+            if (!txError && txData && paymentPayloads?.length) {
+              for (const p of paymentPayloads) p.transaction_id = txData.id
+            }
+          }
+          if (paymentPayloads?.length) {
+            const { error: payErr } = await supabase
+              .from('installment_payments')
+              .insert(paymentPayloads)
+            if (payErr) throw payErr
+          }
+          const { error: updateErr } = await supabase
+            .from('installments')
+            .update({ paid_months: nextPaidMonths, status: nextStatus })
+            .eq('id', installmentId)
+          if (updateErr) throw updateErr
+          return true
+        }
+
         return true
       })
 
@@ -313,6 +386,8 @@ export function useOnlineStatus() {
         queryClient.invalidateQueries({ queryKey: qk.recurring })
         queryClient.invalidateQueries({ queryKey: qk.products })
         queryClient.invalidateQueries({ queryKey: qk.rules })
+        queryClient.invalidateQueries({ queryKey: qk.installments })
+        queryClient.invalidateQueries({ queryKey: qk.installmentPayments })
       }
     } catch {
       // ignore

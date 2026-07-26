@@ -8,6 +8,7 @@ import {
   ArrowUpRight,
   BarChart3,
   ClipboardList,
+  CalendarClock,
   HandCoins,
   Package,
   TrendingUp,
@@ -60,6 +61,11 @@ const NAV_GROUPS: NavItem[][] = [
       icon: ClipboardList,
       match: ['/budgets', '/bills', '/goals'],
     },
+    {
+      to: '/installments',
+      label: 'nav.installments',
+      icon: CalendarClock,
+    },
   ],
   [{ to: '/settings', label: 'nav.settings', icon: Settings }],
 ]
@@ -78,7 +84,7 @@ const MOBILE_NAV: (NavItem | null)[] = [
     to: '/',
     label: 'nav.home',
     icon: LayoutDashboard,
-    match: ['/', '/budgets', '/bills', '/goals', '/products', '/profit', '/debts'],
+    match: ['/', '/budgets', '/bills', '/goals', '/installments', '/products', '/profit', '/debts'],
   },
   { to: '/accounts', label: 'nav.accounts', icon: Wallet, match: ['/accounts', '/currencies'] },
   null,

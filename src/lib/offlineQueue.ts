@@ -32,6 +32,11 @@ export type OfflineMutationType =
   | 'CREATE_RULE'
   | 'UPDATE_RULE'
   | 'DELETE_RULE'
+  | 'CREATE_INSTALLMENT'
+  | 'UPDATE_INSTALLMENT'
+  | 'DELETE_INSTALLMENT'
+  | 'PAY_INSTALLMENT'
+  | 'EARLY_PAYOFF_INSTALLMENT'
 
 export interface QueuedMutation<T = Record<string, any>> {
   id: string

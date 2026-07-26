@@ -32,3 +32,10 @@ supabase_pass.md
 !.env.example
 client_secret*.json
 *.pem
+
+# Agent customization & AI directories
+.agents
+.claude
+
+# Feature roadmaps & internal docs
+INSTALLMENT_FEATURES.md

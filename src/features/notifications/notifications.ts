@@ -1,8 +1,9 @@
 import { dueInfo } from '@/features/recurring/schedule'
 import { formatMoney } from '@/lib/money'
+import { getDaysUntilDue } from '@/features/installments/progress'
 import type { MsgKey, TVars } from '@/i18n'
 import type { BudgetStatusItem } from '@/features/budgets/useBudgetStatuses'
-import type { RecurringTransaction } from '@/types/db'
+import type { RecurringTransaction, Installment } from '@/types/db'
 
 /**
  * In-app notifications are derived purely from the data already on the client —
@@ -61,6 +62,38 @@ export function billNotifications(
             : { key: 'notif.bill.inDays', vars: { n: days, amount } },
       href: '/bills',
       priority: overdue ? 1000 + Math.abs(days) : 500 + (7 - days),
+    })
+  }
+  return out
+}
+
+/** Active installments due soon (≤7d) or overdue become notifications. */
+export function installmentNotifications(
+  installments: Installment[],
+  today: Date = new Date(),
+): AppNotification[] {
+  const out: AppNotification[] = []
+  for (const inst of installments) {
+    if (inst.status !== 'active' || inst.paid_months >= inst.tenor_months) continue
+    const days = getDaysUntilDue(inst.due_day, today)
+    if (days > 7) continue
+
+    const overdue = days < 0
+    const amountStr = formatMoney(inst.monthly_amount, 'IDR', { signDisplay: 'never' })
+
+    out.push({
+      id: `installment:${inst.id}:${inst.paid_months + 1}`,
+      severity: overdue ? 'danger' : 'warning',
+      title: { text: inst.name },
+      body: overdue
+        ? { key: 'notif.installment.overdue', vars: { n: Math.abs(days), amount: amountStr } }
+        : days === 0
+          ? { key: 'notif.installment.today', vars: { amount: amountStr } }
+          : days === 1
+            ? { key: 'notif.installment.tomorrow', vars: { amount: amountStr } }
+            : { key: 'notif.installment.inDays', vars: { n: days, amount: amountStr } },
+      href: '/installments',
+      priority: overdue ? 1100 + Math.abs(days) : 600 + (7 - days),
     })
   }
   return out

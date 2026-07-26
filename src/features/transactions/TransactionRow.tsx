@@ -90,10 +90,10 @@ export function TransactionRow({
     <div
       className={cn(
         'group flex items-center gap-3.5 py-3',
-        selectable && 'cursor-pointer rounded-xl px-2 -mx-2 transition-colors',
+        (selectable || onEdit) && 'cursor-pointer rounded-xl px-2 -mx-2 transition-colors hover:bg-surface-muted/40',
         selectable && selected && 'bg-primary/5',
       )}
-      onClick={selectable ? () => onSelect?.(tx.id) : undefined}
+      onClick={selectable ? () => onSelect?.(tx.id) : onEdit ? () => onEdit(tx.id) : undefined}
     >
       {selectable ? (
         <div
@@ -162,7 +162,10 @@ export function TransactionRow({
         </span>
         {attachmentCount > 0 && onAttachments && !selectable && (
           <button
-            onClick={() => onAttachments(tx.id)}
+            onClick={(e) => {
+              e.stopPropagation()
+              onAttachments(tx.id)
+            }}
             className="inline-flex items-center gap-0.5 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
             aria-label={t('tx.attachments', { n: attachmentCount })}
           >
@@ -172,8 +175,11 @@ export function TransactionRow({
         )}
         {onEdit && !selectable && (
           <button
-            onClick={() => onEdit(tx.id)}
-            className="rounded-xl p-1.5 text-muted-foreground opacity-0 hover:text-primary hover:bg-primary/10 transition-all duration-200 group-hover:opacity-100"
+            onClick={(e) => {
+              e.stopPropagation()
+              onEdit(tx.id)
+            }}
+            className="rounded-xl p-1.5 text-muted-foreground sm:opacity-0 opacity-70 hover:text-primary hover:bg-primary/10 transition-all duration-200 group-hover:opacity-100"
             aria-label={t('tx.editTx')}
           >
             <Pencil className="h-4 w-4" />
@@ -181,8 +187,11 @@ export function TransactionRow({
         )}
         {onDuplicate && !selectable && (
           <button
-            onClick={() => onDuplicate(tx.id)}
-            className="rounded-xl p-1.5 text-muted-foreground opacity-0 hover:text-primary hover:bg-primary/10 transition-all duration-200 group-hover:opacity-100"
+            onClick={(e) => {
+              e.stopPropagation()
+              onDuplicate(tx.id)
+            }}
+            className="rounded-xl p-1.5 text-muted-foreground sm:opacity-0 opacity-70 hover:text-primary hover:bg-primary/10 transition-all duration-200 group-hover:opacity-100"
             aria-label={t('tx.duplicateTx')}
           >
             <Copy className="h-4 w-4" />
@@ -190,8 +199,11 @@ export function TransactionRow({
         )}
         {onDelete && !selectable && (
           <button
-            onClick={() => onDelete(tx.id)}
-            className="rounded-xl p-1.5 text-muted-foreground opacity-0 hover:text-danger hover:bg-danger/10 transition-all duration-200 group-hover:opacity-100"
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete(tx.id)
+            }}
+            className="rounded-xl p-1.5 text-muted-foreground sm:opacity-0 opacity-70 hover:text-danger hover:bg-danger/10 transition-all duration-200 group-hover:opacity-100"
             aria-label={t('tx.deleteTx')}
           >
             <Trash2 className="h-4 w-4" />
