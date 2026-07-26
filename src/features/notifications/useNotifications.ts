@@ -1,7 +1,14 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useRecurring } from '@/features/recurring/api'
+import { useInstallments } from '@/features/installments/api'
 import { useBudgetStatuses } from '@/features/budgets/useBudgetStatuses'
-import { billNotifications, budgetNotifications, sortNotifications, type AppNotification } from './notifications'
+import {
+  billNotifications,
+  installmentNotifications,
+  budgetNotifications,
+  sortNotifications,
+  type AppNotification,
+} from './notifications'
 
 const READS_KEY = 'tracr.notifications.read.v1'
 
@@ -28,19 +35,24 @@ export interface ResolvedNotification extends AppNotification {
 
 /**
  * Derives the in-app notification list (overdue/due-soon bills, near/over
- * budgets) from already-cached data and tracks per-id read-state in
- * localStorage. Budget spend comes from the shared hook the Budgets page and
- * the home health card also read, so the three can't disagree.
+ * budgets, and installments) from already-cached data and tracks per-id read-state in
+ * localStorage.
  */
 export function useNotifications() {
   const { data: recurring = [] } = useRecurring()
+  const { data: installments = [] } = useInstallments()
   const { items: budgetItems } = useBudgetStatuses()
 
   const [reads, setReads] = useState<Set<string>>(loadReads)
 
   const notifications = useMemo(
-    () => sortNotifications([...billNotifications(recurring), ...budgetNotifications(budgetItems)]),
-    [recurring, budgetItems],
+    () =>
+      sortNotifications([
+        ...billNotifications(recurring),
+        ...installmentNotifications(installments),
+        ...budgetNotifications(budgetItems),
+      ]),
+    [recurring, installments, budgetItems],
   )
 
   const resolved: ResolvedNotification[] = useMemo(

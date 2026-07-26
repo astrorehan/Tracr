@@ -7,6 +7,7 @@ import { AppLayout } from './components/AppLayout'
 import { BizLayout } from './components/BizLayout'
 import { SetupNotice } from './components/SetupNotice'
 import { ConfirmProvider } from './components/ui/confirm'
+import { ScrollToTop } from './components/ScrollToTop'
 import { LoginPage } from './app/LoginPage'
 import { queryClient } from './lib/queryClient'
 import { setupQueryCachePersister } from './lib/queryPersister'
@@ -39,6 +40,9 @@ const PlanningPage = lazy(() =>
   import('./app/PlanningPage').then((m) => ({ default: m.PlanningPage })),
 )
 const DebtsPage = lazy(() => import('./app/DebtsPage').then((m) => ({ default: m.DebtsPage })))
+const InstallmentsPage = lazy(() =>
+  import('./app/InstallmentsPage').then((m) => ({ default: m.InstallmentsPage })),
+)
 const ProductsPage = lazy(() =>
   import('./app/ProductsPage').then((m) => ({ default: m.ProductsPage })),
 )
@@ -77,6 +81,7 @@ export default function App() {
 
   return (
     <ConfirmProvider>
+      <ScrollToTop />
       <Routes>
       <Route
         path="/welcome"
@@ -196,6 +201,14 @@ export default function App() {
           element={
             <Suspense fallback={<CenterSpinner />}>
               <PlanningPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="installments"
+          element={
+            <Suspense fallback={<CenterSpinner />}>
+              <InstallmentsPage />
             </Suspense>
           }
         />
