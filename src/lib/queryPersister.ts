@@ -76,12 +76,11 @@ export async function restoreQueryCache(queryClient: QueryClient): Promise<boole
   }
 }
 
-/** Set up subscription to auto-persist query updates to IndexedDB. */
-export function setupQueryCachePersister(queryClient: QueryClient): () => void {
+export async function setupQueryCachePersister(queryClient: QueryClient): Promise<() => void> {
   if (typeof window === 'undefined') return () => {}
 
-  // Attempt initial restoration
-  restoreQueryCache(queryClient)
+  // Await initial restoration so the app can block rendering on it
+  await restoreQueryCache(queryClient)
 
   let timer: ReturnType<typeof setTimeout> | null = null
 
