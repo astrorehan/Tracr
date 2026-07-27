@@ -67,6 +67,50 @@ export function useOnlineStatus() {
           return true
         }
 
+        if (type === 'SET_TRANSACTION_TAGS') {
+          const { transactionId, tagIds, userId, bookId } = payload
+          const { error: delError } = await supabase
+            .from('transaction_tags')
+            .delete()
+            .eq('transaction_id', transactionId)
+          if (delError) throw delError
+          if (tagIds && tagIds.length > 0) {
+            const { error: insError } = await supabase.from('transaction_tags').insert(
+              tagIds.map((tag_id: string) => ({
+                transaction_id: transactionId,
+                tag_id,
+                user_id: userId,
+                book_id: bookId,
+              })),
+            )
+            if (insError) throw insError
+          }
+          return true
+        }
+
+        if (type === 'SET_TRANSACTION_SPLITS') {
+          const { transactionId, splits, userId, bookId } = payload
+          const { error: delError } = await supabase
+            .from('transaction_splits')
+            .delete()
+            .eq('transaction_id', transactionId)
+          if (delError) throw delError
+          if (splits && splits.length > 0) {
+            const { error: insError } = await supabase.from('transaction_splits').insert(
+              splits.map((s: { category_id: string | null; amount: number; note?: string | null }) => ({
+                transaction_id: transactionId,
+                user_id: userId,
+                book_id: bookId,
+                category_id: s.category_id,
+                amount: s.amount,
+                note: s.note ?? null,
+              })),
+            )
+            if (insError) throw insError
+          }
+          return true
+        }
+
         // --- ACCOUNTS ---
         if (type === 'CREATE_ACCOUNT') {
           const { tempId, ...rest } = payload

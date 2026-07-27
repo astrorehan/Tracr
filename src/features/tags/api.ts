@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { qk } from '@/lib/queryClient'
 import type { NewTag, Tag } from '@/types/db'
 import { useActiveBook } from '@/features/books/useActiveBook'
+import { enqueueOfflineMutation } from '@/lib/offlineQueue'
 
 export function useTags() {
   const { activeBookId } = useActiveBook()
@@ -118,6 +119,15 @@ export function useSetTransactionTags() {
       const { data: userData } = await supabase.auth.getUser()
       const userId = userData.user?.id
       if (!userId) throw new Error('Not authenticated')
+
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        enqueueOfflineMutation('SET_TRANSACTION_TAGS', { transactionId, tagIds, userId, bookId: activeBookId })
+        qc.setQueriesData({ queryKey: qk.transactionTags }, (old: Record<string, string[]> | undefined) => {
+          if (!old) return { [transactionId]: tagIds }
+          return { ...old, [transactionId]: tagIds }
+        })
+        return
+      }
       const { error: delError } = await supabase
         .from('transaction_tags')
         .delete()

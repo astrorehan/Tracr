@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { qk } from '@/lib/queryClient'
 import type { Transaction, TransactionSplit } from '@/types/db'
 import { useActiveBook } from '@/features/books/useActiveBook'
+import { enqueueOfflineMutation } from '@/lib/offlineQueue'
 
 /** A single category's share of a transaction. */
 export interface CategoryContribution {
@@ -68,6 +69,26 @@ export function useSetTransactionSplits() {
       const { data: userData } = await supabase.auth.getUser()
       const userId = userData.user?.id
       if (!userId) throw new Error('Not authenticated')
+
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        enqueueOfflineMutation('SET_TRANSACTION_SPLITS', { transactionId, splits, userId, bookId: activeBookId })
+        qc.setQueriesData({ queryKey: qk.transactionSplits }, (old: Record<string, TransactionSplit[]> | undefined) => {
+          const optimisticSplits = splits.map((s, i) => ({
+            id: `temp-split-${Date.now()}-${i}`,
+            transaction_id: transactionId,
+            user_id: userId,
+            book_id: activeBookId || '',
+            category_id: s.category_id,
+            amount: s.amount,
+            note: s.note ?? null,
+            created_at: new Date().toISOString(),
+          })) as TransactionSplit[]
+          
+          if (!old) return { [transactionId]: optimisticSplits }
+          return { ...old, [transactionId]: optimisticSplits }
+        })
+        return
+      }
       const { error: delError } = await supabase
         .from('transaction_splits')
         .delete()

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { isSupabaseConfigured } from './lib/supabase'
 import { useAuth } from './features/auth/useAuth'
@@ -72,12 +72,19 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const [cacheReady, setCacheReady] = useState(false)
+
   useEffect(() => {
-    const cleanup = setupQueryCachePersister(queryClient)
-    return () => cleanup()
+    let cleanup: (() => void) | undefined
+    setupQueryCachePersister(queryClient).then((fn) => {
+      cleanup = fn
+      setCacheReady(true)
+    })
+    return () => cleanup?.()
   }, [])
 
   if (!isSupabaseConfigured) return <SetupNotice />
+  if (!cacheReady) return <CenterSpinner />
 
   return (
     <ConfirmProvider>
