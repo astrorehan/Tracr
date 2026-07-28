@@ -485,6 +485,10 @@ export function useOnlineStatus() {
     refreshCounts()
   }, [refreshCounts])
 
+  const clearLastSyncResult = useCallback(() => {
+    setLastSyncResult(null)
+  }, [])
+
   return {
     isOnline,
     pendingCount,
@@ -492,6 +496,7 @@ export function useOnlineStatus() {
     failedItems,
     isSyncing,
     lastSyncResult,
+    clearLastSyncResult,
     syncNow,
     refreshCounts,
     retryItem,

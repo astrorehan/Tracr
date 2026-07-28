@@ -260,11 +260,12 @@ function TransactionFormBody({
   function linkLabel(tx: Transaction) {
     const who =
       tx.payee || tx.note || t(tx.type === 'income' ? 'common.income' : 'common.expense')
+    const shortWho = who.length > 18 ? `${who.slice(0, 18)}…` : who
     const when = new Date(tx.occurred_at).toLocaleDateString(undefined, {
       day: 'numeric',
       month: 'short',
     })
-    return `${when} · ${who} · ${formatMoney(tx.amount, tx.currency, { signDisplay: 'never' })}`
+    return `${when} · ${shortWho} · ${formatMoney(tx.amount, tx.currency, { signDisplay: 'never' })}`
   }
 
   // Rules auto-fill category & tags as the user types, until they edit those
@@ -663,14 +664,16 @@ function TransactionFormBody({
       <Button
         type="submit"
         form="tx-form"
-        className="w-full"
+        className="w-full text-sm sm:text-base"
         size="lg"
         loading={
           create.isPending || update.isPending || setTags.isPending || setSplits.isPending || uploadFiles.isPending
         }
       >
-        {t(editing ? 'txf.saveChanges' : 'txf.saveTransaction')}
-        {splitting && splitTotal > 0 ? ` · ${formatMoney(splitTotal, currency, { signDisplay: 'never' })}` : ''}
+        <span className="truncate">
+          {t(editing ? 'txf.saveChanges' : 'txf.saveTransaction')}
+          {splitting && splitTotal > 0 ? ` · ${formatMoney(splitTotal, currency, { signDisplay: 'never' })}` : ''}
+        </span>
       </Button>
     </>
   )
@@ -754,14 +757,14 @@ function TransactionFormBody({
               type="button"
               onClick={() => setType(opt.value)}
               className={cn(
-                'flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm transition-all duration-200',
+                'flex items-center justify-center gap-1 sm:gap-1.5 rounded-lg py-2 px-1 text-xs sm:text-sm transition-all duration-200 min-w-0',
                 type === opt.value
                   ? cn('bg-surface font-bold shadow-sm', opt.activeText)
                   : 'font-semibold text-muted-foreground hover:text-foreground',
               )}
             >
-              <Icon className="h-4 w-4" />
-              {t(opt.label)}
+              <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+              <span className="truncate">{t(opt.label)}</span>
             </button>
           )
         })}
@@ -782,7 +785,7 @@ function TransactionFormBody({
         >
           {t(AMOUNT_TONE[type].heading)}
         </p>
-        <div className="flex items-center justify-center gap-1.5 font-numeric text-4xl font-extrabold">
+        <div className="flex items-center justify-center gap-1.5 font-numeric text-3xl sm:text-4xl font-extrabold">
           <span className="text-muted-foreground">{symbol}</span>
           {splitting ? (
             <span className="min-w-[4rem]">
@@ -798,7 +801,7 @@ function TransactionFormBody({
               onWheel={(e) => e.currentTarget.blur()}
               placeholder="0"
               autoFocus={!editing}
-              className="w-44 bg-transparent text-center outline-none placeholder:text-muted-foreground/40"
+              className="w-full max-w-[220px] bg-transparent text-center outline-none placeholder:text-muted-foreground/40"
             />
           )}
         </div>
