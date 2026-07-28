@@ -15,7 +15,7 @@ import { useT } from '@/features/settings/language-context'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { PinInput } from '@/components/ui/PinInput'
-import { CenterSpinner } from '@/components/ui/States'
+import { PageSkeleton } from '@/components/ui/States'
 
 export function LoginPage() {
   const { session, loading, signInWithPhone, signUpWithPhone, signInWithGoogle } = useAuth()
@@ -28,7 +28,7 @@ export function LoginPage() {
   const [name, setName] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
 
-  if (loading) return <CenterSpinner />
+  if (loading) return <PageSkeleton />
   if (session) return <Navigate to="/" replace />
 
   const handleNextStep = (e: React.FormEvent) => {

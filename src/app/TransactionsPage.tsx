@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { format } from 'date-fns'
 import { ArrowLeftRight, ListChecks } from 'lucide-react'
-import { CenterSpinner, EmptyState } from '@/components/ui/States'
+import { EmptyState, ListSkeleton } from '@/components/ui/States'
 import { PageHeader, Pill, ListCard } from '@/components/ui/list'
 import { useConfirm } from '@/components/ui/confirm-context'
 import { useT } from '@/features/settings/language-context'
@@ -281,7 +281,7 @@ export function TransactionsPage() {
       />
 
       {isLoading ? (
-        <CenterSpinner />
+        <ListSkeleton rows={8} />
       ) : visible.length === 0 ? (
         <EmptyState
           icon={<ArrowLeftRight className="h-7 w-7" />}
@@ -289,9 +289,9 @@ export function TransactionsPage() {
           description={isFilterEmpty(filter) ? t('tx.emptyFirst') : t('tx.emptyFiltered')}
         />
       ) : flat ? (
-        <ListCard className="animate-fade-in py-1">{visible.map(renderRow)}</ListCard>
+        <ListCard className="py-1">{visible.map(renderRow)}</ListCard>
       ) : (
-        <div className="animate-fade-in space-y-5">
+        <div className="space-y-5">
           {groups.map(([day, txs]) => {
             const dayTotal = txs.reduce(
               (sum, tx) =>

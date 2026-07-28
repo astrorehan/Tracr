@@ -9,6 +9,7 @@ export function useAccounts(includeArchived = false) {
   const { activeBookId } = useActiveBook()
   return useQuery({
     queryKey: [...qk.accounts, activeBookId, { includeArchived }],
+    enabled: Boolean(activeBookId),
     queryFn: async (): Promise<Account[]> => {
       let query = supabase
         .from('accounts')
@@ -28,6 +29,7 @@ export function useBalances() {
   const { activeBookId } = useActiveBook()
   return useQuery({
     queryKey: [...qk.balances, activeBookId],
+    enabled: Boolean(activeBookId),
     queryFn: async (): Promise<Record<string, number>> => {
       const { data, error } = await supabase
         .from('account_balances')
@@ -49,7 +51,28 @@ export function useCreateAccount() {
       const { data: userData } = await supabase.auth.getUser()
       const userId = userData.user?.id
       if (!userId) throw new Error('Not authenticated')
-      const payload = { ...input, user_id: userId, book_id: activeBookId }
+
+      let resolvedBookId = activeBookId
+      if (!resolvedBookId) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('active_book_id')
+          .eq('id', userId)
+          .maybeSingle()
+        resolvedBookId = profile?.active_book_id ?? null
+        if (!resolvedBookId) {
+          const { data: books } = await supabase
+            .from('books')
+            .select('id')
+            .eq('owner_id', userId)
+            .order('created_at')
+            .limit(1)
+          resolvedBookId = books?.[0]?.id ?? null
+        }
+      }
+      if (!resolvedBookId) throw new Error('Harap buat atau pilih buku kas terlebih dahulu.')
+
+      const payload = { ...input, user_id: userId, book_id: resolvedBookId }
 
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
         const tempId = `temp-acc-${Date.now()}`
@@ -174,6 +197,35 @@ export function useArchiveAccount() {
       } catch (err) {
         if (typeof navigator !== 'undefined' && !navigator.onLine) {
           enqueueOfflineMutation('UPDATE_ACCOUNT', { id, is_archived: true })
+        }
+        throw err
+      }
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: qk.accounts })
+      void qc.invalidateQueries({ queryKey: qk.balances })
+    },
+  })
+}
+
+export function useDeleteAccount() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        enqueueOfflineMutation('DELETE_ACCOUNT', { id })
+        qc.setQueriesData({ queryKey: qk.accounts }, (old: Account[] | undefined) =>
+          old ? old.filter((a) => a.id !== id) : [],
+        )
+        return
+      }
+
+      try {
+        const { error } = await supabase.from('accounts').delete().eq('id', id)
+        if (error) throw error
+      } catch (err) {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          enqueueOfflineMutation('DELETE_ACCOUNT', { id })
         }
         throw err
       }

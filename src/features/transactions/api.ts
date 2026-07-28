@@ -32,6 +32,7 @@ export function useTransactions(filters: TransactionFilters = {}) {
   const { activeBookId } = useActiveBook()
   return useQuery({
     queryKey: qk.transactions({ ...filters, bookId: activeBookId } as Record<string, unknown>),
+    enabled: Boolean(activeBookId),
     queryFn: async (): Promise<Transaction[]> => {
       let query = supabase
         .from('transactions')

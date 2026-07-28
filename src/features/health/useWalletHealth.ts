@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
-import { differenceInCalendarDays, endOfMonth, startOfMonth, subMonths } from 'date-fns'
+import { differenceInCalendarDays, endOfMonth, startOfDay, startOfMonth, subDays, subMonths } from 'date-fns'
 import { useAccounts, useBalances } from '@/features/accounts/api'
+import { useDebts } from '@/features/debts/api'
 import { useTransactions } from '@/features/transactions/api'
 import { useTransactionSplits } from '@/features/transactions/splits'
 import { useCategories } from '@/features/categories/api'
@@ -77,16 +78,17 @@ export function useWalletHealth(): WalletHealth {
   const { profile } = useAuth()
   const base = profile?.base_currency ?? 'IDR'
 
-  // Pinned once per mount: a `new Date()` in the render body would re-key the
-  // query and re-run every memo on every render.
+  // Stable start-of-day timestamp so query key ['transactions', { from: fromIso }]
+  // stays identical across page navigation and hits the React Query / IndexedDB cache.
   const now = useMemo(() => new Date(), [])
   const fromIso = useMemo(
-    () => new Date(now.getTime() - LOOKBACK_DAYS * 86_400_000).toISOString(),
+    () => startOfDay(subDays(now, LOOKBACK_DAYS)).toISOString(),
     [now],
   )
 
   const { data: accounts = [], isLoading: la } = useAccounts()
   const { data: balances = {}, isLoading: lb } = useBalances()
+  const { data: debts = [] } = useDebts()
   const { data: transactions = [], isLoading: lt } = useTransactions({ from: fromIso, limit: 2000 })
   const { data: recurring = [], isLoading: lr } = useRecurring()
   const { data: fxRates = [] } = useFxRates()
@@ -96,7 +98,7 @@ export function useWalletHealth(): WalletHealth {
 
   return useMemo(() => {
     const table = buildRateTable(fxRates, base)
-    const money = snapshotMoney(accounts, balances, base, table)
+    const money = snapshotMoney(accounts, balances, base, table, debts)
 
     const monthStart = startOfMonth(now)
     const prevStart = startOfMonth(subMonths(now, 1))
@@ -201,6 +203,7 @@ export function useWalletHealth(): WalletHealth {
   }, [
     accounts,
     balances,
+    debts,
     transactions,
     recurring,
     fxRates,

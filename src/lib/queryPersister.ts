@@ -97,3 +97,18 @@ export async function setupQueryCachePersister(queryClient: QueryClient): Promis
     unsubscribe()
   }
 }
+
+export async function clearQueryCache(queryClient?: QueryClient): Promise<void> {
+  try {
+    if (queryClient) {
+      queryClient.clear()
+    }
+    const db = await openDB()
+    const tx = db.transaction(STORE_NAME, 'readwrite')
+    const store = tx.objectStore(STORE_NAME)
+    store.delete(CACHE_KEY)
+  } catch {
+    // Silent fallback
+  }
+}
+

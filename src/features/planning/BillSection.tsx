@@ -3,7 +3,7 @@ import { format } from 'date-fns'
 import { Check, Pause, Pencil, Play, Receipt, SkipForward, Trash2, Zap } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { CenterSpinner } from '@/components/ui/States'
+import { ListSkeleton } from '@/components/ui/States'
 import { useConfirm } from '@/components/ui/confirm-context'
 import { CategoryIcon } from '@/features/categories/CategoryIcon'
 import { useAccounts } from '@/features/accounts/api'
@@ -91,9 +91,7 @@ export function BillSection() {
       />
 
       {isLoading ? (
-        <Card className="grid place-items-center py-10">
-          <CenterSpinner />
-        </Card>
+        <ListSkeleton rows={4} />
       ) : recurring.length === 0 ? (
         <EmptyPreview
           blurb={t('planning.bill.empty')}

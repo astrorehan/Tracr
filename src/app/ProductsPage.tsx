@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Plus, Pencil, ShoppingBag, ArrowRight } from 'lucide-react'
 import { BizHeaderAction } from '@/components/BizLayout'
 import { Button } from '@/components/ui/Button'
-import { CenterSpinner } from '@/components/ui/States'
+import { CardSkeleton } from '@/components/ui/States'
 import { useAuth } from '@/features/auth/useAuth'
 import { useT } from '@/features/settings/language-context'
 import { formatMoney } from '@/lib/money'
@@ -79,8 +79,8 @@ export function ProductsPage() {
       )}
 
       {isLoading ? (
-        <div className="pt-16">
-          <CenterSpinner />
+        <div className="pt-4">
+          <CardSkeleton cards={6} />
         </div>
       ) : products.length === 0 ? (
         <EmptyProduk onAdd={() => setCreating(true)} />

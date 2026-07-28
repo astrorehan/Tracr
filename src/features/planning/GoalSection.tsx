@@ -3,7 +3,7 @@ import { format } from 'date-fns'
 import { Archive, Check, Pencil, PiggyBank, Plus, Sparkles, Trash2 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { CenterSpinner } from '@/components/ui/States'
+import { CardSkeleton } from '@/components/ui/States'
 import { useConfirm } from '@/components/ui/confirm-context'
 import { useT } from '@/features/settings/language-context'
 import { useGoals, useGoalContributions, useDeleteGoal, useUpdateGoal } from '@/features/goals/api'
@@ -56,9 +56,7 @@ export function GoalSection() {
       />
 
       {isLoading ? (
-        <Card className="grid place-items-center py-10">
-          <CenterSpinner />
-        </Card>
+        <CardSkeleton cards={2} />
       ) : goals.length === 0 ? (
         <EmptyPreview
           blurb={t('planning.goal.empty')}

@@ -12,6 +12,58 @@ import { enqueueOfflineMutation } from '@/lib/offlineQueue'
  */
 export const ADJUSTMENT_CATEGORY_NAME = 'Balance Adjustment'
 
+export const DEBT_PAYMENT_CATEGORY_NAMES = {
+  receivable: 'Pelunasan Piutang',
+  payable: 'Pelunasan Utang',
+} as const
+
+/**
+ * Find or create a default "Pelunasan Piutang" (income) or "Pelunasan Utang" (expense)
+ * category so debt settlement payments are properly categorized in transaction logs.
+ */
+export function useEnsureDebtCategory() {
+  const qc = useQueryClient()
+  const { activeBookId } = useActiveBook()
+  return useMutation({
+    mutationFn: async (direction: 'receivable' | 'payable'): Promise<string> => {
+      const { data: userData } = await supabase.auth.getUser()
+      const userId = userData.user?.id
+      if (!userId) throw new Error('Not authenticated')
+
+      const kind: CategoryKind = direction === 'receivable' ? 'income' : 'expense'
+      const categoryName = DEBT_PAYMENT_CATEGORY_NAMES[direction]
+
+      const { data: existing, error: findErr } = await supabase
+        .from('categories')
+        .select('id')
+        .eq('book_id', activeBookId!)
+        .eq('name', categoryName)
+        .eq('kind', kind)
+        .limit(1)
+        .maybeSingle()
+      if (findErr) throw findErr
+      if (existing) return (existing as { id: string }).id
+
+      const { data, error } = await supabase
+        .from('categories')
+        .insert({
+          user_id: userId,
+          book_id: activeBookId,
+          name: categoryName,
+          kind,
+          parent_id: null,
+          icon: direction === 'receivable' ? 'hand-coins' : 'receipt',
+          color: direction === 'receivable' ? '#10b981' : '#f59e0b',
+        })
+        .select('id')
+        .single()
+      if (error) throw error
+      return (data as { id: string }).id
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.categories }),
+  })
+}
+
 /**
  * Find the "Balance Adjustment" category for a given direction, creating it on
  * first use. Adjustments are income (balance was higher than recorded) or
@@ -62,6 +114,7 @@ export function useCategories() {
   const { activeBookId } = useActiveBook()
   return useQuery({
     queryKey: [...qk.categories, activeBookId],
+    enabled: Boolean(activeBookId),
     queryFn: async (): Promise<Category[]> => {
       const { data, error } = await supabase
         .from('categories')

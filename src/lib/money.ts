@@ -43,6 +43,18 @@ export function fromMinorUnits(minor: number, currencyCode: string): number {
   return minor / 10 ** decimals
 }
 
+const formatterCache = new Map<string, Intl.NumberFormat>()
+
+function getNumberFormatter(locale: string | undefined, options: Intl.NumberFormatOptions): Intl.NumberFormat {
+  const key = `${locale ?? 'default'}:${JSON.stringify(options)}`
+  let cached = formatterCache.get(key)
+  if (!cached) {
+    cached = new Intl.NumberFormat(locale, options)
+    formatterCache.set(key, cached)
+  }
+  return cached
+}
+
 /** Format minor units as a localized currency string. */
 export function formatMoney(
   minor: number,
@@ -55,7 +67,7 @@ export function formatMoney(
 
   if (!meta.crypto) {
     try {
-      return new Intl.NumberFormat(locale, {
+      return getNumberFormatter(locale, {
         style: 'currency',
         currency: meta.code,
         minimumFractionDigits: meta.decimals,
@@ -67,7 +79,7 @@ export function formatMoney(
     }
   }
 
-  const number = new Intl.NumberFormat(locale, {
+  const number = getNumberFormatter(locale, {
     minimumFractionDigits: 0,
     maximumFractionDigits: meta.decimals,
     signDisplay: opts.signDisplay ?? 'auto',
@@ -101,7 +113,7 @@ export function formatMoneyCompact(
 
   if (!meta.crypto) {
     try {
-      return new Intl.NumberFormat(opts.locale, {
+      return getNumberFormatter(opts.locale, {
         style: 'currency',
         currency: meta.code,
         ...shared,
@@ -111,7 +123,7 @@ export function formatMoneyCompact(
     }
   }
   try {
-    return `${meta.symbol}${new Intl.NumberFormat(opts.locale, shared).format(value)}`
+    return `${meta.symbol}${getNumberFormatter(opts.locale, shared).format(value)}`
   } catch {
     return formatMoney(minor, currencyCode, opts)
   }

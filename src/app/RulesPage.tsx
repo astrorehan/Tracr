@@ -3,7 +3,7 @@ import { GripVertical, Pencil, Plus, Trash2, Wand2, Zap } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { PageHeader, Pill } from '@/components/ui/list'
-import { CenterSpinner, EmptyState } from '@/components/ui/States'
+import { EmptyState, ListSkeleton } from '@/components/ui/States'
 import { useConfirm } from '@/components/ui/confirm-context'
 import { useT } from '@/features/settings/language-context'
 import type { MsgKey } from '@/i18n'
@@ -114,7 +114,7 @@ export function RulesPage() {
       </p>
 
       {isLoading ? (
-        <CenterSpinner />
+        <ListSkeleton rows={4} />
       ) : ordered.length === 0 ? (
         <EmptyState
           icon={<Zap className="h-8 w-8" />}

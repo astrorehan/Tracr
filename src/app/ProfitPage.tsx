@@ -3,7 +3,7 @@ import { startOfMonth, startOfYear, subMonths, addMonths, addYears } from 'date-
 import { TrendingUp } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Segmented } from '@/components/ui/Segmented'
-import { CenterSpinner } from '@/components/ui/States'
+import { TableSkeleton } from '@/components/ui/States'
 import { useAuth } from '@/features/auth/useAuth'
 import { useT } from '@/features/settings/language-context'
 import { formatMoney } from '@/lib/money'
@@ -60,7 +60,7 @@ export function ProfitPage() {
       />
 
       {isLoading ? (
-        <CenterSpinner />
+        <TableSkeleton rows={5} />
       ) : !hasData ? (
         <Card className="flex flex-col items-center gap-3 p-8 text-center">
           <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-soft text-primary">

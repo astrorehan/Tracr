@@ -8,6 +8,7 @@ import {
 import { createPortal } from 'react-dom'
 import { Outlet, useLocation } from 'react-router-dom'
 import { Store } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import type { MsgKey } from '@/i18n'
 import { useT } from '@/features/settings/language-context'
 import { useActiveBook } from '@/features/books/useActiveBook'
@@ -43,8 +44,25 @@ export function BizLayout() {
   const { activeBook } = useActiveBook()
   const [slot, setSlot] = useState<HTMLDivElement | null>(null)
 
+  const isPersonal = activeBook?.type === 'personal'
+  const isDebtsRoute = pathname.startsWith('/debts')
+
   const key = Object.keys(ROUTES).find((p) => pathname.startsWith(p))
   const route = key ? ROUTES[key] : undefined
+
+  const titleKey = route
+    ? isDebtsRoute && isPersonal
+      ? 'debt.titlePersonal'
+      : isDebtsRoute
+        ? 'debt.titleBusiness'
+        : route.title
+    : undefined
+
+  const subtitleKey = route
+    ? isDebtsRoute && isPersonal
+      ? 'debt.subtitlePersonal'
+      : route.subtitle
+    : undefined
 
   // Warm the sibling chunks so a tab switch never waits on a lazy import and
   // flashes the route spinner.
@@ -54,8 +72,8 @@ export function BizLayout() {
     void import('@/app/ProfitPage')
   }, [])
 
-  // Guard: these tools only make sense inside a business book.
-  if (activeBook && activeBook.type !== 'business') {
+  // Guard: products and profit only make sense inside a business book.
+  if (activeBook && activeBook.type !== 'business' && !isDebtsRoute) {
     return (
       <div className="mx-auto max-w-xl px-4 pt-8">
         <div className="flex flex-col items-center gap-4 rounded-[24px] border border-border bg-surface p-8 text-center shadow-sm">
@@ -76,16 +94,16 @@ export function BizLayout() {
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <span className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.14em] text-primary">
-            {t('biz.ledger')}
-            {activeBook && <span className="text-muted-foreground/70">· {activeBook.name}</span>}
+            {isPersonal ? activeBook?.name ?? t('debt.titlePersonal') : t('biz.ledger')}
+            {activeBook && !isPersonal && <span className="text-muted-foreground/70">· {activeBook.name}</span>}
           </span>
           {route && (
             <>
-              <h1 className="mt-1 text-[27px] font-extrabold tracking-tight">{t(route.title)}</h1>
-              {/* Two lines are reserved whatever the copy: a one-line subtitle
-                  would otherwise pull the tab bar up as you switch tabs. */}
+              <h1 className="mt-1 text-[27px] font-extrabold tracking-tight">
+                {titleKey ? t(titleKey) : ''}
+              </h1>
               <p className="mt-0.5 line-clamp-2 min-h-10 text-sm font-medium text-muted-foreground">
-                {t(route.subtitle)}
+                {subtitleKey ? t(subtitleKey) : ''}
               </p>
             </>
           )}
@@ -93,12 +111,12 @@ export function BizLayout() {
         <div ref={setSlot} className="shrink-0" />
       </header>
 
-      <BizTabs className="mt-4" />
+      {!isPersonal && <BizTabs className="mt-4" />}
 
       {/* Only the body is keyed, so the fade replays for the page content
           while the header and tabs above stay put. */}
       <HeaderSlot.Provider value={slot}>
-        <div key={pathname} className="animate-fade-in">
+        <div key={pathname} className={cn(isPersonal && 'mt-4')}>
           <Outlet />
         </div>
       </HeaderSlot.Provider>

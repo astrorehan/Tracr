@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Pencil, Plus, Tag as TagIcon, Tags, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { CenterSpinner, EmptyState } from '@/components/ui/States'
+import { EmptyState, ListSkeleton } from '@/components/ui/States'
 import { PageHeader, Pill, ListCard, ListRow, IconChip } from '@/components/ui/list'
 import { useConfirm } from '@/components/ui/confirm-context'
 import { useT } from '@/features/settings/language-context'
@@ -43,7 +43,7 @@ export function TagsPage() {
       />
 
       {isLoading ? (
-        <CenterSpinner />
+        <ListSkeleton rows={5} />
       ) : (tags?.length ?? 0) === 0 ? (
         <EmptyState
           icon={<Tags className="h-8 w-8" />}

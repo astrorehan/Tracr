@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
 import { PageHeader, Pill, Section, ListCard, IconChip } from '@/components/ui/list'
-import { CenterSpinner } from '@/components/ui/States'
+import { CardSkeleton } from '@/components/ui/States'
 import { useT } from '@/features/settings/language-context'
 import { dateLocale } from '@/i18n'
 import { useActiveBook } from '@/features/books/useActiveBook'
@@ -69,7 +69,7 @@ export function BooksPage() {
     navigate('/')
   }
 
-  if (loading) return <CenterSpinner />
+  if (loading) return <CardSkeleton cards={3} />
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-6 pb-20">

@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Field, Select } from '@/components/ui/Input'
 import { PageHeader } from '@/components/ui/list'
-import { CenterSpinner, EmptyState } from '@/components/ui/States'
+import { EmptyState, ListSkeleton } from '@/components/ui/States'
 import { useConfirm } from '@/components/ui/confirm-context'
 import {
   useCategories,
@@ -83,7 +83,7 @@ export function CategoriesPage() {
       <PageHeader title={t('section.categories')} />
 
       {isLoading ? (
-        <CenterSpinner />
+        <ListSkeleton rows={6} />
       ) : (categories?.length ?? 0) === 0 ? (
         <EmptyState
           icon={<Tag className="h-8 w-8" />}

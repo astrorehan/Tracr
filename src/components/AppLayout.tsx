@@ -1,5 +1,6 @@
-import { Fragment, useMemo, useState, type ComponentType } from 'react'
+import { Fragment, useEffect, useMemo, useState, type ComponentType } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { preloadAllRoutes } from '@/lib/preloadRoutes'
 import {
   LayoutDashboard,
   Wallet,
@@ -24,7 +25,7 @@ import { useT } from '@/features/settings/language-context'
 import { useAuth } from '@/features/auth/useAuth'
 import { useActiveBook } from '@/features/books/useActiveBook'
 import { BookSwitcher } from '@/features/books/BookSwitcher'
-import { CenterSpinner } from '@/components/ui/States'
+import { PageSkeleton } from '@/components/ui/States'
 import { PageBack } from '@/components/PageBack'
 import { useTheme } from '@/features/settings/theme-context'
 import { useLiveRatesSync } from '@/features/fx/useLiveRatesSync'
@@ -166,30 +167,39 @@ export function AppLayout() {
   const isHome = pathname === '/'
   const activeSlot = mobileSlotFor(pathname)
 
-  // Business books get the POS-lite (products) + laba-rugi (profit) +
-  // Utang-Piutang (debts) tools inserted into the last group, just above
-  // Settings.
+  // Business books get POS-lite (products) + laba-rugi (profit) +
+  // Utang-Piutang (debts) tools inserted into the last group.
+  // Personal books get Utang-Piutang inserted in the planning group.
   const navGroups = useMemo(() => {
-    if (activeBook?.type !== 'business') return NAV_GROUPS
+    const isBiz = activeBook?.type === 'business'
     const groups = NAV_GROUPS.map((g) => [...g])
-    const last = groups[groups.length - 1]
-    const at = last.findIndex((i) => i.to === '/settings')
-    last.splice(
-      at,
-      0,
-      { to: '/products', label: 'nav.products', icon: Package },
-      { to: '/debts', label: 'nav.debts', icon: HandCoins },
-      { to: '/profit', label: 'nav.profit', icon: TrendingUp },
-    )
+    if (isBiz) {
+      const last = groups[groups.length - 1]
+      const at = last.findIndex((i) => i.to === '/settings')
+      last.splice(
+        at,
+        0,
+        { to: '/products', label: 'nav.products', icon: Package },
+        { to: '/debts', label: 'debt.titleBusiness', icon: HandCoins },
+        { to: '/profit', label: 'nav.profit', icon: TrendingUp },
+      )
+    } else {
+      groups[1].push({ to: '/debts', label: 'debt.titlePersonal', icon: HandCoins })
+    }
     return groups
   }, [activeBook?.type])
 
   // Refresh FX rates from the free live sources once per session.
   useLiveRatesSync()
 
+  // Preload all lazy route chunks in background during idle time so tab switches are instant.
+  useEffect(() => {
+    preloadAllRoutes()
+  }, [])
+
   // Hold the app until we know which book is active, so no child query fires
   // with a missing book_id and flashes empty data.
-  if (booksLoading || !activeBookId) return <CenterSpinner />
+  if (booksLoading || !activeBookId) return <PageSkeleton />
 
   return (
     <div className="app-atmosphere relative flex min-h-screen w-full bg-background text-foreground">
@@ -286,7 +296,7 @@ export function AppLayout() {
         >
           <div
             key={animationKeyFor(pathname)}
-            className="mx-auto w-full max-w-[1500px] animate-fade-in"
+            className="mx-auto w-full max-w-[1500px]"
           >
             {/* One back control for the whole shell, in the same spot on every
                 route (Home is the root, so PageBack renders nothing there). */}

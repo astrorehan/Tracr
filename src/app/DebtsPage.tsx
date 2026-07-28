@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { BizHeaderAction } from '@/components/BizLayout'
 import { Button } from '@/components/ui/Button'
-import { CenterSpinner } from '@/components/ui/States'
+import { ListSkeleton } from '@/components/ui/States'
 import { useConfirm } from '@/components/ui/confirm-context'
 import { useAuth } from '@/features/auth/useAuth'
 import { useT } from '@/features/settings/language-context'
@@ -21,6 +21,8 @@ import { useDebts, useDeleteDebt, type DebtWithContact } from '@/features/debts/
 import { DebtForm } from '@/features/debts/DebtForm'
 import { PaymentForm } from '@/features/debts/PaymentForm'
 import type { DebtDirection } from '@/types/db'
+
+import { useActiveBook } from '@/features/books/useActiveBook'
 
 const MS_DAY = 86_400_000
 const today = () => new Date().toISOString().slice(0, 10)
@@ -101,6 +103,8 @@ function buildGroups(debts: DebtWithContact[], dir: DebtDirection) {
 
 export function DebtsPage() {
   const { profile } = useAuth()
+  const { activeBook } = useActiveBook()
+  const isPersonal = activeBook?.type === 'personal'
   const base = profile?.base_currency ?? 'IDR'
   const { t } = useT()
   const { data: debts = [], isLoading } = useDebts()
@@ -136,11 +140,11 @@ export function DebtsPage() {
       )}
 
       {isLoading ? (
-        <div className="pt-16">
-          <CenterSpinner />
+        <div className="pt-4">
+          <ListSkeleton rows={5} />
         </div>
       ) : debts.length === 0 ? (
-        <EmptyKasbon onAdd={() => setCreating(true)} />
+        <EmptyKasbon isPersonal={isPersonal} onAdd={() => setCreating(true)} />
       ) : (
         <div className="mt-5 space-y-5">
           {/* Hero — money out with people */}
@@ -512,7 +516,7 @@ function SettledRow({ debt, base }: { debt: DebtWithContact; base: string }) {
   )
 }
 
-function EmptyKasbon({ onAdd }: { onAdd: () => void }) {
+function EmptyKasbon({ isPersonal, onAdd }: { isPersonal?: boolean; onAdd: () => void }) {
   const { t } = useT()
   return (
     <div className="flex flex-col items-center px-4 pb-10 pt-6 text-center">
@@ -525,9 +529,11 @@ function EmptyKasbon({ onAdd }: { onAdd: () => void }) {
         <circle cx="150" cy="112" r="30" fill="var(--positive)" />
         <path d="M150 98v28M138 112h24" stroke="#fff" strokeWidth="5" strokeLinecap="round" />
       </svg>
-      <h2 className="text-xl font-extrabold tracking-tight">{t('debt.emptyTitle')}</h2>
+      <h2 className="text-xl font-extrabold tracking-tight">
+        {t(isPersonal ? 'debt.emptyTitlePersonal' : 'debt.emptyTitle')}
+      </h2>
       <p className="mt-2 max-w-[280px] text-sm font-medium leading-relaxed text-muted-foreground">
-        {t('debt.emptyBody')}
+        {t(isPersonal ? 'debt.emptyBodyPersonal' : 'debt.emptyBody')}
       </p>
       <Button size="lg" className="mt-5 shadow-[0_14px_26px_-12px_var(--primary)]" onClick={onAdd}>
         <Plus className="h-[18px] w-[18px]" />
@@ -537,15 +543,15 @@ function EmptyKasbon({ onAdd }: { onAdd: () => void }) {
         <PickRow
           tone="positive"
           icon={ArrowDownLeft}
-          title={t('debt.pickCustomer')}
-          hint={t('debt.pickCustomerHint')}
+          title={t(isPersonal ? 'debt.pickPersonalRcv' : 'debt.pickCustomer')}
+          hint={t(isPersonal ? 'debt.pickPersonalRcvHint' : 'debt.pickCustomerHint')}
           onClick={onAdd}
         />
         <PickRow
           tone="danger"
           icon={ArrowUpRight}
-          title={t('debt.pickSupplier')}
-          hint={t('debt.pickSupplierHint')}
+          title={t(isPersonal ? 'debt.pickPersonalPay' : 'debt.pickSupplier')}
+          hint={t(isPersonal ? 'debt.pickPersonalPayHint' : 'debt.pickSupplierHint')}
           onClick={onAdd}
         />
       </div>

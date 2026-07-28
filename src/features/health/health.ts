@@ -120,6 +120,7 @@ export function snapshotMoney(
   balances: Record<string, number>,
   base: string,
   table: RateTable,
+  openDebts?: { amount: number; paid: number; currency: string; direction: string; status: string }[],
 ): MoneySnapshot {
   let total = 0
   let assets = 0
@@ -154,6 +155,25 @@ export function snapshotMoney(
       const usable = Math.max(0, converted)
       if (SPENDABLE_TYPES.has(a.type)) spendable += usable
       if (RESERVE_TYPES.has(a.type)) reserves += usable
+    }
+  }
+
+  if (openDebts) {
+    for (const d of openDebts) {
+      if (d.status !== 'open') continue
+      const remaining = Math.max(0, d.amount - d.paid)
+      const converted = convertMinor(remaining, d.currency, base, table)
+      if (converted != null) {
+        if (d.direction === 'payable') {
+          debts += converted
+          total -= converted
+        } else if (d.direction === 'receivable') {
+          assets += converted
+          total += converted
+        }
+      } else {
+        missing.add(d.currency)
+      }
     }
   }
 

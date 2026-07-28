@@ -2,15 +2,15 @@ import { useMemo, useState } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 import { format } from 'date-fns'
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
-import { Archive, Pencil, Scale } from 'lucide-react'
+import { Archive, Pencil, Scale, Trash2 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Field, Input } from '@/components/ui/Input'
 import { PageHeader } from '@/components/ui/list'
-import { CenterSpinner, EmptyState } from '@/components/ui/States'
+import { DetailSkeleton, EmptyState, ListSkeleton } from '@/components/ui/States'
 import { useConfirm } from '@/components/ui/confirm-context'
 import { useAuth } from '@/features/auth/useAuth'
-import { useAccounts, useArchiveAccount, useBalances } from '@/features/accounts/api'
+import { useAccounts, useArchiveAccount, useBalances, useDeleteAccount } from '@/features/accounts/api'
 import { useFxRates } from '@/features/fx/api'
 import { buildRateTable, convertMinor } from '@/features/fx/fx'
 import { useCategories, useEnsureAdjustmentCategory } from '@/features/categories/api'
@@ -52,6 +52,7 @@ export function AccountDetailPage() {
   const ensureAdjustmentCategory = useEnsureAdjustmentCategory()
   const del = useDeleteTransaction()
   const archive = useArchiveAccount()
+  const deleteAccount = useDeleteAccount()
   const confirm = useConfirm()
 
   const [editOpen, setEditOpen] = useState(false)
@@ -80,7 +81,7 @@ export function AccountDetailPage() {
     return [{ label: t('acc.start'), balance: account.opening_balance }, ...points]
   }, [account, transactions])
 
-  if (la) return <CenterSpinner />
+  if (la) return <DetailSkeleton />
   if (!account) return <Navigate to="/accounts" replace />
 
   const meta = accountTypeMeta(account.type)
@@ -156,12 +157,29 @@ export function AccountDetailPage() {
                   )
                     archive.mutate(account.id)
                 }}
-                className="rounded-lg border border-transparent p-2 text-muted-foreground transition-colors hover:border-danger/20 hover:bg-danger/10 hover:text-danger"
+                className="rounded-lg border border-transparent p-2 text-muted-foreground transition-colors hover:border-warning/20 hover:bg-warning/10 hover:text-warning"
                 aria-label={t('acc.archive')}
               >
                 <Archive className="h-4 w-4" />
               </button>
             )}
+            <button
+              onClick={async () => {
+                if (
+                  await confirm({
+                    title: t('acc.deleteTitle', { name: account.name }),
+                    message: t('acc.deleteDesc'),
+                    confirmLabel: t('acc.delete'),
+                    tone: 'danger',
+                  })
+                )
+                  deleteAccount.mutate(account.id)
+              }}
+              className="rounded-lg border border-transparent p-2 text-muted-foreground transition-colors hover:border-danger/20 hover:bg-danger/10 hover:text-danger"
+              aria-label={t('acc.delete')}
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
           </div>
         }
       />
@@ -333,7 +351,7 @@ export function AccountDetailPage() {
           </span>
         </div>
         {lt ? (
-          <CenterSpinner />
+          <ListSkeleton rows={4} />
         ) : transactions.length === 0 ? (
           <EmptyState title={t('acc.noTxTitle')} description={t('acc.noTxDesc')} />
         ) : (

@@ -209,6 +209,19 @@ describe('snapshotMoney', () => {
     )
     expect(m.spendable).toBe(1_500_000)
   })
+
+  it('includes open Kasbon debts and receivables in net worth, assets, and debts', () => {
+    const accounts = [account({ id: 'cash', type: 'cash' })]
+    const balances = { cash: 1_000_000 }
+    const openDebts = [
+      { amount: 500_000, paid: 100_000, currency: 'IDR', direction: 'payable', status: 'open' },
+      { amount: 300_000, paid: 0, currency: 'IDR', direction: 'receivable', status: 'open' },
+    ]
+    const m = snapshotMoney(accounts, balances, BASE, TABLE, openDebts)
+    expect(m.assets).toBe(1_300_000) // cash 1M + 300k receivable
+    expect(m.debts).toBe(400_000) // 400k payable remaining
+    expect(m.total).toBe(900_000) // 1.3M - 400k
+  })
 })
 
 describe('burnRate', () => {
