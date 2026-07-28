@@ -4,7 +4,7 @@ import { qk } from '@/lib/queryClient'
 import type { NewTransaction, Transaction, TransactionStatus } from '@/types/db'
 import { computeFxSnapshot } from '@/features/fx/snapshot'
 import { useActiveBook } from '@/features/books/useActiveBook'
-import { enqueueOfflineMutation } from '@/lib/offlineQueue'
+import { enqueueOfflineMutation, getOfflineQueue } from '@/lib/offlineQueue'
 import { getAuthenticatedUserId } from '@/lib/authHelpers'
 
 /**
@@ -28,32 +28,106 @@ export interface TransactionFilters {
   limit?: number
 }
 
+/** Overlay pending offline mutations from IndexedDB/localStorage onto transaction lists. */
+export function applyOfflineMutations(
+  serverTransactions: Transaction[],
+  bookId?: string,
+): Transaction[] {
+  if (typeof window === 'undefined') return serverTransactions
+  const queue = getOfflineQueue()
+  if (!queue || queue.length === 0) return serverTransactions
+
+  let result = [...serverTransactions]
+
+  for (const item of queue) {
+    const { type, payload } = item
+
+    if (type === 'CREATE_TRANSACTION') {
+      if (bookId && payload.book_id && payload.book_id !== bookId) continue
+      const tempId = payload.tempId || item.id
+      const exists = result.some((t) => t.id === tempId || (payload.id && t.id === payload.id))
+      if (!exists) {
+        const dummyTx: Transaction = {
+          id: tempId,
+          user_id: payload.user_id || '',
+          book_id: payload.book_id || bookId || '',
+          account_id: payload.account_id || '',
+          counter_account_id: payload.counter_account_id ?? null,
+          category_id: payload.category_id ?? null,
+          type: payload.type || 'expense',
+          amount: payload.amount || 0,
+          currency: payload.currency || 'IDR',
+          counter_amount: payload.counter_amount ?? null,
+          counter_fx_rate: payload.counter_fx_rate ?? null,
+          occurred_at: payload.occurred_at || new Date().toISOString(),
+          payee: payload.payee ?? null,
+          note: payload.note ?? null,
+          source: payload.source ?? 'web',
+          status: payload.status ?? 'pending',
+          linked_transaction_id: payload.linked_transaction_id ?? null,
+          external_ref: null,
+          base_amount: payload.base_amount ?? null,
+          fx_rate: payload.fx_rate ?? null,
+          created_at: item.createdAt || new Date().toISOString(),
+        }
+        result.unshift(dummyTx)
+      }
+    } else if (type === 'UPDATE_TRANSACTION') {
+      const { id, ...patch } = payload
+      result = result.map((t) => (t.id === id ? { ...t, ...patch } : t))
+    } else if (type === 'DELETE_TRANSACTION') {
+      const { id } = payload
+      result = result.filter((t) => t.id !== id)
+    }
+  }
+
+  return result
+}
+
 export function useTransactions(filters: TransactionFilters = {}) {
   const { activeBookId } = useActiveBook()
   return useQuery({
     queryKey: qk.transactions({ ...filters, bookId: activeBookId } as Record<string, unknown>),
     enabled: Boolean(activeBookId),
     queryFn: async (): Promise<Transaction[]> => {
-      let query = supabase
-        .from('transactions')
-        .select('*')
-        .eq('book_id', activeBookId!)
-        .order('occurred_at', { ascending: false })
-        .limit(filters.limit ?? 200)
+      let rawData: Transaction[] = []
+      try {
+        let query = supabase
+          .from('transactions')
+          .select('*')
+          .eq('book_id', activeBookId!)
+          .order('occurred_at', { ascending: false })
+          .limit(filters.limit ?? 200)
 
-      if (filters.accountId)
-        query = query.or(
-          `account_id.eq.${filters.accountId},counter_account_id.eq.${filters.accountId}`,
-        )
-      if (filters.categoryId) query = query.eq('category_id', filters.categoryId)
-      if (filters.type) query = query.eq('type', filters.type)
-      if (filters.from) query = query.gte('occurred_at', filters.from)
-      if (filters.to) query = query.lte('occurred_at', filters.to)
-      if (filters.search) query = query.ilike('note', `%${filters.search}%`)
+        if (filters.accountId)
+          query = query.or(
+            `account_id.eq.${filters.accountId},counter_account_id.eq.${filters.accountId}`,
+          )
+        if (filters.categoryId) query = query.eq('category_id', filters.categoryId)
+        if (filters.type) query = query.eq('type', filters.type)
+        if (filters.from) query = query.gte('occurred_at', filters.from)
+        if (filters.to) query = query.lte('occurred_at', filters.to)
+        if (filters.search) query = query.ilike('note', `%${filters.search}%`)
 
-      const { data, error } = await query
-      if (error) throw error
-      return data as Transaction[]
+        const { data, error } = await query
+        if (error) {
+          if (typeof navigator !== 'undefined' && !navigator.onLine) {
+            rawData = []
+          } else {
+            throw error
+          }
+        } else {
+          rawData = (data as Transaction[]) ?? []
+        }
+      } catch (err) {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          rawData = []
+        } else {
+          throw err
+        }
+      }
+
+      return applyOfflineMutations(rawData, activeBookId ?? undefined)
     },
   })
 }
@@ -79,7 +153,7 @@ export function usePayees() {
 }
 
 function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
-  void qc.invalidateQueries({ queryKey: ['transactions'] })
+  void qc.invalidateQueries({ queryKey: ['transactions'], exact: false })
   void qc.invalidateQueries({ queryKey: qk.balances })
   void qc.invalidateQueries({ queryKey: qk.transactionTags })
   void qc.invalidateQueries({ queryKey: qk.transactionSplits })
@@ -121,7 +195,7 @@ export function useCreateTransaction() {
           created_at: new Date().toISOString(),
         }
         enqueueOfflineMutation('CREATE_TRANSACTION', { ...payload, tempId })
-        qc.setQueriesData({ queryKey: ['transactions'] }, (old: Transaction[] | undefined) =>
+        qc.setQueriesData({ queryKey: ['transactions'], exact: false }, (old: Transaction[] | undefined) =>
           old ? [dummyTx, ...old] : [dummyTx],
         )
         return dummyTx
@@ -206,7 +280,7 @@ export function useDuplicateTransaction() {
           created_at: new Date().toISOString(),
         }
         enqueueOfflineMutation('CREATE_TRANSACTION', { ...payload, tempId })
-        qc.setQueriesData({ queryKey: ['transactions'] }, (old: Transaction[] | undefined) =>
+        qc.setQueriesData({ queryKey: ['transactions'], exact: false }, (old: Transaction[] | undefined) =>
           old ? [copy, ...old] : [copy],
         )
         return copy
@@ -258,7 +332,7 @@ export function useUpdateTransaction() {
     mutationFn: async ({ id, patch }: { id: string; patch: Partial<Transaction> }) => {
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
         enqueueOfflineMutation('UPDATE_TRANSACTION', { id, ...patch })
-        qc.setQueriesData({ queryKey: ['transactions'] }, (old: Transaction[] | undefined) =>
+        qc.setQueriesData({ queryKey: ['transactions'], exact: false }, (old: Transaction[] | undefined) =>
           old ? old.map((t) => (t.id === id ? { ...t, ...patch } : t)) : [],
         )
         return
@@ -284,7 +358,7 @@ export function useDeleteTransaction() {
     mutationFn: async (id: string) => {
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
         enqueueOfflineMutation('DELETE_TRANSACTION', { id })
-        qc.setQueriesData({ queryKey: ['transactions'] }, (old: Transaction[] | undefined) =>
+        qc.setQueriesData({ queryKey: ['transactions'], exact: false }, (old: Transaction[] | undefined) =>
           old ? old.filter((t) => t.id !== id) : [],
         )
         return
@@ -315,7 +389,7 @@ export function useBulkDeleteTransactions() {
         for (const id of ids) {
           enqueueOfflineMutation('DELETE_TRANSACTION', { id })
         }
-        qc.setQueriesData({ queryKey: ['transactions'] }, (old: Transaction[] | undefined) =>
+        qc.setQueriesData({ queryKey: ['transactions'], exact: false }, (old: Transaction[] | undefined) =>
           old ? old.filter((t) => !ids.includes(t.id)) : [],
         )
         return
@@ -339,7 +413,7 @@ export function useBulkSetCategory() {
         for (const id of ids) {
           enqueueOfflineMutation('UPDATE_TRANSACTION', { id, category_id: categoryId })
         }
-        qc.setQueriesData({ queryKey: ['transactions'] }, (old: Transaction[] | undefined) =>
+        qc.setQueriesData({ queryKey: ['transactions'], exact: false }, (old: Transaction[] | undefined) =>
           old ? old.map((t) => (ids.includes(t.id) ? { ...t, category_id: categoryId } : t)) : [],
         )
         return
@@ -366,7 +440,7 @@ export function useBulkSetStatus() {
         for (const id of ids) {
           enqueueOfflineMutation('UPDATE_TRANSACTION', { id, status })
         }
-        qc.setQueriesData({ queryKey: ['transactions'] }, (old: Transaction[] | undefined) =>
+        qc.setQueriesData({ queryKey: ['transactions'], exact: false }, (old: Transaction[] | undefined) =>
           old ? old.map((t) => (ids.includes(t.id) ? { ...t, status } : t)) : [],
         )
         return
