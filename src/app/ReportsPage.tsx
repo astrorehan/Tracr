@@ -17,7 +17,7 @@ import { BarChart3, ChevronRight, Download, Printer, Tag as TagIcon } from 'luci
 import { Card } from '@/components/ui/Card'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { PageHeader } from '@/components/ui/list'
-import { CenterSpinner, EmptyState } from '@/components/ui/States'
+import { EmptyState, TableSkeleton } from '@/components/ui/States'
 import { CategoryIcon } from '@/features/categories/CategoryIcon'
 import { useAuth } from '@/features/auth/useAuth'
 import { useCategories } from '@/features/categories/api'
@@ -374,7 +374,7 @@ export function ReportsPage() {
       )}
 
       {isLoading ? (
-        <CenterSpinner />
+        <TableSkeleton rows={8} />
       ) : baseTxns.length === 0 ? (
         <EmptyState
           icon={<BarChart3 className="h-7 w-7" />}

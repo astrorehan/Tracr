@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { isSupabaseConfigured } from './lib/supabase'
 import { useAuth } from './features/auth/useAuth'
-import { CenterSpinner } from './components/ui/States'
+import { DashboardSkeleton, PageSkeleton } from './components/ui/States'
 import { AppLayout } from './components/AppLayout'
 import { BizLayout } from './components/BizLayout'
 import { SetupNotice } from './components/SetupNotice'
@@ -65,7 +65,7 @@ const LandingPage = lazy(() =>
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth()
-  if (loading) return <CenterSpinner />
+  if (loading) return <PageSkeleton />
   // Signed-out visitors land on the marketing page, not the login form.
   if (!session) return <Navigate to="/welcome" replace />
   return <>{children}</>
@@ -84,7 +84,7 @@ export default function App() {
   }, [])
 
   if (!isSupabaseConfigured) return <SetupNotice />
-  if (!cacheReady) return <CenterSpinner />
+  if (!cacheReady) return <PageSkeleton />
 
   return (
     <ConfirmProvider>
@@ -93,7 +93,7 @@ export default function App() {
       <Route
         path="/welcome"
         element={
-          <Suspense fallback={<CenterSpinner />}>
+          <Suspense fallback={<PageSkeleton />}>
             <LandingPage />
           </Suspense>
         }
@@ -102,7 +102,7 @@ export default function App() {
       <Route
         path="/legal/:doc"
         element={
-          <Suspense fallback={<CenterSpinner />}>
+          <Suspense fallback={<PageSkeleton />}>
             <LegalPage />
           </Suspense>
         }
@@ -118,7 +118,7 @@ export default function App() {
         <Route
           index
           element={
-            <Suspense fallback={<CenterSpinner />}>
+            <Suspense fallback={<DashboardSkeleton />}>
               <DashboardPage />
             </Suspense>
           }
@@ -126,7 +126,7 @@ export default function App() {
         <Route
           path="accounts"
           element={
-            <Suspense fallback={<CenterSpinner />}>
+            <Suspense fallback={<PageSkeleton />}>
               <AccountsPage />
             </Suspense>
           }
@@ -134,7 +134,7 @@ export default function App() {
         <Route
           path="accounts/:id"
           element={
-            <Suspense fallback={<CenterSpinner />}>
+            <Suspense fallback={<PageSkeleton />}>
               <AccountDetailPage />
             </Suspense>
           }
@@ -142,7 +142,7 @@ export default function App() {
         <Route
           path="transactions"
           element={
-            <Suspense fallback={<CenterSpinner />}>
+            <Suspense fallback={<PageSkeleton />}>
               <TransactionsPage />
             </Suspense>
           }
@@ -150,7 +150,7 @@ export default function App() {
         <Route
           path="settings"
           element={
-            <Suspense fallback={<CenterSpinner />}>
+            <Suspense fallback={<PageSkeleton />}>
               <SettingsPage />
             </Suspense>
           }
@@ -158,7 +158,7 @@ export default function App() {
         <Route
           path="categories"
           element={
-            <Suspense fallback={<CenterSpinner />}>
+            <Suspense fallback={<PageSkeleton />}>
               <CategoriesPage />
             </Suspense>
           }
@@ -166,7 +166,7 @@ export default function App() {
         <Route
           path="tags"
           element={
-            <Suspense fallback={<CenterSpinner />}>
+            <Suspense fallback={<PageSkeleton />}>
               <TagsPage />
             </Suspense>
           }
@@ -174,7 +174,7 @@ export default function App() {
         <Route
           path="rules"
           element={
-            <Suspense fallback={<CenterSpinner />}>
+            <Suspense fallback={<PageSkeleton />}>
               <RulesPage />
             </Suspense>
           }
@@ -182,7 +182,7 @@ export default function App() {
         <Route
           path="reports"
           element={
-            <Suspense fallback={<CenterSpinner />}>
+            <Suspense fallback={<PageSkeleton />}>
               <ReportsPage />
             </Suspense>
           }
@@ -190,7 +190,7 @@ export default function App() {
         <Route
           path="budgets"
           element={
-            <Suspense fallback={<CenterSpinner />}>
+            <Suspense fallback={<PageSkeleton />}>
               <PlanningPage />
             </Suspense>
           }
@@ -198,7 +198,7 @@ export default function App() {
         <Route
           path="bills"
           element={
-            <Suspense fallback={<CenterSpinner />}>
+            <Suspense fallback={<PageSkeleton />}>
               <PlanningPage />
             </Suspense>
           }
@@ -206,7 +206,7 @@ export default function App() {
         <Route
           path="goals"
           element={
-            <Suspense fallback={<CenterSpinner />}>
+            <Suspense fallback={<PageSkeleton />}>
               <PlanningPage />
             </Suspense>
           }
@@ -214,7 +214,7 @@ export default function App() {
         <Route
           path="installments"
           element={
-            <Suspense fallback={<CenterSpinner />}>
+            <Suspense fallback={<PageSkeleton />}>
               <InstallmentsPage />
             </Suspense>
           }
@@ -225,7 +225,7 @@ export default function App() {
           <Route
             path="products"
             element={
-              <Suspense fallback={<CenterSpinner />}>
+              <Suspense fallback={<PageSkeleton />}>
                 <ProductsPage />
               </Suspense>
             }
@@ -233,7 +233,7 @@ export default function App() {
           <Route
             path="debts"
             element={
-              <Suspense fallback={<CenterSpinner />}>
+              <Suspense fallback={<PageSkeleton />}>
                 <DebtsPage />
               </Suspense>
             }
@@ -241,7 +241,7 @@ export default function App() {
           <Route
             path="profit"
             element={
-              <Suspense fallback={<CenterSpinner />}>
+              <Suspense fallback={<PageSkeleton />}>
                 <ProfitPage />
               </Suspense>
             }
@@ -250,7 +250,7 @@ export default function App() {
         <Route
           path="currencies"
           element={
-            <Suspense fallback={<CenterSpinner />}>
+            <Suspense fallback={<PageSkeleton />}>
               <CurrenciesPage />
             </Suspense>
           }
@@ -258,7 +258,7 @@ export default function App() {
         <Route
           path="data"
           element={
-            <Suspense fallback={<CenterSpinner />}>
+            <Suspense fallback={<PageSkeleton />}>
               <DataPage />
             </Suspense>
           }
@@ -266,7 +266,7 @@ export default function App() {
         <Route
           path="books"
           element={
-            <Suspense fallback={<CenterSpinner />}>
+            <Suspense fallback={<PageSkeleton />}>
               <BooksPage />
             </Suspense>
           }
@@ -274,7 +274,7 @@ export default function App() {
         <Route
           path="telegram"
           element={
-            <Suspense fallback={<CenterSpinner />}>
+            <Suspense fallback={<PageSkeleton />}>
               <TelegramPage />
             </Suspense>
           }
@@ -282,7 +282,7 @@ export default function App() {
         <Route
           path="billing"
           element={
-            <Suspense fallback={<CenterSpinner />}>
+            <Suspense fallback={<PageSkeleton />}>
               <BillingPage />
             </Suspense>
           }

@@ -1,5 +1,5 @@
 import { Modal } from '@/components/ui/Modal'
-import { CenterSpinner } from '@/components/ui/States'
+import { ListSkeleton } from '@/components/ui/States'
 import { useT } from '@/features/settings/language-context'
 import { formatMoney } from '@/lib/money'
 import { useInstallmentPayments } from './api'
@@ -26,11 +26,7 @@ function PaymentHistoryBody({ installment }: { installment: Installment }) {
   const { data: payments = [], isLoading } = useInstallmentPayments(installment.id)
 
   if (isLoading) {
-    return (
-      <div className="py-8 text-center">
-        <CenterSpinner />
-      </div>
-    )
+    return <ListSkeleton rows={3} />
   }
 
   if (payments.length === 0) {

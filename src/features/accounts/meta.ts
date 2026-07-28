@@ -28,6 +28,9 @@ export const ACCOUNT_TYPES: { value: AccountType; label: MsgKey; icon: typeof Wa
 /** Account types that are debts by nature — used to default the liability flag. */
 export const LIABILITY_TYPES = new Set<AccountType>(['credit_card', 'loan'])
 
+/** Account types that are receivables by nature. */
+export const RECEIVABLE_TYPES = new Set<AccountType>(['receivable'])
+
 export function accountTypeMeta(type: AccountType) {
   return ACCOUNT_TYPES.find((t) => t.value === type) ?? ACCOUNT_TYPES[ACCOUNT_TYPES.length - 1]
 }

@@ -16,6 +16,7 @@ export function useContacts() {
   const { activeBookId } = useActiveBook()
   return useQuery({
     queryKey: [...qk.contacts, activeBookId],
+    enabled: Boolean(activeBookId),
     queryFn: async (): Promise<Contact[]> => {
       const { data, error } = await supabase
         .from('contacts')
@@ -50,6 +51,7 @@ export function useDebts() {
   const { activeBookId } = useActiveBook()
   return useQuery({
     queryKey: [...qk.debts, activeBookId],
+    enabled: Boolean(activeBookId),
     queryFn: async (): Promise<DebtWithContact[]> => {
       const { data, error } = await supabase
         .from('debts')
@@ -127,11 +129,15 @@ export function useRecordPayment() {
       amount,
       paid_on,
       note,
+      account_id,
+      category_id,
     }: {
-      debt: Debt
+      debt: DebtWithContact | Debt
       amount: number
       paid_on?: string
       note?: string | null
+      account_id?: string | null
+      category_id?: string | null
     }) => {
       const userId = await getAuthenticatedUserId()
       const payment: NewDebtPayment = {
@@ -142,6 +148,67 @@ export function useRecordPayment() {
       }
       const newPaid = Math.min(debt.amount, debt.paid + amount)
       const newStatus = newPaid >= debt.amount ? 'paid' : 'open'
+
+      if (account_id) {
+        const txType = debt.direction === 'receivable' ? 'income' : 'expense'
+        const contactName = 'contact' in debt && debt.contact?.name ? debt.contact.name : ''
+        const defaultNote = debt.direction === 'receivable'
+          ? (contactName ? `Pelunasan piutang: ${contactName}` : 'Pelunasan piutang')
+          : (contactName ? `Pelunasan utang: ${contactName}` : 'Pelunasan utang')
+
+        let resolvedCategoryId = category_id || null
+        if (!resolvedCategoryId) {
+          try {
+            const kind = debt.direction === 'receivable' ? 'income' : 'expense'
+            const categoryName = debt.direction === 'receivable' ? 'Pelunasan Piutang' : 'Pelunasan Utang'
+            const { data: existingCat } = await supabase
+              .from('categories')
+              .select('id')
+              .eq('book_id', activeBookId!)
+              .eq('name', categoryName)
+              .eq('kind', kind)
+              .limit(1)
+              .maybeSingle()
+            if (existingCat?.id) {
+              resolvedCategoryId = existingCat.id
+            } else {
+              const { data: newCat } = await supabase
+                .from('categories')
+                .insert({
+                  user_id: userId,
+                  book_id: activeBookId,
+                  name: categoryName,
+                  kind,
+                  parent_id: null,
+                  icon: debt.direction === 'receivable' ? 'hand-coins' : 'receipt',
+                  color: debt.direction === 'receivable' ? '#10b981' : '#f59e0b',
+                })
+                .select('id')
+                .single()
+              if (newCat?.id) resolvedCategoryId = newCat.id
+            }
+          } catch (e) {
+            console.error('Failed to resolve default debt category:', e)
+          }
+        }
+
+        const txPayload = {
+          user_id: userId,
+          book_id: activeBookId,
+          account_id,
+          category_id: resolvedCategoryId,
+          type: txType,
+          amount,
+          currency: debt.currency,
+          occurred_at: (paid_on ? new Date(paid_on) : new Date()).toISOString(),
+          note: note ? `${defaultNote} - ${note}` : defaultNote,
+          source: 'web' as const,
+          status: 'pending' as const,
+        }
+
+        const { error: txErr } = await supabase.from('transactions').insert(txPayload)
+        if (txErr) console.error('Error inserting payment transaction:', txErr)
+      }
 
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
         enqueueOfflineMutation('ADD_DEBT_PAYMENT', { ...payment, user_id: userId, book_id: activeBookId })
@@ -174,6 +241,8 @@ export function useRecordPayment() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: qk.debts })
       void qc.invalidateQueries({ queryKey: qk.debtPayments })
+      void qc.invalidateQueries({ queryKey: qk.balances })
+      void qc.invalidateQueries({ queryKey: ['transactions'] })
     },
   })
 }

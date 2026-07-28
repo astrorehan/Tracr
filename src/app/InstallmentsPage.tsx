@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Plus, Receipt } from 'lucide-react'
 import { PageHeader, Pill } from '@/components/ui/list'
 import { Card } from '@/components/ui/Card'
-import { CenterSpinner, EmptyState } from '@/components/ui/States'
+import { CardSkeleton, EmptyState } from '@/components/ui/States'
 import { useT } from '@/features/settings/language-context'
 import { formatMoney } from '@/lib/money'
 import { useInstallments } from '@/features/installments/api'
@@ -104,9 +104,7 @@ export function InstallmentsPage() {
       </div>
 
       {isLoading ? (
-        <Card className="grid place-items-center py-12">
-          <CenterSpinner />
-        </Card>
+        <CardSkeleton cards={3} />
       ) : installments.length === 0 ? (
         <Card className="py-10">
           <EmptyState

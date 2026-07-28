@@ -4,9 +4,6 @@ import { format } from 'date-fns'
 import {
   Wallet,
   Plus,
-  Target,
-  PiggyBank,
-  Receipt,
   BarChart3,
   Eye,
   EyeOff,
@@ -20,12 +17,15 @@ import {
   Package,
   HandCoins,
   TrendingUp,
+  ClipboardList,
+  CalendarClock,
   type LucideProps,
 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { IconChip, ListRow } from '@/components/ui/list'
 import { AnimatedNumber } from '@/components/ui/AnimatedNumber'
-import { EmptyState, Skeleton } from '@/components/ui/States'
+import { DashboardSkeleton, EmptyState } from '@/components/ui/States'
+export { DashboardSkeleton }
 import { formatMoney } from '@/lib/money'
 import { getCurrency } from '@/lib/currencies'
 import { useAuth } from '@/features/auth/useAuth'
@@ -48,6 +48,7 @@ import { MoneyFlowCard, NetStrip } from '@/features/health/MoneyFlowCard'
 import { WalletScoreCard } from '@/features/health/WalletScoreCard'
 import { UpcomingBillsCard } from '@/features/health/UpcomingBillsCard'
 import { UpcomingInstallmentsCard } from '@/features/installments/UpcomingInstallmentsCard'
+import { UpcomingDebtsCard } from '@/features/debts/UpcomingDebtsCard'
 import { AttentionCard } from '@/features/health/AttentionCard'
 import { useBudgetStatuses } from '@/features/budgets/useBudgetStatuses'
 import { BudgetPaceCard } from '@/features/budgets/BudgetPaceCard'
@@ -138,7 +139,7 @@ export function DashboardPage() {
     <div className="mx-auto max-w-2xl lg:max-w-none lg:px-8">
       {/* Mobile: the blue is a FIXED background layer. The hero text below scrolls
           in normal flow over it, then slides under the white sheet. */}
-      <div aria-hidden className="brand-hero home-hero-bg pointer-events-none fixed inset-x-0 top-0 h-[45vh] z-0 sm:hidden" />
+      <div aria-hidden className="brand-hero home-hero-bg pointer-events-none fixed inset-x-0 top-0 h-[65vh] z-0 sm:hidden" />
 
       {/* Desktop splits into a primary column (hero, actions, assistant) and a
           right rail (accounts + activity summary). Below lg it all stacks into the
@@ -292,9 +293,14 @@ export function DashboardPage() {
         <Card className="grid grid-cols-4 gap-x-1 gap-y-4 p-4">
           <QuickTile label={t('dash.record')} icon={Plus} chip="blue" onClick={() => setAddOpen(true)} />
           <QuickTile label={t('nav.accounts')} icon={Wallet} chip="green" to="/accounts" />
-          <QuickTile label={t('nav.budgets')} icon={Target} chip="orange" to="/budgets" />
-          <QuickTile label={t('nav.goals')} icon={PiggyBank} chip="violet" to="/goals" />
-          <QuickTile label={t('nav.bills')} icon={Receipt} chip="blue" to="/bills" />
+          <QuickTile label={t('nav.planning')} icon={ClipboardList} chip="orange" to="/budgets" />
+          <QuickTile label={t('nav.installments')} icon={CalendarClock} chip="violet" to="/installments" />
+          <QuickTile
+            label={t(activeBook?.type === 'business' ? 'debt.titleBusiness' : 'debt.titlePersonal')}
+            icon={HandCoins}
+            chip="blue"
+            to="/debts"
+          />
           <QuickTile label={t('nav.reports')} icon={BarChart3} chip="green" to="/reports" />
           <QuickTile label={t('section.categories')} icon={LayoutGrid} chip="orange" to="/categories" />
           <QuickTile label={t('section.tags')} icon={Tag} chip="violet" to="/tags" />
@@ -348,6 +354,7 @@ export function DashboardPage() {
         <aside className="relative z-10 space-y-5 bg-background px-4 pb-6 pt-1 sm:bg-transparent sm:px-0 sm:pt-0 lg:mt-16">
           <UpcomingBillsCard bills={bills} spendable={money.spendable} base={base} />
           <UpcomingInstallmentsCard />
+          <UpcomingDebtsCard />
 
           <AccountsPanel accounts={accounts} balances={balances} hidden={hidden} />
 
@@ -421,7 +428,7 @@ function QuickTile({
       <span className={cn('flex h-13 w-13 items-center justify-center rounded-2xl', CHIP[chip])}>
         <Icon className="h-6 w-6 stroke-[2.1]" />
       </span>
-      <span className="text-[11.5px] font-semibold text-foreground">{label}</span>
+      <span className="text-center text-[11.5px] font-semibold leading-tight text-foreground">{label}</span>
     </>
   )
   const cls =
@@ -488,47 +495,5 @@ function AccountsPanel({
         })}
       </div>
     </Card>
-  )
-}
-
-/** Mirrors the home layout so loading → loaded swaps without layout shift. */
-function DashboardSkeleton() {
-  const { t } = useT()
-  return (
-    <div className="mx-auto max-w-2xl lg:max-w-none lg:px-8" aria-busy="true" aria-label={t('dash.loadingHome')}>
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-6 xl:grid-cols-[minmax(0,1fr)_400px] xl:gap-8">
-        {/* Primary column skeleton */}
-        <div className="min-w-0">
-          <Skeleton className="h-52 rounded-none sm:mt-6 sm:h-44 sm:rounded-[24px]" />
-          <div className="-mt-5 space-y-5 rounded-t-[26px] bg-background px-4 pb-2 pt-5 sm:mt-6 sm:rounded-none sm:bg-transparent sm:px-0 sm:pt-0">
-            <Skeleton className="h-44 rounded-[20px]" /> {/* today's allowance */}
-            <Skeleton className="h-[72px] rounded-[20px]" /> {/* needs attention */}
-            <div className="grid grid-cols-4 gap-x-1 gap-y-4 rounded-[20px] border border-border bg-surface p-4">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="flex flex-col items-center gap-2 py-1">
-                  <Skeleton className="h-13 w-13 rounded-2xl" />
-                  <Skeleton className="h-3 w-12" />
-                </div>
-              ))}
-            </div>
-            {/* money in / money out */}
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Skeleton className="h-56 rounded-[20px]" />
-              <Skeleton className="h-56 rounded-[20px]" />
-            </div>
-            <Skeleton className="h-12 rounded-2xl" />
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-64 rounded-[20px]" /> {/* assistant */}
-            </div>
-          </div>
-        </div>
-        {/* Right rail skeleton on desktop */}
-        <div className="hidden lg:block space-y-5 lg:mt-6">
-          <Skeleton className="h-64 rounded-[20px]" /> {/* accounts card */}
-          <Skeleton className="h-80 rounded-[20px]" /> {/* activity summary card */}
-        </div>
-      </div>
-    </div>
   )
 }

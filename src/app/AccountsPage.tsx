@@ -1,19 +1,21 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Wallet, List, Pencil, Trash2, PieChart, TriangleAlert } from 'lucide-react'
+import { Plus, Wallet, List, Pencil, Trash2, PieChart, TriangleAlert, HandCoins } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Pill, ListCard, ListRow, IconChip } from '@/components/ui/list'
-import { CenterSpinner, EmptyState } from '@/components/ui/States'
+import { CardSkeleton, EmptyState } from '@/components/ui/States'
 import { formatMoney } from '@/lib/money'
 import { cn } from '@/lib/utils'
+import { useConfirm } from '@/components/ui/confirm-context'
 import { useAuth } from '@/features/auth/useAuth'
-import { useAccounts, useBalances } from '@/features/accounts/api'
+import { useAccounts, useBalances, useDeleteAccount } from '@/features/accounts/api'
+import { useDebts } from '@/features/debts/api'
 import { useFxRates } from '@/features/fx/api'
 import { buildRateTable, convertMinor, rateBetween, type RateTable } from '@/features/fx/fx'
 import { useTransactions } from '@/features/transactions/api'
 import { indexById } from '@/lib/collections'
 import { netWorthSeries, pickGranularity, type NetWorthDelta } from '@/features/reports/reports'
-import { subMonths } from 'date-fns'
+import { startOfDay, subMonths } from 'date-fns'
 import { AccountForm } from '@/features/accounts/AccountForm'
 import { accountTypeMeta } from '@/features/accounts/meta'
 import type { Account } from '@/types/db'
@@ -27,10 +29,11 @@ export function AccountsPage() {
   const base = profile?.base_currency ?? 'IDR'
   const { data: accounts, isLoading } = useAccounts()
   const { data: balances = {} } = useBalances()
+  const { data: debts = [] } = useDebts()
   const { data: fxRates = [] } = useFxRates()
   
   const to = useMemo(() => new Date(), [])
-  const from = useMemo(() => subMonths(to, 6), [to])
+  const from = useMemo(() => startOfDay(subMonths(to, 6)), [to])
   const { data: historyTxns = [] } = useTransactions({ from: from.toISOString(), limit: 5000 })
   
   const [formOpen, setFormOpen] = useState(false)
@@ -41,19 +44,43 @@ export function AccountsPage() {
   const balanceOf = (a: Account) => balances[a.id] ?? a.opening_balance
   const toBase = (a: Account) => convertMinor(balanceOf(a), a.currency, base, rateTable) ?? 0
 
-  const { assets, liabilities } = useMemo(() => {
+  const { assets, receivables, liabilities } = useMemo(() => {
     const assets: Account[] = []
+    const receivables: Account[] = []
     const liabilities: Account[] = []
-    for (const a of accounts ?? []) (a.is_liability ? liabilities : assets).push(a)
-    return { assets, liabilities }
+    for (const a of accounts ?? []) {
+      if (a.is_liability) {
+        liabilities.push(a)
+      } else if (a.type === 'receivable' || a.type === 'loan') {
+        receivables.push(a)
+      } else {
+        assets.push(a)
+      }
+    }
+    return { assets, receivables, liabilities }
   }, [accounts])
 
-  const { net, assetsTotal, debtsTotal } = useMemo(() => {
+  const { net, assetsTotal, receivablesTotal, debtsTotal } = useMemo(() => {
     const counted = (a: Account) => !a.exclude_from_stats
-    const assetsTotal = assets.filter(counted).reduce((s, a) => s + toBase(a), 0)
-    const debtsTotal = liabilities.filter(counted).reduce((s, a) => s + Math.abs(toBase(a)), 0)
-    return { net: assetsTotal - debtsTotal, assetsTotal, debtsTotal }
-  }, [assets, liabilities, balances, rateTable, base])
+    const assetAccTotal = assets.filter(counted).reduce((s, a) => s + toBase(a), 0)
+    const rcvAccTotal = receivables.filter(counted).reduce((s, a) => s + toBase(a), 0)
+    const debtAccTotal = liabilities.filter(counted).reduce((s, a) => s + Math.abs(toBase(a)), 0)
+
+    // Wire in open debts from Kasbon/Debts module:
+    const openDebts = debts.filter((d) => d.status === 'open')
+    const openRcvDebtTotal = openDebts
+      .filter((d) => d.direction === 'receivable')
+      .reduce((s, d) => s + (convertMinor(Math.max(0, d.amount - d.paid), d.currency, base, rateTable) ?? 0), 0)
+    const openPayDebtTotal = openDebts
+      .filter((d) => d.direction === 'payable')
+      .reduce((s, d) => s + (convertMinor(Math.max(0, d.amount - d.paid), d.currency, base, rateTable) ?? 0), 0)
+
+    const receivablesTotal = rcvAccTotal + openRcvDebtTotal
+    const debtsTotal = debtAccTotal + openPayDebtTotal
+    const net = assetAccTotal + receivablesTotal - debtsTotal
+
+    return { net, assetsTotal: assetAccTotal, receivablesTotal, debtsTotal }
+  }, [assets, receivables, liabilities, debts, balances, rateTable, base])
 
   const netWorthHistory = useMemo(() => {
     const table = buildRateTable(fxRates, base)
@@ -87,6 +114,9 @@ export function AccountsPage() {
     return series.length > 1 ? series : [{ label: 'Past', value: nwNow }, { label: 'Today', value: nwNow }]
   }, [accounts, balances, historyTxns, fxRates, base, from, to])
 
+  const confirm = useConfirm()
+  const deleteAccount = useDeleteAccount()
+
   function openNew() {
     setEditing(null)
     setFormOpen(true)
@@ -99,11 +129,19 @@ export function AccountsPage() {
     setFormOpen(true)
   }
 
-  function handleDelete(e: React.MouseEvent, account: Account) {
+  async function handleDelete(e: React.MouseEvent, account: Account) {
     e.preventDefault()
     e.stopPropagation()
-    // In a real app this would call an API or show a confirmation modal
-    console.log('Delete account', account.id)
+    if (
+      await confirm({
+        title: t('acc.deleteTitle', { name: account.name }),
+        message: t('acc.deleteDesc'),
+        confirmLabel: t('acc.delete'),
+        tone: 'danger',
+      })
+    ) {
+      deleteAccount.mutate(account.id)
+    }
   }
 
   const hasLiabilities = liabilities.length > 0
@@ -125,7 +163,7 @@ export function AccountsPage() {
       </div>
 
       {isLoading ? (
-        <CenterSpinner />
+        <CardSkeleton />
       ) : !accounts || accounts.length === 0 ? (
         <EmptyState
           title={t('acc.emptyTitle')}
@@ -137,24 +175,40 @@ export function AccountsPage() {
           <div className="card-surface flex flex-col md:flex-row rounded-[24px] gap-6 p-4 shadow-sm sm:p-6 md:gap-8">
             <div className="flex-1 h-[220px] min-w-0">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={netWorthHistory} margin={{ top: 20, right: 0, left: 0, bottom: 0 }}>
+                <AreaChart data={netWorthHistory} margin={{ top: 20, right: 16, left: 16, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorBlue" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#4A72B2" stopOpacity={0.25} />
                       <stop offset="95%" stopColor="#4A72B2" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 13, fill: '#888', fontWeight: 500 }} dy={10} minTickGap={20} />
+                  <XAxis
+                    dataKey="label"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 13, fill: '#888', fontWeight: 500 }}
+                    dy={10}
+                    minTickGap={20}
+                    padding={{ left: 10, right: 10 }}
+                  />
                   <Tooltip
                     contentStyle={tooltipStyle}
                     formatter={(value) => [formatMoney(Number(value), base), 'Net Worth']}
                   />
-                  <Area type="monotone" dataKey="value" stroke="#4A72B2" strokeWidth={3} fillOpacity={1} fill="url(#colorBlue)" />
+                  <Area
+                    type="monotone"
+                    dataKey="value"
+                    stroke="#4A72B2"
+                    strokeWidth={3}
+                    fillOpacity={1}
+                    fill="url(#colorBlue)"
+                    activeDot={{ r: 5, stroke: '#4A72B2', strokeWidth: 2, fill: '#fff' }}
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
 
-            <div className="flex min-w-0 shrink-0 flex-col justify-center space-y-5 md:w-[360px]">
+            <div className="flex min-w-0 shrink-0 flex-col justify-center space-y-5 md:w-[380px]">
               <div>
                 <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1.5">
                   NET WORTH
@@ -165,21 +219,41 @@ export function AccountsPage() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
-                <div className="flex flex-1 flex-col justify-center overflow-hidden rounded-[20px] border border-[#C8E6C9] bg-[#E8F5E9] p-4 dark:border-green-900/50 dark:bg-green-950/40">
-                  <p className="flex items-center gap-1.5 text-xs font-bold text-green-900 dark:text-green-300">
-                    <PieChart className="h-3.5 w-3.5" /> Total Assets
-                  </p>
-                  <p className="font-numeric mt-0.5 break-words text-[15px] font-extrabold text-green-900 dark:text-green-300">
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-center justify-between rounded-[18px] border border-[#C8E6C9] bg-[#E8F5E9] px-4 py-2.5 sm:py-3 dark:border-green-900/50 dark:bg-green-950/40">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-green-500/15 text-green-800 dark:text-green-300">
+                      <PieChart className="h-4 w-4" />
+                    </div>
+                    <span className="text-xs sm:text-sm font-bold text-green-900 dark:text-green-300">Total Assets</span>
+                  </div>
+                  <span className="font-numeric text-sm sm:text-base font-extrabold text-green-900 dark:text-green-300 whitespace-nowrap">
                     {formatMoney(assetsTotal, base)}
-                  </p>
+                  </span>
                 </div>
 
-                <div className="flex flex-1 flex-col justify-center overflow-hidden rounded-[20px] border border-[#FFE0B2] bg-[#FFF3E0] p-4 dark:border-orange-900/50 dark:bg-orange-950/40">
-                  <p className="text-xs font-bold text-orange-900 dark:text-orange-300">Total Debt</p>
-                  <p className="font-numeric mt-0.5 break-words text-[15px] font-extrabold text-orange-900 dark:text-orange-300">
+                <div className="flex items-center justify-between rounded-[18px] border border-[#B3E5FC] bg-[#E1F5FE] px-4 py-2.5 sm:py-3 dark:border-blue-900/50 dark:bg-blue-950/40">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-blue-500/15 text-blue-800 dark:text-blue-300">
+                      <HandCoins className="h-4 w-4" />
+                    </div>
+                    <span className="text-xs sm:text-sm font-bold text-blue-900 dark:text-blue-300">{t('acc.totalReceivables')}</span>
+                  </div>
+                  <span className="font-numeric text-sm sm:text-base font-extrabold text-blue-900 dark:text-blue-300 whitespace-nowrap">
+                    {formatMoney(receivablesTotal, base)}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between rounded-[18px] border border-[#FFE0B2] bg-[#FFF3E0] px-4 py-2.5 sm:py-3 dark:border-orange-900/50 dark:bg-orange-950/40">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-orange-500/15 text-orange-800 dark:text-orange-300">
+                      <List className="h-4 w-4" />
+                    </div>
+                    <span className="text-xs sm:text-sm font-bold text-orange-900 dark:text-orange-300">Total Debt</span>
+                  </div>
+                  <span className="font-numeric text-sm sm:text-base font-extrabold text-orange-900 dark:text-orange-300 whitespace-nowrap">
                     {formatMoney(debtsTotal, base)}
-                  </p>
+                  </span>
                 </div>
               </div>
             </div>
@@ -205,6 +279,28 @@ export function AccountsPage() {
                 ))}
               </ListCard>
             </div>
+
+            {receivables.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between px-1">
+                  <h2 className="text-lg font-bold text-foreground">{t('acc.myReceivables')}</h2>
+                  <HandCoins className="h-[18px] w-[18px] text-muted-foreground" />
+                </div>
+                <ListCard className="rounded-[24px]">
+                  {receivables.map((account) => (
+                    <AccountRow
+                      key={account.id}
+                      account={account}
+                      balance={balanceOf(account)}
+                      base={base}
+                      rateTable={rateTable}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                    />
+                  ))}
+                </ListCard>
+              </div>
+            )}
 
             <div className="space-y-4">
               <div className="flex items-center justify-between px-1">

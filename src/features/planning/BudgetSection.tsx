@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Pencil, PiggyBank, Repeat, Target, Trash2 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
-import { CenterSpinner } from '@/components/ui/States'
+import { CardSkeleton } from '@/components/ui/States'
 import { useConfirm } from '@/components/ui/confirm-context'
 import { CategoryIcon } from '@/features/categories/CategoryIcon'
 import { useCategories } from '@/features/categories/api'
@@ -72,9 +72,7 @@ export function BudgetSection() {
       />
 
       {isLoading ? (
-        <Card className="grid place-items-center py-10">
-          <CenterSpinner />
-        </Card>
+        <CardSkeleton cards={2} />
       ) : items.length === 0 ? (
         <EmptyPreview
           blurb={t('planning.budget.empty')}

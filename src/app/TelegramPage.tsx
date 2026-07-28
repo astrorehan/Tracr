@@ -4,7 +4,7 @@ import { Check, Copy, Send } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { PageHeader, Section, IconChip, ListCard, ListRow } from '@/components/ui/list'
-import { CenterSpinner } from '@/components/ui/States'
+import { CardSkeleton } from '@/components/ui/States'
 import { useConfirm } from '@/components/ui/confirm-context'
 import { useT } from '@/features/settings/language-context'
 import { useActiveBook } from '@/features/books/useActiveBook'
@@ -86,7 +86,7 @@ export function TelegramPage() {
     )
   }
 
-  if (links.isLoading) return <CenterSpinner />
+  if (links.isLoading) return <CardSkeleton cards={2} />
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">

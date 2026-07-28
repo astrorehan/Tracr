@@ -7,7 +7,7 @@ import { CURRENCIES, CURRENCY_CODES } from '@/lib/currencies'
 import { amountToMinor, fromMinorUnits } from '@/lib/money'
 import { cn } from '@/lib/utils'
 import { useCreateAccount, useUpdateAccount } from './api'
-import { ACCOUNT_COLORS, ACCOUNT_TYPES, LIABILITY_TYPES } from './meta'
+import { ACCOUNT_COLORS, ACCOUNT_TYPES, RECEIVABLE_TYPES } from './meta'
 import type { Account, AccountType } from '@/types/db'
 import { useT } from '@/features/settings/language-context'
 
@@ -54,14 +54,22 @@ function AccountFormBody({
   const [error, setError] = useState<string | null>(null)
 
   const pending = create.isPending || update.isPending
-  // Credit cards & loans are debts by nature, so we don't ask — we explain. The
-  // explicit "money I owe" toggle only shows for ambiguous types (cash/other/etc).
-  const isDebtType = LIABILITY_TYPES.has(type)
+  const isCreditCard = type === 'credit_card'
+  const isReceivableType = RECEIVABLE_TYPES.has(type)
+  const isLoanType = type === 'loan'
 
-  // Picking a debt type forces the liability flag; the user can still override others.
+  // Picking an account type sets sensible liability defaults.
   function changeType(next: AccountType) {
     setType(next)
-    setIsLiability(LIABILITY_TYPES.has(next))
+    if (next === 'credit_card') {
+      setIsLiability(true)
+    } else if (next === 'receivable') {
+      setIsLiability(false)
+    } else if (next === 'loan') {
+      setIsLiability(true)
+    } else {
+      setIsLiability(false)
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -148,12 +156,56 @@ function AccountFormBody({
           </Select>
         </Field>
 
-        {isDebtType ? (
-          // Debt type → no question, just explain what it means in plain terms.
+        {isCreditCard ? (
+          // Credit card → debt by nature
           <div className="flex items-start gap-2.5 rounded-xl border border-danger/25 bg-danger/5 px-4 py-3">
             <Info className="mt-0.5 h-4 w-4 shrink-0 text-danger" />
             <p className="text-[12px] font-medium leading-snug text-muted-foreground">
               {t('acc.form.debtTracked')} <span className="font-semibold text-danger">{t('acc.form.debtWord')}</span> {t('acc.form.debtDesc')}
+            </p>
+          </div>
+        ) : isReceivableType ? (
+          // Receivable → asset by nature (money owed to user)
+          <div className="flex items-start gap-2.5 rounded-xl border border-primary/25 bg-primary/5 px-4 py-3">
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            <p className="text-[12px] font-medium leading-snug text-muted-foreground">
+              {t('acc.form.rcvTracked')} <span className="font-semibold text-primary">{t('acc.form.rcvWord')}</span> {t('acc.form.rcvDesc')}
+            </p>
+          </div>
+        ) : isLoanType ? (
+          // Loan → allow choosing if borrowed (debt) or lent out (receivable)
+          <div className="space-y-2 rounded-xl border border-border bg-surface p-3.5">
+            <label className="block text-xs font-semibold text-foreground">
+              {t('acc.form.loanDirection')}
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setIsLiability(true)}
+                className={cn(
+                  'rounded-lg px-3 py-2 text-xs font-bold transition-all',
+                  isLiability
+                    ? 'bg-danger text-white shadow-sm'
+                    : 'bg-surface-muted text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {t('acc.form.loanBorrowed')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsLiability(false)}
+                className={cn(
+                  'rounded-lg px-3 py-2 text-xs font-bold transition-all',
+                  !isLiability
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'bg-surface-muted text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {t('acc.form.loanLent')}
+              </button>
+            </div>
+            <p className="text-[11.5px] font-medium text-muted-foreground px-1">
+              {isLiability ? t('acc.form.debtCounted') : t('acc.form.rcvDesc')}
             </p>
           </div>
         ) : (
@@ -199,7 +251,15 @@ function AccountFormBody({
               ))}
             </Select>
           </Field>
-          <Field label={isLiability ? t('acc.form.amountOwed') : t('acc.form.openingBal')}>
+          <Field
+            label={
+              isLiability
+                ? t('acc.form.amountOwed')
+                : isReceivableType || (isLoanType && !isLiability)
+                  ? t('acc.form.amountReceivable')
+                  : t('acc.form.openingBal')
+            }
+          >
             <Input
               type="number"
               inputMode="decimal"

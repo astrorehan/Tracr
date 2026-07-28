@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
-import { Field, Input } from '@/components/ui/Input'
+import { Field, Input, Select } from '@/components/ui/Input'
 import { useT } from '@/features/settings/language-context'
 import { getCurrency } from '@/lib/currencies'
 import { amountToMinor, fromMinorUnits, formatMoney } from '@/lib/money'
+import { useAccounts } from '@/features/accounts/api'
+import { useCategories } from '@/features/categories/api'
 import { useRecordPayment } from './api'
 import type { DebtWithContact } from './api'
 
@@ -28,8 +30,16 @@ function PaymentFormBody({ onClose, debt }: { onClose: () => void; debt: DebtWit
   const remaining = Math.max(0, debt.amount - debt.paid)
   const symbol = getCurrency(debt.currency).symbol
 
+  const { data: accounts = [] } = useAccounts()
+  const { data: categories = [] } = useCategories()
   const record = useRecordPayment()
+
+  const kind = debt.direction === 'receivable' ? 'income' : 'expense'
+  const filteredCategories = categories.filter((c) => c.kind === kind && !c.is_archived)
+
   const [amount, setAmount] = useState(String(fromMinorUnits(remaining, debt.currency)))
+  const [accountId, setAccountId] = useState(accounts[0]?.id ?? '')
+  const [categoryId, setCategoryId] = useState('')
   const [paidOn, setPaidOn] = useState(new Date().toISOString().slice(0, 10))
   const [note, setNote] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -45,7 +55,14 @@ function PaymentFormBody({ onClose, debt }: { onClose: () => void; debt: DebtWit
     }
 
     try {
-      await record.mutateAsync({ debt, amount: amountMinor, paid_on: paidOn, note: note.trim() || null })
+      await record.mutateAsync({
+        debt,
+        amount: amountMinor,
+        paid_on: paidOn,
+        note: note.trim() || null,
+        account_id: accountId || null,
+        category_id: categoryId || null,
+      })
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : t('acc.form.errGeneric'))
@@ -78,6 +95,29 @@ function PaymentFormBody({ onClose, debt }: { onClose: () => void; debt: DebtWit
           <span className="text-xs font-semibold text-muted-foreground">{debt.currency}</span>
         </div>
       </Field>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Field label={t('pay.accountSelect')}>
+          <Select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+            <option value="">{t('pay.noAccount')}</option>
+            {accounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name} ({a.currency})
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label={t('pay.categorySelect')}>
+          <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+            <option value="">{t('pay.categoryDefault')}</option>
+            {filteredCategories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label={t('common.date')}>

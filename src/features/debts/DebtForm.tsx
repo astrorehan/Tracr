@@ -10,6 +10,8 @@ import { useAuth } from '@/features/auth/useAuth'
 import { useContacts, useCreateContact, useCreateDebt } from './api'
 import type { DebtDirection } from '@/types/db'
 
+import { useActiveBook } from '@/features/books/useActiveBook'
+
 interface Props {
   open: boolean
   onClose: () => void
@@ -35,6 +37,8 @@ function DebtFormBody({
 }) {
   const { t } = useT()
   const { profile } = useAuth()
+  const { activeBook } = useActiveBook()
+  const isPersonal = activeBook?.type === 'personal'
   const currency = profile?.base_currency ?? 'IDR'
   const symbol = getCurrency(currency).symbol
 
@@ -52,7 +56,11 @@ function DebtFormBody({
   const [error, setError] = useState<string | null>(null)
 
   const pending = createContact.isPending || createDebt.isPending
-  const whoLabel = direction === 'receivable' ? t('dform.customer') : t('dform.supplier')
+  const whoLabel = isPersonal
+    ? t('dform.contactPersonal')
+    : direction === 'receivable'
+      ? t('dform.customer')
+      : t('dform.supplier')
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

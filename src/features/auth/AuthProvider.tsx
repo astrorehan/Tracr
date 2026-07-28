@@ -3,6 +3,8 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import type { Profile } from '@/types/db'
 import { AuthContext, type AuthState } from './context'
+import { queryClient } from '@/lib/queryClient'
+import { clearQueryCache } from '@/lib/queryPersister'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
@@ -66,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     signOut: async () => {
       await supabase.auth.signOut()
+      await clearQueryCache(queryClient)
       setProfile(null)
     },
     refreshProfile: async () => {

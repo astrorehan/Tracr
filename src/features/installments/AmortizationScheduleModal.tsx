@@ -3,7 +3,7 @@ import { format } from 'date-fns'
 import { Calendar, Check, CheckCircle2, Clock, Copy } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
-import { CenterSpinner } from '@/components/ui/States'
+import { TableSkeleton } from '@/components/ui/States'
 import { useT } from '@/features/settings/language-context'
 import { formatMoney } from '@/lib/money'
 import { dateLocale } from '@/i18n'
@@ -59,11 +59,7 @@ function AmortizationScheduleBody({ installment }: { installment: Installment })
   }
 
   if (isLoading) {
-    return (
-      <div className="py-8 text-center">
-        <CenterSpinner />
-      </div>
-    )
+    return <TableSkeleton rows={4} />
   }
 
   const interestLabel =
