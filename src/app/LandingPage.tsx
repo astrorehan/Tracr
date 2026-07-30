@@ -33,11 +33,7 @@ export function LandingPage() {
 
   const handleScrollTo = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
     e.preventDefault()
-    const element = document.getElementById(id)
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      window.history.pushState(null, '', `#${id}`)
-    }
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   return (
@@ -88,6 +84,7 @@ export function LandingPage() {
               <select
                 value={lang}
                 onChange={(e) => setLang(e.target.value as Lang)}
+                aria-label={t('land.langPicker')}
                 className="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer"
               >
                 {LANGS.map((l) => (
@@ -134,7 +131,7 @@ export function LandingPage() {
       {/* Safe-to-Spend Calculator */}
       <SafeToSpendCalculator />
 
-      {/* 6-Item Bento Grid */}
+      {/* Feature bento grid */}
       <BentoGrid />
 
       {/* Before & After Comparison */}

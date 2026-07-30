@@ -308,7 +308,7 @@ export function ReportsPage() {
   )
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5">
+    <div className="space-y-5">
       <PageHeader
         title={t('nav.reports')}
         subtitle={`${format(from, 'd MMM yyyy', { locale: dateLocale() })} – ${format(to, 'd MMM yyyy', { locale: dateLocale() })} · ${base}`}

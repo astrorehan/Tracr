@@ -2,6 +2,10 @@
 
 html {
   scroll-behavior: smooth;
+  /* Reserve the scrollbar track even on short pages, so the centred content
+     column does not shift a few px sideways when you move between a route that
+     scrolls and one that fits the viewport. */
+  scrollbar-gutter: stable;
 }
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -653,32 +657,7 @@ input[type='number'] {
   height: 60%;
 }
 
-/* ── Overhaul Animations ───────────────────────────────────────────────── */
-@keyframes qrScan {
-  0% {
-    top: 0%;
-    opacity: 0.8;
-  }
-  50% {
-    top: 90%;
-    opacity: 1;
-  }
-  100% {
-    top: 0%;
-    opacity: 0.8;
-  }
-}
-.animate-qr-scan {
-  position: absolute;
-  left: 5%;
-  right: 5%;
-  height: 3px;
-  background: linear-gradient(90deg, transparent, #00aed6, #10b981, transparent);
-  box-shadow: 0 0 12px #00aed6;
-  border-radius: 99px;
-  animation: qrScan 3s ease-in-out infinite;
-}
-
+/* ── Landing page animations ───────────────────────────────────────────── */
 @keyframes pulseGlow {
   0%, 100% {
     box-shadow: 0 0 15px rgba(0, 114, 188, 0.2);

@@ -111,8 +111,13 @@ export function AccountsPage() {
     }
 
     const series = netWorthSeries(nwNow, deltas, from, to, pickGranularity(from, to))
-    return series.length > 1 ? series : [{ label: 'Past', value: nwNow }, { label: 'Today', value: nwNow }]
-  }, [accounts, balances, historyTxns, fxRates, base, from, to])
+    return series.length > 1
+      ? series
+      : [
+          { label: t('acc.start'), value: nwNow },
+          { label: t('range.today'), value: nwNow },
+        ]
+  }, [accounts, balances, historyTxns, fxRates, base, from, to, t])
 
   const confirm = useConfirm()
   const deleteAccount = useDeleteAccount()
@@ -155,9 +160,9 @@ export function AccountsPage() {
     <div className="w-full space-y-6 pb-20">
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-extrabold text-foreground">Accounts</h1>
+          <h1 className="text-3xl font-extrabold text-foreground">{t('acc.title')}</h1>
           <Pill variant="line" icon={Plus} onClick={openNew}>
-            New account
+            {t('acc.new')}
           </Pill>
         </div>
       </div>
@@ -193,7 +198,7 @@ export function AccountsPage() {
                   />
                   <Tooltip
                     contentStyle={tooltipStyle}
-                    formatter={(value) => [formatMoney(Number(value), base), 'Net Worth']}
+                    formatter={(value) => [formatMoney(Number(value), base), t('acc.netWorth')]}
                   />
                   <Area
                     type="monotone"
@@ -211,7 +216,7 @@ export function AccountsPage() {
             <div className="flex min-w-0 shrink-0 flex-col justify-center space-y-5 md:w-[380px]">
               <div>
                 <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1.5">
-                  NET WORTH
+                  {t('acc.netWorth')}
                 </p>
                 <div className="flex items-baseline gap-2 whitespace-normal text-[32px] font-extrabold leading-none tracking-tight text-foreground sm:whitespace-nowrap sm:text-[40px]">
                   {currencyPart && <span className="text-2xl font-bold">{currencyPart}</span>}
@@ -225,7 +230,7 @@ export function AccountsPage() {
                     <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-green-500/15 text-green-800 dark:text-green-300">
                       <PieChart className="h-4 w-4" />
                     </div>
-                    <span className="text-xs sm:text-sm font-bold text-green-900 dark:text-green-300">Total Assets</span>
+                    <span className="text-xs sm:text-sm font-bold text-green-900 dark:text-green-300">{t('acc.totalAssets')}</span>
                   </div>
                   <span className="font-numeric text-sm sm:text-base font-extrabold text-green-900 dark:text-green-300 whitespace-nowrap">
                     {formatMoney(assetsTotal, base)}
@@ -249,7 +254,7 @@ export function AccountsPage() {
                     <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-orange-500/15 text-orange-800 dark:text-orange-300">
                       <List className="h-4 w-4" />
                     </div>
-                    <span className="text-xs sm:text-sm font-bold text-orange-900 dark:text-orange-300">Total Debt</span>
+                    <span className="text-xs sm:text-sm font-bold text-orange-900 dark:text-orange-300">{t('acc.totalDebt')}</span>
                   </div>
                   <span className="font-numeric text-sm sm:text-base font-extrabold text-orange-900 dark:text-orange-300 whitespace-nowrap">
                     {formatMoney(debtsTotal, base)}
@@ -262,7 +267,7 @@ export function AccountsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div className="flex items-center justify-between px-1">
-                <h2 className="text-lg font-bold text-foreground">My Assets</h2>
+                <h2 className="text-lg font-bold text-foreground">{t('acc.myAssets')}</h2>
                 <Wallet className="h-[18px] w-[18px] text-muted-foreground" />
               </div>
               <ListCard className="rounded-[24px]">
@@ -304,7 +309,7 @@ export function AccountsPage() {
 
             <div className="space-y-4">
               <div className="flex items-center justify-between px-1">
-                <h2 className="text-lg font-bold text-foreground">My Liabilities</h2>
+                <h2 className="text-lg font-bold text-foreground">{t('acc.myLiabilities')}</h2>
                 <List className="h-[18px] w-[18px] text-muted-foreground" />
               </div>
               {hasLiabilities ? (
@@ -323,7 +328,7 @@ export function AccountsPage() {
                 </ListCard>
               ) : (
                 <ListCard className="rounded-[24px] p-8 flex items-center justify-center text-muted-foreground">
-                  <span className="text-sm font-medium">No liabilities found.</span>
+                  <span className="text-sm font-medium">{t('acc.noLiabilities')}</span>
                 </ListCard>
               )}
             </div>

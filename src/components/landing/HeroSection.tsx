@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { format } from 'date-fns'
 import {
   ArrowRight,
   Banknote,
@@ -11,6 +12,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { useT } from '@/features/settings/language-context'
+import { dateLocale, type MsgKey } from '@/i18n'
 import { cn } from '@/lib/utils'
 
 interface TxItem {
@@ -23,112 +25,150 @@ interface TxItem {
   isIncome: boolean
 }
 
+const CHIP_EXPENSE = 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+const CHIP_INCOME = 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+const CHIP_SHOPPING = 'bg-violet-500/15 text-violet-600 dark:text-violet-400'
+const CHIP_BILL = 'bg-blue-500/15 text-blue-600 dark:text-blue-400'
+
+const START_BALANCE = 12_480_000
+/** The demo's pretend daily allowance. Also the full width of the progress bar. */
+const DAILY_BUDGET = 200_000
+const START_BUDGET_LEFT = 175_000
+
+/** Preset entries the demo plays through on its own, one every few seconds. */
+const AUTO_PLAY: { titleKey: MsgKey; amount: number; isIncome: boolean; icon: typeof Coffee; chipClass: string; wallet: string }[] = [
+  { titleKey: 'land.heroSimCoffee', amount: 25_000, isIncome: false, icon: Coffee, chipClass: CHIP_EXPENSE, wallet: 'BCA' },
+  { titleKey: 'land.heroSimFreelance', amount: 1_500_000, isIncome: true, icon: Banknote, chipClass: CHIP_INCOME, wallet: 'Mandiri' },
+  { titleKey: 'land.heroSimGroceries', amount: 85_000, isIncome: false, icon: ShoppingBag, chipClass: CHIP_SHOPPING, wallet: 'GoPay' },
+  { titleKey: 'land.heroSimElectricity', amount: 100_000, isIncome: false, icon: Zap, chipClass: CHIP_BILL, wallet: 'BCA' },
+]
+
+/**
+ * Pull a rupiah amount out of free text the way the real bot does: a bare
+ * number is taken literally, but the usual shorthands scale it up — "35k" and
+ * "35rb" are 35.000, "2jt" is 2.000.000.
+ */
+function parseAmount(text: string): number {
+  const match = text.match(/(\d+(?:[.,]\d+)?)\s*(jt|juta|m|k|rb|ribu)?/i)
+  if (!match) return 50_000
+
+  const value = Number(match[1].replace(',', '.'))
+  if (!Number.isFinite(value) || value <= 0) return 50_000
+
+  switch (match[2]?.toLowerCase()) {
+    case 'jt':
+    case 'juta':
+    case 'm':
+      return Math.round(value * 1_000_000)
+    case 'k':
+    case 'rb':
+    case 'ribu':
+      return Math.round(value * 1_000)
+    default:
+      return Math.round(value)
+  }
+}
+
+const INCOME_WORDS = ['gaji', 'dapat', 'masuk', 'honor', 'bonus', 'salary', 'income', 'paid']
+
 export function HeroSection({ ctaTo }: { ctaTo: string }) {
   const { t } = useT()
 
   // Interactive phone mockup state
-  const [balance, setBalance] = useState(12480000)
-  const [dailyBudgetLeft, setDailyBudgetLeft] = useState(175000)
+  const [balance, setBalance] = useState(START_BALANCE)
+  const [dailyBudgetLeft, setDailyBudgetLeft] = useState(START_BUDGET_LEFT)
   const [customInput, setCustomInput] = useState('')
   const [lastAddedId, setLastAddedId] = useState<string | null>(null)
 
   const [txList, setTxList] = useState<TxItem[]>([
     {
-      id: '1',
+      id: 'seed-coffee',
       icon: Coffee,
-      chipClass: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
-      title: 'Kopi Kenangan',
+      chipClass: CHIP_EXPENSE,
+      title: t('land.heroSimCoffee'),
       sub: 'BCA · 09:12',
-      amount: 25000,
+      amount: 25_000,
       isIncome: false,
     },
     {
-      id: '2',
+      id: 'seed-salary',
       icon: Banknote,
-      chipClass: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
-      title: 'Gaji Transfer',
-      sub: 'BCA · Kemarin',
-      amount: 8500000,
+      chipClass: CHIP_INCOME,
+      title: t('land.heroSimSalary'),
+      sub: `BCA · ${t('land.heroMockYesterday')}`,
+      amount: 8_500_000,
       isIncome: true,
     },
   ])
 
-  // Self-running Auto Simulation Loop
+  const addTransaction = useCallback(
+    (
+      title: string,
+      amount: number,
+      isIncome: boolean,
+      icon: typeof Coffee,
+      chipClass: string,
+      sub: string
+    ) => {
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+      setTxList((prev) => [{ id, icon, chipClass, title, sub, amount, isIncome }, ...prev.slice(0, 4)])
+      setLastAddedId(id)
+
+      if (isIncome) {
+        // Money coming in tops the day's allowance back up, so a long-running
+        // demo never gets stuck showing an empty bar and "nice pace".
+        setBalance((b) => b + amount)
+        setDailyBudgetLeft(START_BUDGET_LEFT)
+      } else {
+        setBalance((b) => Math.max(0, b - amount))
+        setDailyBudgetLeft((prev) => Math.max(0, prev - amount))
+      }
+    },
+    []
+  )
+
+  // Self-running demo. The step counter lives in a ref so re-renders caused by
+  // each added row don't restart the sequence at the first preset.
+  const stepRef = useRef(0)
   useEffect(() => {
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reduced) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
 
-    const presetSimulations = [
-      { title: 'Kopi Kenangan', amount: 25000, isIncome: false, icon: Coffee, chipClass: 'bg-amber-500/15 text-amber-600 dark:text-amber-400', sub: 'BCA · Auto Log' },
-      { title: 'Honor Freelance', amount: 1500000, isIncome: true, icon: Banknote, chipClass: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400', sub: 'Mandiri · Auto Log' },
-      { title: 'Belanja Minimarket', amount: 85000, isIncome: false, icon: ShoppingBag, chipClass: 'bg-violet-500/15 text-violet-600 dark:text-violet-400', sub: 'GoPay · Auto Log' },
-      { title: 'Token Listrik PLN', amount: 100000, isIncome: false, icon: Zap, chipClass: 'bg-blue-500/15 text-blue-600 dark:text-blue-400', sub: 'BCA · Auto Log' },
-    ]
-
-    let step = 0
     const interval = setInterval(() => {
-      const sim = presetSimulations[step % presetSimulations.length]
-      step++
-      handleAddTransaction(sim.title, sim.amount, sim.isIncome, sim.icon, sim.chipClass, sim.sub)
+      const sim = AUTO_PLAY[stepRef.current % AUTO_PLAY.length]
+      stepRef.current += 1
+      addTransaction(
+        t(sim.titleKey),
+        sim.amount,
+        sim.isIncome,
+        sim.icon,
+        sim.chipClass,
+        `${sim.wallet} · ${t('land.heroMockAuto')}`
+      )
     }, 4500)
 
     return () => clearInterval(interval)
-  }, [])
-
-  const handleAddTransaction = (
-    title: string,
-    amount: number,
-    isIncome: boolean,
-    icon: typeof Coffee,
-    chipClass: string,
-    sub = 'Live Demo'
-  ) => {
-    const id = Date.now().toString()
-    const newTx: TxItem = {
-      id,
-      icon,
-      chipClass,
-      title,
-      sub,
-      amount,
-      isIncome,
-    }
-
-    setTxList((prev) => [newTx, ...prev.slice(0, 4)])
-    setLastAddedId(id)
-
-    if (isIncome) {
-      setBalance((b) => b + amount)
-    } else {
-      setBalance((b) => b - amount)
-      setDailyBudgetLeft((prev) => Math.max(0, prev - amount))
-    }
-  }
+  }, [addTransaction, t])
 
   const handleCustomSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!customInput.trim()) return
+    const text = customInput.trim()
+    if (!text) return
 
-    const inputLower = customInput.toLowerCase()
-    let amount = 50000
-    const match = customInput.match(/\d+/)
-    if (match) {
-      const num = parseInt(match[0], 10)
-      amount = num < 1000 ? num * 1000 : num
-    }
+    const lower = text.toLowerCase()
+    const isIncome = INCOME_WORDS.some((w) => lower.includes(w))
 
-    const isIncome = inputLower.includes('gaji') || inputLower.includes('dapat') || inputLower.includes('masuk')
-
-    handleAddTransaction(
-      customInput,
-      amount,
+    addTransaction(
+      text,
+      parseAmount(text),
       isIncome,
       isIncome ? Banknote : ShoppingBag,
-      isIncome ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
-      'Telegram Bot'
+      isIncome ? CHIP_INCOME : CHIP_EXPENSE,
+      'Telegram'
     )
     setCustomInput('')
   }
+
+  const budgetPct = Math.min(100, Math.max(2, (dailyBudgetLeft / DAILY_BUDGET) * 100))
 
   return (
     <div className="relative z-10 mx-auto grid max-w-6xl items-center gap-12 px-6 pb-24 pt-10 lg:grid-cols-2 lg:gap-8 lg:pt-16">
@@ -164,8 +204,9 @@ export function HeroSection({ ctaTo }: { ctaTo: string }) {
             href="#telegram-demo"
             onClick={(e) => {
               e.preventDefault()
-              const el = document.getElementById('telegram-demo')
-              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              document
+                .getElementById('telegram-demo')
+                ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
             }}
             className="pressable inline-flex h-13 items-center rounded-xl border border-white/30 bg-white/10 px-6 text-base font-semibold text-white backdrop-blur-md transition hover:bg-white/20 active:scale-95"
           >
@@ -198,7 +239,9 @@ export function HeroSection({ ctaTo }: { ctaTo: string }) {
             <Sparkles className="h-4 w-4 text-indigo-500" /> {t('land.heroAiTitle')}
           </div>
           <p className="mt-1.5 text-xs font-medium leading-normal text-muted-foreground">
-            {t('land.heroAiBody', { amount: `Rp ${dailyBudgetLeft.toLocaleString('id-ID')}` })}
+            {dailyBudgetLeft > 0
+              ? t('land.heroAiBody', { amount: `Rp ${dailyBudgetLeft.toLocaleString('id-ID')}` })
+              : t('land.heroAiBodyEmpty')}
           </p>
         </div>
 
@@ -217,7 +260,7 @@ export function HeroSection({ ctaTo }: { ctaTo: string }) {
               <div className="flex items-center justify-between px-1">
                 <div>
                   <p className="text-[10px] font-semibold text-muted-foreground">
-                    {t('land.heroMockDate')}
+                    {format(new Date(), 'EEEE, d MMMM', { locale: dateLocale() })}
                   </p>
                   <p className="text-sm font-extrabold text-foreground">{t('land.heroMockGreeting')}</p>
                 </div>
@@ -233,7 +276,7 @@ export function HeroSection({ ctaTo }: { ctaTo: string }) {
                     {t('land.heroMockBalanceTitle')}
                   </p>
                   <span className="rounded-md bg-white/20 px-1.5 py-0.5 text-[9px] font-bold text-white">
-                    PWA Live
+                    {t('land.heroMockDemoBadge')}
                   </span>
                 </div>
                 <p className="mt-1.5 font-numeric text-2xl font-extrabold tracking-tight transition-all duration-300">
@@ -249,7 +292,7 @@ export function HeroSection({ ctaTo }: { ctaTo: string }) {
                   <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-white/20">
                     <div
                       className="h-full bg-emerald-400 transition-all duration-500"
-                      style={{ width: `${Math.min(100, Math.max(10, (dailyBudgetLeft / 200000) * 100))}%` }}
+                      style={{ width: `${budgetPct}%` }}
                     />
                   </div>
                 </div>
@@ -264,66 +307,66 @@ export function HeroSection({ ctaTo }: { ctaTo: string }) {
                   <button
                     type="button"
                     onClick={() =>
-                      handleAddTransaction(
-                        'Kopi Kenangan',
-                        25000,
+                      addTransaction(
+                        t('land.heroSimCoffee'),
+                        25_000,
                         false,
                         Coffee,
-                        'bg-amber-500/15 text-amber-600 dark:text-amber-400',
-                        'BCA · Instant'
+                        CHIP_EXPENSE,
+                        `BCA · ${t('land.heroMockNow')}`
                       )
                     }
                     className="pressable inline-flex items-center gap-1 rounded-lg border border-border/60 bg-surface px-2.5 py-1.5 text-xs font-semibold shadow-xs transition hover:border-primary/50 hover:bg-primary-soft active:scale-95"
                   >
-                    ☕ Kopi 25k
+                    {t('land.heroChipCoffee')}
                   </button>
                   <button
                     type="button"
                     onClick={() =>
-                      handleAddTransaction(
-                        'Bonus / Gaji',
-                        5000000,
+                      addTransaction(
+                        t('land.heroSimSalary'),
+                        5_000_000,
                         true,
                         Banknote,
-                        'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
-                        'BCA · Instant'
+                        CHIP_INCOME,
+                        `BCA · ${t('land.heroMockNow')}`
                       )
                     }
                     className="pressable inline-flex items-center gap-1 rounded-lg border border-border/60 bg-surface px-2.5 py-1.5 text-xs font-semibold shadow-xs transition hover:border-emerald-500/50 hover:bg-emerald-500/10 active:scale-95"
                   >
-                    💰 Gaji 5jt
+                    {t('land.heroChipSalary')}
                   </button>
                   <button
                     type="button"
                     onClick={() =>
-                      handleAddTransaction(
-                        'Belanja Supermarket',
-                        150000,
+                      addTransaction(
+                        t('land.heroSimGroceries'),
+                        150_000,
                         false,
                         ShoppingBag,
-                        'bg-violet-500/15 text-violet-600 dark:text-violet-400',
-                        'GoPay · Instant'
+                        CHIP_SHOPPING,
+                        `GoPay · ${t('land.heroMockNow')}`
                       )
                     }
                     className="pressable inline-flex items-center gap-1 rounded-lg border border-border/60 bg-surface px-2.5 py-1.5 text-xs font-semibold shadow-xs transition hover:border-violet-500/50 hover:bg-violet-500/10 active:scale-95"
                   >
-                    🛒 Belanja 150k
+                    {t('land.heroChipGroceries')}
                   </button>
                   <button
                     type="button"
                     onClick={() =>
-                      handleAddTransaction(
-                        'Token Listrik PLN',
-                        100000,
+                      addTransaction(
+                        t('land.heroSimElectricity'),
+                        100_000,
                         false,
                         Zap,
-                        'bg-blue-500/15 text-blue-600 dark:text-blue-400',
-                        'Mandiri · Instant'
+                        CHIP_BILL,
+                        `Mandiri · ${t('land.heroMockNow')}`
                       )
                     }
                     className="pressable inline-flex items-center gap-1 rounded-lg border border-border/60 bg-surface px-2.5 py-1.5 text-xs font-semibold shadow-xs transition hover:border-blue-500/50 hover:bg-blue-500/10 active:scale-95"
                   >
-                    ⚡ PLN 100k
+                    {t('land.heroChipElectricity')}
                   </button>
                 </div>
               </div>
@@ -334,11 +377,13 @@ export function HeroSection({ ctaTo }: { ctaTo: string }) {
                   type="text"
                   value={customInput}
                   onChange={(e) => setCustomInput(e.target.value)}
-                  placeholder="Ketik cth: Makan 35k..."
+                  placeholder={t('land.heroMockInputPlaceholder')}
+                  aria-label={t('land.heroMockInputPlaceholder')}
                   className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-xs font-medium placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                 />
                 <button
                   type="submit"
+                  aria-label={t('land.heroMockAddAria')}
                   className="flex shrink-0 items-center justify-center rounded-xl bg-primary px-3 py-2 text-primary-foreground transition hover:opacity-90 active:scale-95"
                 >
                   <Plus className="h-4 w-4" />
@@ -349,9 +394,11 @@ export function HeroSection({ ctaTo }: { ctaTo: string }) {
               <div className="card-surface rounded-2xl p-3 shadow-xs">
                 <div className="flex items-center justify-between px-1 pb-2">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Transaksi Hari Ini
+                    {t('land.heroMockTxTitle')}
                   </p>
-                  <span className="text-[9px] font-medium text-emerald-500 animate-pulse">Live Feed</span>
+                  <span className="text-[9px] font-medium text-emerald-500 animate-pulse">
+                    {t('land.heroMockLive')}
+                  </span>
                 </div>
                 <div className="space-y-2">
                   {txList.map((tx) => {
@@ -379,7 +426,7 @@ export function HeroSection({ ctaTo }: { ctaTo: string }) {
                         </div>
                         <p
                           className={cn(
-                            'font-numeric text-xs font-bold',
+                            'font-numeric text-xs font-bold whitespace-nowrap',
                             tx.isIncome ? 'text-positive' : 'text-negative'
                           )}
                         >

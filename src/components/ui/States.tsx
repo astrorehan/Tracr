@@ -96,7 +96,7 @@ export function TableSkeleton({ rows = 6 }: { rows?: number }) {
 
 export function DashboardSkeleton() {
   return (
-    <div className="mx-auto max-w-2xl lg:max-w-none lg:px-8" aria-busy="true">
+    <div aria-busy="true">
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-6 xl:grid-cols-[minmax(0,1fr)_400px] xl:gap-8">
         {/* Primary column skeleton */}
         <div className="min-w-0">
@@ -136,7 +136,7 @@ export function DashboardSkeleton() {
 
 export function PageSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6 py-4">
+    <div className="w-full space-y-6 py-4">
       <div className="flex items-center justify-between">
         <div className="space-y-2">
           <Skeleton className="h-8 w-44 rounded-xl" />

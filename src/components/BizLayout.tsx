@@ -75,7 +75,7 @@ export function BizLayout() {
   // Guard: products and profit only make sense inside a business book.
   if (activeBook && activeBook.type !== 'business' && !isDebtsRoute) {
     return (
-      <div className="mx-auto max-w-xl px-4 pt-8">
+      <div className="mx-auto max-w-xl pt-8">
         <div className="flex flex-col items-center gap-4 rounded-[24px] border border-border bg-surface p-8 text-center shadow-sm">
           <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-soft text-primary">
             <Store className="h-7 w-7" />
@@ -90,7 +90,7 @@ export function BizLayout() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 pb-24">
+    <div className="pb-24">
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <span className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.14em] text-primary">

@@ -136,7 +136,7 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl lg:max-w-none lg:px-8">
+    <div>
       {/* Mobile: the blue is a FIXED background layer. The hero text below scrolls
           in normal flow over it, then slides under the white sheet. */}
       <div aria-hidden className="brand-hero home-hero-bg pointer-events-none fixed inset-x-0 top-0 h-[65vh] z-0 sm:hidden" />

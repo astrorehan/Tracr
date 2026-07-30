@@ -9,6 +9,14 @@ export function SafeToSpendCalculator() {
   const [income, setIncome] = useState(8000000)
   const [fixedExpenses, setFixedExpenses] = useState(3500000)
 
+  // Bills can never exceed what comes in. Dragging income down below the
+  // current bills figure used to leave the second slider pinned past its own
+  // max, showing a number the track could not represent — so pull it down too.
+  const handleIncomeChange = (next: number) => {
+    setIncome(next)
+    setFixedExpenses((prev) => Math.min(prev, next))
+  }
+
   // Calculations
   const freeMonthly = Math.max(0, income - fixedExpenses)
   const dailySafeLimit = Math.floor(freeMonthly / 30)
@@ -38,7 +46,7 @@ export function SafeToSpendCalculator() {
             {/* Slider 1: Pendapatan Bulanan */}
             <div>
               <div className="flex justify-between items-center mb-2">
-                <label className="text-sm font-bold text-foreground">
+                <label htmlFor="calc-income" className="text-sm font-bold text-foreground">
                   {t('land.calcIncome')}
                 </label>
                 <span className="font-numeric text-base font-extrabold text-primary">
@@ -46,12 +54,13 @@ export function SafeToSpendCalculator() {
                 </span>
               </div>
               <input
+                id="calc-income"
                 type="range"
                 min={2000000}
                 max={30000000}
                 step={500000}
                 value={income}
-                onChange={(e) => setIncome(Number(e.target.value))}
+                onChange={(e) => handleIncomeChange(Number(e.target.value))}
                 className="w-full accent-primary h-2 bg-muted rounded-lg cursor-pointer"
               />
               <div className="flex justify-between text-[10px] font-medium text-muted-foreground mt-1">
@@ -63,7 +72,7 @@ export function SafeToSpendCalculator() {
             {/* Slider 2: Tagihan & Tabungan Wajib */}
             <div>
               <div className="flex justify-between items-center mb-2">
-                <label className="text-sm font-bold text-foreground">
+                <label htmlFor="calc-fixed" className="text-sm font-bold text-foreground">
                   {t('land.calcFixed')}
                 </label>
                 <span className="font-numeric text-base font-extrabold text-amber-600 dark:text-amber-400">
@@ -71,9 +80,10 @@ export function SafeToSpendCalculator() {
                 </span>
               </div>
               <input
+                id="calc-fixed"
                 type="range"
                 min={500000}
-                max={Math.max(1000000, income)}
+                max={income}
                 step={250000}
                 value={fixedExpenses}
                 onChange={(e) => setFixedExpenses(Number(e.target.value))}
