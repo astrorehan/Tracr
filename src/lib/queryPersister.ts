@@ -5,9 +5,15 @@ const DB_VERSION = 2
 const STORE_NAME = 'query_cache'
 const CACHE_KEY = 'query_cache_v1'
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
+const SAVE_DEBOUNCE_MS = 2000
+
+// One connection per tab, reused. Opening a fresh handle on every write leaks
+// connections and blocks any future version upgrade.
+let dbPromise: Promise<IDBDatabase> | null = null
 
 function openDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
+  if (dbPromise) return dbPromise
+  dbPromise = new Promise<IDBDatabase>((resolve, reject) => {
     if (typeof window === 'undefined' || !window.indexedDB) {
       return reject(new Error('IndexedDB not supported'))
     }
@@ -27,6 +33,11 @@ function openDB(): Promise<IDBDatabase> {
     request.onsuccess = () => resolve(request.result)
     request.onerror = () => reject(request.error)
   })
+  // A failed open must not poison every later call.
+  dbPromise.catch(() => {
+    dbPromise = null
+  })
+  return dbPromise
 }
 
 export async function persistQueryCache(queryClient: QueryClient): Promise<void> {
@@ -43,9 +54,13 @@ export async function persistQueryCache(queryClient: QueryClient): Promise<void>
       cache: dehydrated,
     })
 
-    const tx = db.transaction(STORE_NAME, 'readwrite')
-    const store = tx.objectStore(STORE_NAME)
-    store.put(payload, CACHE_KEY)
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite')
+      tx.objectStore(STORE_NAME).put(payload, CACHE_KEY)
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+      tx.onabort = () => reject(tx.error)
+    })
   } catch {
     // Silent fallback if IndexedDB fails / restricted
   }
@@ -83,17 +98,53 @@ export async function setupQueryCachePersister(queryClient: QueryClient): Promis
   await restoreQueryCache(queryClient)
 
   let timer: ReturnType<typeof setTimeout> | null = null
+  let saving = false
+  let dirty = false
 
-  // Debounced save on cache mutation
-  const unsubscribe = queryClient.getQueryCache().subscribe(() => {
+  // Serializing the whole cache is O(cache size) on the main thread, so it runs
+  // debounced, never concurrently, and only for events that changed cached data.
+  // Without the `updated`/`removed` filter every fetch start and observer
+  // add/remove would schedule another full dehydrate.
+  const flush = () => {
+    timer = null
+    if (saving) {
+      dirty = true
+      return
+    }
+    saving = true
+    void persistQueryCache(queryClient).finally(() => {
+      saving = false
+      if (dirty) {
+        dirty = false
+        schedule()
+      }
+    })
+  }
+
+  const schedule = () => {
     if (timer) clearTimeout(timer)
-    timer = setTimeout(() => {
-      persistQueryCache(queryClient)
-    }, 1000)
+    timer = setTimeout(flush, SAVE_DEBOUNCE_MS)
+  }
+
+  const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+    if (event.type === 'added' || event.type === 'removed') return schedule()
+    if (event.type !== 'updated') return // observer add/remove changes nothing on disk
+    if (event.action.type === 'fetch') return // only flips fetchStatus
+    schedule()
   })
+
+  // A backgrounded PWA may never get another idle moment, so checkpoint on hide.
+  const onHidden = () => {
+    if (document.visibilityState === 'hidden') {
+      if (timer) clearTimeout(timer)
+      flush()
+    }
+  }
+  document.addEventListener('visibilitychange', onHidden)
 
   return () => {
     if (timer) clearTimeout(timer)
+    document.removeEventListener('visibilitychange', onHidden)
     unsubscribe()
   }
 }
@@ -111,4 +162,3 @@ export async function clearQueryCache(queryClient?: QueryClient): Promise<void> 
     // Silent fallback
   }
 }
-

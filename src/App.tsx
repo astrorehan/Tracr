@@ -63,11 +63,15 @@ const LandingPage = lazy(() =>
   import('./app/LandingPage').then((m) => ({ default: m.LandingPage })),
 )
 
-function RequireAuth({ children }: { children: React.ReactNode }) {
+function RequireAuth({ cacheReady, children }: { cacheReady: boolean; children: React.ReactNode }) {
   const { session, loading } = useAuth()
   if (loading) return <PageSkeleton />
   // Signed-out visitors land on the marketing page, not the login form.
   if (!session) return <Navigate to="/welcome" replace />
+  // Data routes must not fetch before the offline cache is hydrated, or an
+  // offline reload renders empty. Public routes read no cache, so they render
+  // without waiting on IndexedDB.
+  if (!cacheReady) return <PageSkeleton />
   return <>{children}</>
 }
 
@@ -84,7 +88,6 @@ export default function App() {
   }, [])
 
   if (!isSupabaseConfigured) return <SetupNotice />
-  if (!cacheReady) return <PageSkeleton />
 
   return (
     <ConfirmProvider>
@@ -110,7 +113,7 @@ export default function App() {
       <Route
         path="/"
         element={
-          <RequireAuth>
+          <RequireAuth cacheReady={cacheReady}>
             <AppLayout />
           </RequireAuth>
         }
