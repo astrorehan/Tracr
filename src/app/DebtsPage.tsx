@@ -1,12 +1,15 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { format } from 'date-fns'
 import {
   Plus,
   Trash2,
   MessageCircle,
   ChevronDown,
+  ChevronRight,
   ArrowDownLeft,
   ArrowUpRight,
+  Users,
 } from 'lucide-react'
 import { BizHeaderAction } from '@/components/BizLayout'
 import { Button } from '@/components/ui/Button'
@@ -20,6 +23,7 @@ import { cn } from '@/lib/utils'
 import { useDebts, useDeleteDebt, type DebtWithContact } from '@/features/debts/api'
 import { DebtForm } from '@/features/debts/DebtForm'
 import { PaymentForm } from '@/features/debts/PaymentForm'
+import { avatarColor, waNumber } from '@/features/debts/wa'
 import type { DebtDirection } from '@/types/db'
 
 import { useActiveBook } from '@/features/books/useActiveBook'
@@ -32,20 +36,6 @@ function daysSince(iso: string): number {
 }
 function remainingOf(d: DebtWithContact) {
   return Math.max(0, d.amount - d.paid)
-}
-
-/** Normalize an Indonesian phone to wa.me digits: 08xx → 628xx. */
-function waNumber(phone: string): string {
-  const digits = phone.replace(/\D/g, '')
-  return digits.startsWith('0') ? '62' + digits.slice(1) : digits
-}
-
-/** Deterministic warm avatar color from a name. */
-const AVATAR_COLORS = ['#e5484d', '#0072bc', '#7a5af0', '#0e9f5b', '#d97706', '#0a7d6f', '#c026a6']
-function avatarColor(name: string): string {
-  let h = 0
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0
-  return AVATAR_COLORS[h % AVATAR_COLORS.length]
 }
 
 interface PersonGroup {
@@ -220,6 +210,23 @@ export function DebtsPage() {
               onClick={() => setDir('payable')}
             />
           </div>
+
+          {/* Personal books have no Buku Usaha tab bar, so this is their only
+              way into the contact list. */}
+          {isPersonal && (
+            <Link
+              to="/contacts"
+              className="pressable flex items-center gap-2.5 rounded-2xl border border-border bg-surface px-3.5 py-3"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary">
+                <Users className="h-[18px] w-[18px]" />
+              </span>
+              <span className="min-w-0 flex-1 truncate text-[13.5px] font-extrabold">
+                {t('ct.manageCta')}
+              </span>
+              <ChevronRight className="h-[18px] w-[18px] shrink-0 text-muted-foreground" />
+            </Link>
+          )}
 
           {/* People */}
           {active.groups.length === 0 && settledInDir.length === 0 ? (

@@ -40,6 +40,9 @@ const PlanningPage = lazy(() =>
   import('./app/PlanningPage').then((m) => ({ default: m.PlanningPage })),
 )
 const DebtsPage = lazy(() => import('./app/DebtsPage').then((m) => ({ default: m.DebtsPage })))
+const ContactsPage = lazy(() =>
+  import('./app/ContactsPage').then((m) => ({ default: m.ContactsPage })),
+)
 const InstallmentsPage = lazy(() =>
   import('./app/InstallmentsPage').then((m) => ({ default: m.InstallmentsPage })),
 )
@@ -238,6 +241,14 @@ export default function App() {
             element={
               <Suspense fallback={<PageSkeleton />}>
                 <DebtsPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="contacts"
+            element={
+              <Suspense fallback={<PageSkeleton />}>
+                <ContactsPage />
               </Suspense>
             }
           />

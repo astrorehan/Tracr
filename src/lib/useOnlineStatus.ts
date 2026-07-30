@@ -229,6 +229,31 @@ export function useOnlineStatus() {
           return true
         }
 
+        // --- CONTACTS ---
+        if (type === 'CREATE_CONTACT') {
+          const { tempId, ...rest } = payload
+          const { data, error } = await supabase.from('contacts').insert(rest).select().single()
+          if (error) throw error
+          if (tempId && data?.id) {
+            remapQueuedTempIds(tempId, data.id)
+          }
+          return true
+        }
+
+        if (type === 'UPDATE_CONTACT') {
+          const { id, ...patch } = payload
+          const { error } = await supabase.from('contacts').update(patch).eq('id', id)
+          if (error) throw error
+          return true
+        }
+
+        if (type === 'DELETE_CONTACT') {
+          const { id } = payload
+          const { error } = await supabase.from('contacts').delete().eq('id', id)
+          if (error) throw error
+          return true
+        }
+
         // --- DEBTS ---
         if (type === 'CREATE_DEBT') {
           const { tempId, ...rest } = payload
