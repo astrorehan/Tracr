@@ -3,81 +3,93 @@ import { Link } from 'react-router-dom'
 import { Bell, BellOff, BellRing, Check, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useT } from '@/features/settings/language-context'
+import { HeaderPopover } from '@/components/ui/HeaderPopover'
 import { noteText } from './notifications'
 import { useNotifications, type ResolvedNotification } from './useNotifications'
 import { usePushReminders } from './push'
 
-export function NotificationBell({ variant = 'default' }: { variant?: 'default' | 'onDark' }) {
+/**
+ * Header bell. The list opens in a portalled sheet (`HeaderPopover`) rather
+ * than an absolute dropdown — as a child of the home hero, which is
+ * `overflow-hidden`, the old panel was clipped to nothing on a phone and the
+ * bell appeared to do nothing.
+ */
+export function NotificationBell({ onDark = false }: { onDark?: boolean }) {
   const { t } = useT()
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications()
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="relative">
+    <>
       <button
-        onClick={() => setOpen((v) => !v)}
+        type="button"
+        onClick={() => setOpen(true)}
         className={cn(
-          'pressable relative flex h-9 w-9 items-center justify-center rounded-xl transition-colors',
-          variant === 'onDark'
-            ? 'bg-white/15 text-white hover:bg-white/25'
-            : cn(
-                'border border-border bg-surface-muted/50 text-muted-foreground hover:text-foreground',
-                open && 'text-foreground',
-              ),
+          'pressable relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors',
+          onDark
+            ? 'bg-white/18 text-white ring-1 ring-white/30 hover:bg-white/28'
+            : 'bg-surface-muted text-muted-foreground ring-1 ring-border hover:text-foreground',
         )}
         aria-label={unreadCount > 0 ? t('notif.ariaUnread', { n: unreadCount }) : t('notif.title')}
+        aria-haspopup="dialog"
         aria-expanded={open}
       >
-        <Bell className="h-4 w-4" />
+        <Bell className="h-[18px] w-[18px]" />
         {unreadCount > 0 && (
-          <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-xs font-bold leading-none text-white">
+          <span
+            className={cn(
+              'absolute -right-1 -top-1 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-danger px-1 text-[10px] font-extrabold leading-none text-white',
+              onDark ? 'ring-2 ring-white/40' : 'ring-2 ring-background',
+            )}
+          >
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
       </button>
 
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden />
-          <div className="absolute right-0 z-50 mt-2 w-[20rem] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-2xl border border-border bg-surface shadow-lg animate-slide-up">
-            <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <span className="section-head text-sm text-foreground">{t('notif.title')}</span>
-              {unreadCount > 0 && (
-                <button
-                  onClick={markAllRead}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  <Check className="h-3 w-3" /> {t('notif.markAllRead')}
-                </button>
-              )}
-            </div>
-
-            {notifications.length === 0 ? (
-              <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
-                <BellOff className="h-6 w-6 text-muted-foreground" />
-                <p className="text-sm font-semibold text-foreground">{t('notif.emptyTitle')}</p>
-                <p className="text-xs text-muted-foreground">{t('notif.emptyBody')}</p>
-              </div>
-            ) : (
-              <div className="max-h-[min(70vh,26rem)] divide-y divide-border overflow-y-auto">
-                {notifications.map((n) => (
-                  <NotificationItem
-                    key={n.id}
-                    note={n}
-                    onClick={() => {
-                      markRead(n.id)
-                      setOpen(false)
-                    }}
-                  />
-                ))}
-              </div>
-            )}
-
-            <PushFooter />
+      <HeaderPopover
+        open={open}
+        onClose={() => setOpen(false)}
+        title={t('notif.title')}
+        closeLabel={t('layout.close')}
+        action={
+          unreadCount > 0 ? (
+            <button
+              type="button"
+              onClick={markAllRead}
+              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
+            >
+              <Check className="h-3.5 w-3.5" /> {t('notif.markAllRead')}
+            </button>
+          ) : null
+        }
+      >
+        {notifications.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-muted text-muted-foreground">
+              <BellOff className="h-6 w-6" />
+            </span>
+            <p className="text-sm font-bold text-foreground">{t('notif.emptyTitle')}</p>
+            <p className="text-xs font-medium text-muted-foreground">{t('notif.emptyBody')}</p>
           </div>
-        </>
-      )}
-    </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {notifications.map((n) => (
+              <NotificationItem
+                key={n.id}
+                note={n}
+                onClick={() => {
+                  markRead(n.id)
+                  setOpen(false)
+                }}
+              />
+            ))}
+          </div>
+        )}
+
+        <PushFooter />
+      </HeaderPopover>
+    </>
   )
 }
 

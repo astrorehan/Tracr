@@ -192,7 +192,7 @@ export async function runBotTurn(opts: {
 
   if (imageDataUrls.length > 0) {
     try {
-      const scan = await extractDocument(imageDataUrls, text)
+      const scan = await extractDocument(imageDataUrls, text, today)
       messages.push({
         role: 'user',
         content: (text ? `${text}\n\n` : '') + `[DOCUMENT_SCAN]\n${JSON.stringify(scan)}`,

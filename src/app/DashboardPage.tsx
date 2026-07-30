@@ -9,8 +9,6 @@ import {
   EyeOff,
   LayoutGrid,
   Tag,
-  Moon,
-  Sun,
   ChevronRight,
   ChevronDown,
   Store,
@@ -31,11 +29,8 @@ import { getCurrency } from '@/lib/currencies'
 import { useAuth } from '@/features/auth/useAuth'
 import { useActiveBook } from '@/features/books/useActiveBook'
 import { BookSwitcher } from '@/features/books/BookSwitcher'
-import { useTheme } from '@/features/settings/theme-context'
 import { useT } from '@/features/settings/language-context'
 import { dateLocale } from '@/i18n'
-import { NotificationBell } from '@/features/notifications/NotificationBell'
-import { CreditChip } from '@/features/billing/CreditChip'
 import { useAccounts, useBalances } from '@/features/accounts/api'
 import { accountTypeMeta } from '@/features/accounts/meta'
 import type { Account } from '@/types/db'
@@ -73,7 +68,6 @@ const CHIP: Record<string, string> = {
 export function DashboardPage() {
   const { profile } = useAuth()
   const { activeBook } = useActiveBook()
-  const { theme, toggle } = useTheme()
   const { t } = useT()
   const base = profile?.base_currency ?? 'IDR'
 
@@ -149,36 +143,11 @@ export function DashboardPage() {
       <div className="min-w-0">
 
       {/* ───────── Balance hero — full-bleed gradient (GoPay saldo card) ───────── */}
-      <section className="brand-hero home-hero-scroll relative z-10 overflow-hidden px-4 pb-7 pt-4 text-white sm:mt-6 sm:rounded-[24px] sm:px-6 sm:pb-6 sm:pt-5">
+      {/* The bar that used to live in here — credits, bell, theme, avatar — is
+          the shared AppHeader now, so it exists on every route rather than only
+          this one. */}
+      <section className="brand-hero home-hero-scroll relative z-10 overflow-hidden px-4 pb-7 pt-2 text-white sm:mt-6 sm:rounded-[24px] sm:px-6 sm:pb-6 sm:pt-5">
         <div className="relative z-10">
-          {/* Mobile top bar — the shared header is hidden on home/mobile */}
-          <div className="mb-4 flex items-center justify-end gap-3 sm:hidden">
-            <div className="flex shrink-0 items-center gap-2">
-              <CreditChip variant="onDark" />
-              <NotificationBell variant="onDark" />
-              <button
-                onClick={toggle}
-                className="pressable flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 text-white transition hover:bg-white/25"
-                aria-label={t('layout.toggleTheme')}
-              >
-                {theme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-              </button>
-              <Link to="/settings" aria-label={t('layout.profileSettings')} className="pressable">
-                {profile?.avatar_url ? (
-                  <img
-                    src={profile.avatar_url}
-                    alt=""
-                    className="h-9 w-9 rounded-xl border border-white/30 object-cover"
-                  />
-                ) : (
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 text-sm font-bold text-white">
-                    {(profile?.display_name ?? 'U').charAt(0).toUpperCase()}
-                  </div>
-                )}
-              </Link>
-            </div>
-          </div>
-
           {/* Balance + primary actions */}
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">

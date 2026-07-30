@@ -16,23 +16,21 @@ import {
   Users,
   Settings,
   Plus,
-  Moon,
-  Sun,
+  Sparkles,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { MsgKey } from '@/i18n'
 import type { TransactionType } from '@/types/db'
 import { useT } from '@/features/settings/language-context'
-import { useAuth } from '@/features/auth/useAuth'
 import { useActiveBook } from '@/features/books/useActiveBook'
 import { BookSwitcher } from '@/features/books/BookSwitcher'
 import { PageSkeleton } from '@/components/ui/States'
 import { PageBack } from '@/components/PageBack'
-import { useTheme } from '@/features/settings/theme-context'
+import { AppHeader } from '@/components/AppHeader'
 import { useLiveRatesSync } from '@/features/fx/useLiveRatesSync'
 import { TransactionForm } from '@/features/transactions/TransactionForm'
-import { NotificationBell } from '@/features/notifications/NotificationBell'
-import { CreditChip } from '@/features/billing/CreditChip'
+import { AiProvider } from '@/features/ai/AiProvider'
+import { useAi } from '@/features/ai/ai-context'
 import { OfflineBanner } from '@/components/OfflineBanner'
 
 type IconType = ComponentType<{ className?: string }>
@@ -72,46 +70,58 @@ const NAV_GROUPS: NavItem[][] = [
   [{ to: '/settings', label: 'nav.settings', icon: Settings }],
 ]
 
-// Mobile dock slots, left to right. `null` is the center slot the raised
-// Record button sits over.
+// Mobile dock slots, left to right.
 //
-// Every route in the app maps onto one of the four slots via `match`. Without
-// that the dock went dark the moment you opened anything outside these four
-// exact paths, which is most of the app. A slot owns the routes you reach from
-// it: the planning and Buku Usaha pages are entered from the home tiles, so
-// Home keeps them lit; Reports answers the same question as Activity; the
-// config pages sit under Settings.
-const MOBILE_NAV: (NavItem | null)[] = [
+// Every route in the app maps onto a nav slot via `match`. Without that the
+// dock went dark the moment you opened anything outside the exact paths, which
+// is most of the app. A slot owns the routes you reach from it: the planning
+// and Buku Usaha pages are entered from the home tiles, so Home keeps them lit;
+// Reports answers the same question as Activity.
+//
+// The last slot used to be Settings. It is the assistant now: asking about your
+// money is a daily thing and it had no reachable entry point on a phone, while
+// Settings is a place you visit rarely and every app on the phone keeps behind
+// the avatar — which is where it lives, in the header, on every route.
+type DockSlot =
+  | { kind: 'nav'; item: NavItem }
+  | { kind: 'record' }
+  | { kind: 'ai' }
+
+const DOCK: DockSlot[] = [
   {
-    to: '/',
-    label: 'nav.home',
-    icon: LayoutDashboard,
-    match: [
-      '/',
-      '/budgets',
-      '/bills',
-      '/goals',
-      '/installments',
-      '/products',
-      '/profit',
-      '/debts',
-      '/contacts',
-    ],
-  },
-  { to: '/accounts', label: 'nav.accounts', icon: Wallet, match: ['/accounts', '/currencies'] },
-  null,
-  {
-    to: '/transactions',
-    label: 'nav.activity',
-    icon: ArrowLeftRight,
-    match: ['/transactions', '/reports'],
+    kind: 'nav',
+    item: {
+      to: '/',
+      label: 'nav.home',
+      icon: LayoutDashboard,
+      match: [
+        '/',
+        '/budgets',
+        '/bills',
+        '/goals',
+        '/installments',
+        '/products',
+        '/profit',
+        '/debts',
+        '/contacts',
+      ],
+    },
   },
   {
-    to: '/settings',
-    label: 'nav.settings',
-    icon: Settings,
-    match: ['/settings', '/categories', '/tags', '/rules', '/books', '/data', '/billing', '/telegram'],
+    kind: 'nav',
+    item: { to: '/accounts', label: 'nav.accounts', icon: Wallet, match: ['/accounts', '/currencies'] },
   },
+  { kind: 'record' },
+  {
+    kind: 'nav',
+    item: {
+      to: '/transactions',
+      label: 'nav.activity',
+      icon: ArrowLeftRight,
+      match: ['/transactions', '/reports'],
+    },
+  },
+  { kind: 'ai' },
 ]
 
 // Mobile FAB speed-dial: three ways into the record form, each preselecting the
@@ -141,10 +151,18 @@ function matchesItem(pathname: string, item: NavItem) {
 }
 
 function mobileSlotFor(pathname: string) {
-  return MOBILE_NAV.findIndex((item) => item !== null && matchesItem(pathname, item))
+  return DOCK.findIndex((slot) => slot.kind === 'nav' && matchesItem(pathname, slot.item))
 }
 
 export function AppLayout() {
+  return (
+    <AiProvider>
+      <AppShell />
+    </AiProvider>
+  )
+}
+
+function AppShell() {
   const [addOpen, setAddOpen] = useState(false)
   // The record form opens on a preset direction; the mobile FAB picks it via the
   // speed-dial, the desktop quick-add just defaults to an expense.
@@ -170,9 +188,8 @@ export function AppLayout() {
       setSpeedOpen(true)
     }
   }
-  const { profile } = useAuth()
   const { activeBookId, activeBook, loading: booksLoading } = useActiveBook()
-  const { theme, toggle } = useTheme()
+  const ai = useAi()
   const { t } = useT()
   const { pathname } = useLocation()
   const isHome = pathname === '/'
@@ -267,39 +284,8 @@ export function AppLayout() {
       {/* ───────────────────────── Main column ───────────────────────── */}
       <div className="relative z-10 flex min-w-0 flex-1 flex-col">
         <OfflineBanner />
-        {/* Floating top right controls — desktop only. On mobile the home hero
-            carries its own copy of these, and on other routes the bottom dock
-            covers navigation, so the floating pill was just overlapping content. */}
-        <div className="fixed top-4 right-4 z-50 hidden items-center gap-2 sm:flex sm:gap-3 sm:right-6 lg:right-8 print:hidden">
-          <div className="bg-surface/80 backdrop-blur rounded-xl border border-border flex items-center p-1 shadow-sm gap-1">
-            <CreditChip />
-            <NotificationBell />
-            <button
-              onClick={toggle}
-              className="pressable flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
-              aria-label={t('layout.toggleTheme')}
-            >
-              {theme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-            </button>
-            <Link
-              to="/settings"
-              className="pressable transition-transform"
-              aria-label={t('layout.profileSettings')}
-            >
-              {profile?.avatar_url ? (
-                <img
-                  src={profile.avatar_url}
-                  alt=""
-                  className="h-9 w-9 rounded-lg object-cover transition-opacity hover:opacity-80"
-                />
-              ) : (
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-soft text-sm font-bold text-primary transition-opacity hover:opacity-80">
-                  {(profile?.display_name ?? 'U').charAt(0).toUpperCase()}
-                </div>
-              )}
-            </Link>
-          </div>
-        </div>
+        {/* One header for every route and every width — see AppHeader. */}
+        <AppHeader />
 
         {/* Scrolling body. Every route shares one content width and one gutter so
             the left edge never shifts when you switch tabs. Home is the single
@@ -352,14 +338,13 @@ export function AppLayout() {
             <span className="brand-gradient block h-[24px] w-[42px] rounded-[13px] shadow-sm shadow-primary/40" />
           </span>
 
-          {MOBILE_NAV.map((item, i) =>
-            item ? (
-              <MobileNavLink key={item.to} {...item} active={i === activeSlot} />
-            ) : (
-              // Spacer column — the Record button is absolutely centered over it.
-              <div key={`slot-${i}`} aria-hidden className="h-[46px]" />
-            ),
-          )}
+          {DOCK.map((slot, i) => {
+            if (slot.kind === 'nav')
+              return <MobileNavLink key={slot.item.to} {...slot.item} active={i === activeSlot} />
+            if (slot.kind === 'ai') return <DockAiButton key="ai" onClick={() => ai.open()} />
+            // Spacer column — the Record button is absolutely centered over it.
+            return <div key="record" aria-hidden className="h-[46px]" />
+          })}
         </div>
 
         {/* Speed-dial: the three record directions, stacked above the FAB. */}
@@ -427,6 +412,35 @@ export function AppLayout() {
         defaultType={addType}
       />
     </div>
+  )
+}
+
+/**
+ * The dock's assistant slot. A button, not a tab: it opens the chat in place
+ * instead of navigating, so it stays out of the sliding indicator. The soft
+ * pill marks it as the accent action without imitating the solid gradient the
+ * indicator uses for "you are here".
+ */
+function DockAiButton({ onClick }: { onClick: () => void }) {
+  const { t } = useT()
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={t('layout.askAi')}
+      className="pressable relative flex h-[46px] w-full flex-col items-center gap-[4px] px-0.5 pt-[3px]"
+    >
+      {/* Same 20px icon box as the tabs, so the labels sit on one line. The
+          halo is drawn outside that box and marks the slot as the accent
+          action without imitating the indicator's solid gradient. */}
+      <span className="relative flex h-[20px] w-[20px] items-center justify-center">
+        <span aria-hidden className="absolute inset-[-5px] rounded-full bg-primary/12" />
+        <Sparkles className="relative h-[20px] w-[20px] text-primary" />
+      </span>
+      <span className="max-w-full truncate text-[10px] font-semibold leading-[14px] text-primary">
+        {t('nav.ask')}
+      </span>
+    </button>
   )
 }
 

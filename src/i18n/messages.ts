@@ -253,6 +253,7 @@ export const MESSAGES = {
   'nav.products': { en: 'Products', id: 'Produk' },
   'nav.profit': { en: 'Profit', id: 'Laba-Rugi' },
   'nav.settings': { en: 'Settings', id: 'Pengaturan' },
+  'nav.ask': { en: 'Ask', id: 'Tanya' },
   'section.billsSubs': { en: 'Bills & subscriptions', id: 'Tagihan & langganan' },
   'section.savingsGoals': { en: 'Savings goals', id: 'Target nabung' },
   'section.categories': { en: 'Categories', id: 'Kategori' },
@@ -324,6 +325,18 @@ export const MESSAGES = {
   'layout.goBack': { en: 'Go back', id: 'Kembali' },
   'layout.toggleTheme': { en: 'Toggle theme', id: 'Ganti tema' },
   'layout.profileSettings': { en: 'Profile & settings', id: 'Profil & pengaturan' },
+  'layout.hi': { en: 'Hi, {name}', id: 'Halo, {name}' },
+  'layout.askAi': { en: 'Ask AI', id: 'Tanya AI' },
+  'layout.askAiHint': { en: 'Ask about your money — press /', id: 'Tanya soal uangmu — tekan /' },
+  'layout.you': { en: 'You', id: 'Kamu' },
+  'layout.yourAccount': { en: 'Your account', id: 'Akunmu' },
+  'layout.openBook': { en: 'Book you have open', id: 'Buku yang dibuka' },
+  'layout.aiCredits': { en: 'AI credits', id: 'Kredit AI' },
+  'layout.aiCreditsLeft': { en: '{n} left', id: 'sisa {n}' },
+  'layout.topUp': { en: 'Top up', id: 'Isi ulang' },
+  'layout.close': { en: 'Close', id: 'Tutup' },
+  'layout.allSettings': { en: 'All settings', id: 'Semua pengaturan' },
+  'layout.manageBooks': { en: 'Manage books', id: 'Kelola buku' },
 
   // ── Settings ─────────────────────────────────────────────────────────────
   'settings.preferences': { en: 'Preferences', id: 'Preferensi' },
@@ -506,8 +519,8 @@ export const MESSAGES = {
   'ai.scanTitleTxns': { en: 'Review {count} transactions', id: 'Periksa {count} transaksi' },
   'ai.scanTitleUnknown': { en: "Couldn't read this image", id: 'Gambar tidak terbaca' },
   'ai.scanDesc': {
-    en: 'Check the rows, then confirm once to save them all.',
-    id: 'Periksa barisnya, lalu konfirmasi sekali untuk simpan semua.',
+    en: 'Tap the pencil to fix anything that came out wrong, then confirm once to save.',
+    id: 'Ketuk ikon pensil untuk perbaiki yang keliru, lalu konfirmasi sekali untuk simpan.',
   },
   'ai.scanDescUnknown': { en: 'Nothing will be saved.', id: 'Tidak ada yang disimpan.' },
   'ai.scanAccount': { en: 'Save to account', id: 'Simpan ke dompet' },
@@ -547,6 +560,29 @@ export const MESSAGES = {
   },
   'ai.scanProblemDir': { en: 'Debit/credit unreadable', id: 'Debit/kredit tidak terbaca' },
   'ai.scanProblemAmount': { en: 'Amount unreadable', id: 'Jumlah tidak terbaca' },
+  // Fixing a scan by hand. A transaction-history screenshot prints its date
+  // heading once at the top, so photos after the first arrive with no date —
+  // rows inherit the one above and everything stays editable here.
+  'ai.scanEditRow': { en: 'Edit this row', id: 'Ubah baris ini' },
+  'ai.scanResetRow': { en: 'Undo my changes', id: 'Batalkan perubahanku' },
+  'ai.scanEdited': { en: 'Changed by you', id: 'Diubah olehmu' },
+  'ai.scanDescription': { en: 'Description', id: 'Keterangan' },
+  'ai.scanDirection': { en: 'Money in or out', id: 'Uang masuk atau keluar' },
+  'ai.scanFixDates': { en: 'Dates', id: 'Tanggal' },
+  'ai.scanDateCarried': {
+    en: 'Date taken from the row above',
+    id: 'Tanggal diambil dari baris di atas',
+  },
+  'ai.scanCarriedNotice': {
+    en: "{n} rows had no date of their own — a photo usually shows the date only at the top. I used the date from the row above them. Check it, or set one for all of them here.",
+    id: '{n} baris tidak punya tanggal sendiri — biasanya foto cuma menampilkan tanggal di bagian atas. Aku pakai tanggal dari baris di atasnya. Cek lagi, atau setel satu tanggal untuk semuanya di sini.',
+  },
+  'ai.scanNoDateNotice': {
+    en: "{n} rows have no date on the photo. Pick one here and I'll fill them in.",
+    id: '{n} baris tidak ada tanggalnya di foto. Pilih satu di sini dan aku isikan.',
+  },
+  'ai.scanApplyUnread': { en: 'Apply to {n} rows', id: 'Terapkan ke {n} baris' },
+  'ai.scanApplyAll': { en: 'or every row', id: 'atau semua baris' },
   'ai.scanSaved': { en: 'Saved {count} transaction(s).', id: 'Tersimpan {count} transaksi.' },
   'ai.scanSavedDup': {
     en: 'Saved {count}, skipped {skipped} duplicate(s).',

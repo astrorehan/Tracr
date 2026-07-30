@@ -1853,7 +1853,11 @@ export interface ScanDocument {
  * deliberately does not write to the database; the caller presents its result
  * for one explicit confirmation first. Throws 'vision-not-configured' when
  * GEMINI_API_KEY is unset. */
-export async function extractDocument(imageDataUrls: string[], caption: string): Promise<ScanDocument> {
+export async function extractDocument(
+  imageDataUrls: string[],
+  caption: string,
+  today: string = new Date().toISOString().slice(0, 10),
+): Promise<ScanDocument> {
   const key = Deno.env.get('GEMINI_API_KEY')
   if (!key) throw new Error('vision-not-configured')
 
@@ -1889,8 +1893,21 @@ export async function extractDocument(imageDataUrls: string[], caption: string):
           'pending rows and rows where the amount or direction cannot be read. Amounts are positive MAJOR ' +
           'units without thousands separators. Preserve a provider transaction/reference ID when visible. ' +
           'Indonesian amounts like 25.000 mean twenty-five thousand; use IDR unless another currency is ' +
-          'shown. Images may be sequential tiles of one long screenshot: combine their rows and do not ' +
-          'repeat overlap rows. Never invent missing values. If it is neither, return document_type="unknown" ' +
+          'shown.\n' +
+          'MULTIPLE IMAGES: they are pages or tiles of ONE document, in the order given. Read them in ' +
+          'that order as a single continuous list, combine their rows, and do not repeat rows that ' +
+          'appear in the overlap between two tiles.\n' +
+          'DATES: a transaction history groups its rows under a date heading (e.g. "12 Juli 2026", ' +
+          '"Hari ini", "Kemarin", "Today"). That heading applies to EVERY row below it until the next ' +
+          'heading appears — including rows that continue into the following images. Carry the last ' +
+          'heading you saw forward across image boundaries; a later image that shows no heading is ' +
+          'still under the heading from the earlier one, so give those rows that date instead of null. ' +
+          `Only use null when no heading has appeared yet at all. Today is ${today}: "Hari ini"/"Today" ` +
+          `means ${today}, "Kemarin"/"Yesterday" means the day before, a heading with no year means the ` +
+          `most recent such date that is not after ${today}, and no date may be after ${today}. ` +
+          'Whenever you carried a date into a later image, add one warning saying which rows got a ' +
+          'carried-over date.\n' +
+          'Never invent missing values. If it is neither, return document_type="unknown" ' +
           'with an empty transactions array and a short warning.',
       },
       {
@@ -2023,15 +2040,43 @@ export function buildSystemPrompt(opts: {
     `that is a separate record_transaction. Confirm the amount, how often, and the ` +
     `next due date before creating.\n` +
     `- When you receive a [RECEIPT_SCAN] or [DOCUMENT_SCAN] block: it is ` +
-    `machine-extracted data from a photo the user sent. Summarize it briefly ` +
+    `machine-extracted data from a photo the user sent. Lay it out as a table ` +
     `(merchant, date, total, notable items), point out anything the scanner ` +
     `flagged, then ask whether to record it. If the document could not be read or ` +
-    `the total is missing, say so and ask the user to type the amount instead.\n` +
+    `the total is missing, say so and ask the user to type the amount instead. If ` +
+    `the block says some dates were carried over from an earlier image, say that ` +
+    `out loud and ask the user to check them.\n` +
     `- If asked anything unrelated to this user's money, politely decline.`
 
   const remembers =
     `Earlier messages in this chat are remembered, so a plain "yes" refers to the ` +
     `transaction you just proposed.`
+
+  // The in-app chat renders a markdown subset (see src/features/ai/Markdown.tsx).
+  // Tables are the point: a two-column table with NO header row renders as a
+  // label/value receipt card, and a wider one with a header renders as a real
+  // table (stacked cards on a phone). Everything here is about pushing numbers
+  // out of prose and into that structure.
+  const webFormatting =
+    `\n- This is the in-app chat. It renders markdown: **bold**, "- " bullets, ` +
+    `"### " small headings, and | pipe | tables |.\n` +
+    `- Never answer with a paragraph when the answer is data. Prose is for one ` +
+    `short sentence of context, at most two; the numbers go in a table or bullets.\n` +
+    `- Restating ONE thing — a transaction you just saved, a transfer, a single ` +
+    `balance, a budget — is a two-column table with NO header row and NO ` +
+    `separator line, label on the left, value on the right. Exactly like:\n` +
+    `| Saved | Kopi Kenangan |\n| Amount | Rp 25.000 |\n| Account | GoPay |\n` +
+    `| Category | Food & drink |\n| Date | ${today} |\n` +
+    `  Keep it to 3-6 rows, the most important first, and skip rows that are ` +
+    `empty or obvious. Then one short line if anything needs saying.\n` +
+    `- Listing several comparable things — transactions, categories, months, ` +
+    `accounts — is a table WITH a header row and a |---|---| separator. Two or ` +
+    `three columns, never more than four; short cell text; put the amount in its ` +
+    `own last column. It has to fit a phone.\n` +
+    `- In a table, write an incoming amount as "+Rp 50.000" and an outgoing one ` +
+    `as "-Rp 25.000" — the app colours them from that sign.\n` +
+    `- Use a bullet list only for things that are not numbers (advice, reasons). ` +
+    `Never use a code block or a heading for data.`
 
   if (channel === 'whatsapp') {
     return (
@@ -2052,7 +2097,7 @@ export function buildSystemPrompt(opts: {
       `in a chat. Prefer one line per fact over a list of one. ${remembers}`
     )
   }
-  return common
+  return common + webFormatting
 }
 
 export interface AgentResult {

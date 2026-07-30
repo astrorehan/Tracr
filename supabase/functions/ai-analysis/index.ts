@@ -193,7 +193,10 @@ Deno.serve(async (req) => {
   if (mode === 'scan') {
     if (images.length === 0) return json({ error: 'image required', ...creditFields }, 400)
     try {
-      return json({ scan: await extractDocument(images, (body.question ?? '').trim()), ...creditFields })
+      return json({
+        scan: await extractDocument(images, (body.question ?? '').trim(), today),
+        ...creditFields,
+      })
     } catch (e) {
       const notConfigured = e instanceof Error && e.message === 'vision-not-configured'
       return json({
@@ -219,7 +222,7 @@ Deno.serve(async (req) => {
 
     if (images.length > 0) {
       try {
-        const scan = await extractDocument(images, question)
+        const scan = await extractDocument(images, question, today)
         messages.push({
           role: 'user',
           content: (question ? `${question}\n\n` : '') + `[DOCUMENT_SCAN]\n${JSON.stringify(scan)}`,
