@@ -488,8 +488,8 @@ export interface PaymentOrder {
 
 // ── Utang-Piutang / kasbon (migration 0037, business books only) ────────────
 
-/** A customer (owes us) or supplier (we owe them) in a business book. */
-export type ContactKind = 'customer' | 'supplier'
+/** A customer (owes us), a supplier (we owe them), or someone who is both. */
+export type ContactKind = 'customer' | 'supplier' | 'both'
 
 export interface Contact {
   id: string
@@ -498,11 +498,18 @@ export interface Contact {
   name: string
   phone: string | null
   kind: ContactKind
+  /** Free text: address, who they are, when they come by (migration 0042). */
+  note: string | null
+  /** Soft-hidden from pickers and lists; their debt history stays intact. */
+  is_archived: boolean
   created_at: string
 }
 
-export type NewContact = Omit<Contact, 'id' | 'user_id' | 'book_id' | 'created_at'> &
-  Partial<Pick<Contact, 'kind'>>
+export type NewContact = Omit<
+  Contact,
+  'id' | 'user_id' | 'book_id' | 'created_at' | 'note' | 'is_archived'
+> &
+  Partial<Pick<Contact, 'kind' | 'note'>>
 
 /** receivable = a customer owes us ; payable = we owe a supplier. */
 export type DebtDirection = 'receivable' | 'payable'

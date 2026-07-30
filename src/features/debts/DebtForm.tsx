@@ -17,13 +17,26 @@ interface Props {
   onClose: () => void
   /** Preselect "they owe me" vs "I owe them" from the page's active filter. */
   initialDirection?: DebtDirection
+  /** Preselect the person — used when the note starts from the contacts page. */
+  initialContactId?: string
 }
 
-export function DebtForm({ open, onClose, initialDirection = 'receivable' }: Props) {
+export function DebtForm({
+  open,
+  onClose,
+  initialDirection = 'receivable',
+  initialContactId,
+}: Props) {
   const { t } = useT()
   return (
     <Modal open={open} onClose={onClose} title={t('dform.new')}>
-      {open && <DebtFormBody onClose={onClose} initialDirection={initialDirection} />}
+      {open && (
+        <DebtFormBody
+          onClose={onClose}
+          initialDirection={initialDirection}
+          initialContactId={initialContactId}
+        />
+      )}
     </Modal>
   )
 }
@@ -31,9 +44,11 @@ export function DebtForm({ open, onClose, initialDirection = 'receivable' }: Pro
 function DebtFormBody({
   onClose,
   initialDirection,
+  initialContactId,
 }: {
   onClose: () => void
   initialDirection: DebtDirection
+  initialContactId?: string
 }) {
   const { t } = useT()
   const { profile } = useAuth()
@@ -47,7 +62,7 @@ function DebtFormBody({
   const createDebt = useCreateDebt()
 
   const [direction, setDirection] = useState<DebtDirection>(initialDirection)
-  const [contactId, setContactId] = useState('') // '' = add a new person
+  const [contactId, setContactId] = useState(initialContactId ?? '') // '' = add a new person
   const [newName, setNewName] = useState('')
   const [newPhone, setNewPhone] = useState('')
   const [amount, setAmount] = useState('')
@@ -100,10 +115,9 @@ function DebtFormBody({
       <Field label={t('dform.type')}>
         <Segmented
           value={direction}
-          onChange={(v) => {
-            setDirection(v)
-            setContactId('')
-          }}
+          // The person picker is not filtered by direction (someone can be both
+          // customer and supplier), so the pick survives a direction change.
+          onChange={setDirection}
           options={[
             { value: 'receivable', label: t('debt.filterRcv') },
             { value: 'payable', label: t('debt.filterPay') },

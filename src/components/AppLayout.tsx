@@ -13,6 +13,7 @@ import {
   HandCoins,
   Package,
   TrendingUp,
+  Users,
   Settings,
   Plus,
   Moon,
@@ -85,7 +86,17 @@ const MOBILE_NAV: (NavItem | null)[] = [
     to: '/',
     label: 'nav.home',
     icon: LayoutDashboard,
-    match: ['/', '/budgets', '/bills', '/goals', '/installments', '/products', '/profit', '/debts'],
+    match: [
+      '/',
+      '/budgets',
+      '/bills',
+      '/goals',
+      '/installments',
+      '/products',
+      '/profit',
+      '/debts',
+      '/contacts',
+    ],
   },
   { to: '/accounts', label: 'nav.accounts', icon: Wallet, match: ['/accounts', '/currencies'] },
   null,
@@ -114,7 +125,7 @@ const SPEED_ACTIONS: { type: TransactionType; label: MsgKey; icon: IconType; tin
 // Routes that share the Buku Usaha chrome (BizLayout). They animate as one
 // group so tabbing between them doesn't replay the page fade on the shared
 // header and tab bar.
-const BIZ_PATHS = ['/products', '/debts', '/profit']
+const BIZ_PATHS = ['/products', '/debts', '/contacts', '/profit']
 
 function animationKeyFor(pathname: string) {
   return BIZ_PATHS.some((p) => pathname.startsWith(p)) ? 'biz' : pathname
@@ -181,10 +192,14 @@ export function AppLayout() {
         0,
         { to: '/products', label: 'nav.products', icon: Package },
         { to: '/debts', label: 'debt.titleBusiness', icon: HandCoins },
+        { to: '/contacts', label: 'ct.title', icon: Users },
         { to: '/profit', label: 'nav.profit', icon: TrendingUp },
       )
     } else {
-      groups[1].push({ to: '/debts', label: 'debt.titlePersonal', icon: HandCoins })
+      groups[1].push(
+        { to: '/debts', label: 'debt.titlePersonal', icon: HandCoins },
+        { to: '/contacts', label: 'ct.title', icon: Users },
+      )
     }
     return groups
   }, [activeBook?.type])

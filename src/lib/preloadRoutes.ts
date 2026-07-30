@@ -20,6 +20,7 @@ export function preloadAllRoutes(): void {
     void import('@/app/RulesPage')
     void import('@/app/ProductsPage')
     void import('@/app/DebtsPage')
+    void import('@/app/ContactsPage')
     void import('@/app/ProfitPage')
     void import('@/app/CurrenciesPage')
     void import('@/app/DataPage')

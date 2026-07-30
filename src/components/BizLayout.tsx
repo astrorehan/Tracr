@@ -19,8 +19,13 @@ type BizRoute = { title: MsgKey; subtitle: MsgKey; bizOnly: MsgKey }
 const ROUTES: Record<string, BizRoute> = {
   '/products': { title: 'nav.products', subtitle: 'prod.subtitle', bizOnly: 'prod.bizOnly' },
   '/debts': { title: 'debt.title', subtitle: 'debt.subtitle', bizOnly: 'debt.bizOnly' },
+  '/contacts': { title: 'ct.title', subtitle: 'ct.subtitle', bizOnly: 'ct.bizOnly' },
   '/profit': { title: 'nav.profit', subtitle: 'profit.subtitle', bizOnly: 'profit.bizOnly' },
 }
+
+// Kasbon and its contact list are the two tools a personal book may also use —
+// lending money to a cousin is not a business activity.
+const PERSONAL_OK = ['/debts', '/contacts']
 
 // The header's right-hand action belongs to the page (it opens that page's
 // form), but it is drawn in the shared header. The page portals it into this
@@ -46,6 +51,7 @@ export function BizLayout() {
 
   const isPersonal = activeBook?.type === 'personal'
   const isDebtsRoute = pathname.startsWith('/debts')
+  const isPersonalOk = PERSONAL_OK.some((p) => pathname.startsWith(p))
 
   const key = Object.keys(ROUTES).find((p) => pathname.startsWith(p))
   const route = key ? ROUTES[key] : undefined
@@ -69,11 +75,12 @@ export function BizLayout() {
   useEffect(() => {
     void import('@/app/ProductsPage')
     void import('@/app/DebtsPage')
+    void import('@/app/ContactsPage')
     void import('@/app/ProfitPage')
   }, [])
 
   // Guard: products and profit only make sense inside a business book.
-  if (activeBook && activeBook.type !== 'business' && !isDebtsRoute) {
+  if (activeBook && activeBook.type !== 'business' && !isPersonalOk) {
     return (
       <div className="mx-auto max-w-xl pt-8">
         <div className="flex flex-col items-center gap-4 rounded-[24px] border border-border bg-surface p-8 text-center shadow-sm">

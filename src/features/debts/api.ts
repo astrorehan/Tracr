@@ -12,32 +12,70 @@ export type DebtWithContact = Debt & {
   contact: Pick<Contact, 'id' | 'name' | 'phone' | 'kind'> | null
 }
 
-export function useContacts() {
+/** People in the current book, A-Z. Archived contacts are hidden by default so
+ *  pickers stay short; the contacts page asks for them explicitly. */
+export function useContacts(includeArchived = false) {
   const { activeBookId } = useActiveBook()
   return useQuery({
-    queryKey: [...qk.contacts, activeBookId],
+    queryKey: [...qk.contacts, activeBookId, { includeArchived }],
     enabled: Boolean(activeBookId),
     queryFn: async (): Promise<Contact[]> => {
-      const { data, error } = await supabase
-        .from('contacts')
-        .select('*')
-        .eq('book_id', activeBookId!)
-        .order('name')
+      let query = supabase.from('contacts').select('*').eq('book_id', activeBookId!)
+      if (!includeArchived) query = query.eq('is_archived', false)
+      const { data, error } = await query.order('name')
       if (error) throw error
       return data as Contact[]
     },
   })
 }
 
+/**
+ * Add someone to the book. A person typed twice with the same name is the same
+ * person, so an existing match (case-insensitive, same book) is reused instead
+ * of inserting a duplicate — that is what kept the old inline-only flow messy.
+ * A reused contact is un-archived and gains any phone/note the caller supplied.
+ */
 export function useCreateContact() {
   const qc = useQueryClient()
   const { activeBookId } = useActiveBook()
   return useMutation({
     mutationFn: async (input: NewContact): Promise<Contact> => {
       const userId = await getAuthenticatedUserId()
+      const name = input.name.trim()
+
+      const { data: existing } = await supabase
+        .from('contacts')
+        .select('*')
+        .eq('book_id', activeBookId!)
+        .ilike('name', name)
+        .limit(1)
+        .maybeSingle()
+
+      if (existing) {
+        const prev = existing as Contact
+        // Someone recorded as a customer who now supplies us (or vice versa) is
+        // both, not a second person.
+        const kind: Contact['kind'] =
+          input.kind && input.kind !== prev.kind ? 'both' : prev.kind
+        const patch = {
+          kind,
+          phone: prev.phone ?? input.phone ?? null,
+          note: prev.note ?? input.note ?? null,
+          is_archived: false,
+        }
+        const { data, error } = await supabase
+          .from('contacts')
+          .update(patch)
+          .eq('id', prev.id)
+          .select()
+          .single()
+        if (error) throw error
+        return data as Contact
+      }
+
       const { data, error } = await supabase
         .from('contacts')
-        .insert({ ...input, user_id: userId, book_id: activeBookId })
+        .insert({ ...input, name, user_id: userId, book_id: activeBookId })
         .select()
         .single()
       if (error) throw error
@@ -46,6 +84,94 @@ export function useCreateContact() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.contacts }),
   })
 }
+
+export function useUpdateContact() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, patch }: { id: string; patch: Partial<Contact> }) => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        enqueueOfflineMutation('UPDATE_CONTACT', { id, ...patch })
+        return
+      }
+
+      try {
+        const { error } = await supabase.from('contacts').update(patch).eq('id', id)
+        if (error) throw error
+      } catch (err) {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          enqueueOfflineMutation('UPDATE_CONTACT', { id, ...patch })
+        }
+        throw err
+      }
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: qk.contacts })
+      void qc.invalidateQueries({ queryKey: qk.debts })
+    },
+  })
+}
+
+/** Hide someone who stopped coming. Their debt records keep the name attached. */
+export function useArchiveContact() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, archived }: { id: string; archived: boolean }) => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        enqueueOfflineMutation('UPDATE_CONTACT', { id, is_archived: archived })
+        return
+      }
+
+      try {
+        const { error } = await supabase
+          .from('contacts')
+          .update({ is_archived: archived })
+          .eq('id', id)
+        if (error) throw error
+      } catch (err) {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          enqueueOfflineMutation('UPDATE_CONTACT', { id, is_archived: archived })
+        }
+        throw err
+      }
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.contacts }),
+  })
+}
+
+/** Permanent delete. Only offered for a person with no debt records — debts
+ *  point at contacts with ON DELETE SET NULL, so deleting someone who has
+ *  history would leave those records nameless. */
+export function useDeleteContact() {
+  const qc = useQueryClient()
+  const { activeBookId } = useActiveBook()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        enqueueOfflineMutation('DELETE_CONTACT', { id })
+        qc.setQueriesData({ queryKey: [...qk.contacts, activeBookId] }, (old: Contact[] | undefined) =>
+          old ? old.filter((c) => c.id !== id) : [],
+        )
+        return
+      }
+
+      try {
+        const { error } = await supabase.from('contacts').delete().eq('id', id)
+        if (error) throw error
+      } catch (err) {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          enqueueOfflineMutation('DELETE_CONTACT', { id })
+        }
+        throw err
+      }
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: qk.contacts })
+      void qc.invalidateQueries({ queryKey: qk.debts })
+    },
+  })
+}
+
+export { tallyByContact, type ContactTally } from './tally'
 
 export function useDebts() {
   const { activeBookId } = useActiveBook()
