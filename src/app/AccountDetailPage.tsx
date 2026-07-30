@@ -134,7 +134,7 @@ export function AccountDetailPage() {
   const diffPreview = actual.trim() ? amountToMinor(actual, account.currency) - balance : 0
 
   return (
-    <div className="mx-auto max-w-3xl space-y-5">
+    <div className="space-y-5">
       <PageHeader
         title={<span className="block truncate">{account.name}</span>}
         action={

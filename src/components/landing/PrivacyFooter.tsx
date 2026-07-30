@@ -76,6 +76,7 @@ export function PrivacyFooter({ ctaTo }: { ctaTo: string }) {
               <select
                 value={lang}
                 onChange={(e) => setLang(e.target.value as Lang)}
+                aria-label={t('land.langPicker')}
                 className="bg-transparent text-xs font-semibold text-foreground focus:outline-none cursor-pointer"
               >
                 {LANGS.map((l) => (

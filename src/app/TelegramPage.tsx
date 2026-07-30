@@ -89,7 +89,7 @@ export function TelegramPage() {
   if (links.isLoading) return <CardSkeleton cards={2} />
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="max-w-3xl space-y-6">
       <PageHeader title={t('tg.title')} subtitle={t('tg.subtitle')} />
 
       {link ? (

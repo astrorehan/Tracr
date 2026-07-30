@@ -81,7 +81,7 @@ export function CurrenciesPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5">
+    <div className="max-w-3xl space-y-5">
       <PageHeader title={t('fx.title')} subtitle={t('fx.subtitle')} />
 
       {/* Base + refresh strip */}

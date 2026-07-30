@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Send, Bot, Sparkles, CheckCheck } from 'lucide-react'
 import { useT } from '@/features/settings/language-context'
+import type { MsgKey } from '@/i18n'
 import { cn } from '@/lib/utils'
 
 interface ChatMessage {
@@ -10,21 +11,52 @@ interface ChatMessage {
   timestamp: string
 }
 
+/** Preset prompts, in the order the demo plays them. */
+const PRESETS: { key: MsgKey; intent: Intent }[] = [
+  { key: 'land.tgSimPreset1', intent: 'coffee' },
+  { key: 'land.tgSimPreset2', intent: 'income' },
+  { key: 'land.tgSimPreset3', intent: 'transfer' },
+  { key: 'land.tgSimPreset4', intent: 'query' },
+]
+
+type Intent = 'coffee' | 'income' | 'transfer' | 'query' | 'generic'
+
+/**
+ * Guess what a typed message is about. Both languages are matched, because the
+ * presets themselves are translated — an English visitor tapping "Coffee 25k
+ * BCA" has to get the coffee reply, not the catch-all one.
+ */
+const INTENT_WORDS: Record<Exclude<Intent, 'generic'>, string[]> = {
+  coffee: ['kopi', 'coffee'],
+  income: ['gaji', 'masuk', 'honor', 'salary', 'income'],
+  transfer: ['transfer', 'pindah', 'move'],
+  query: ['berapa', 'how much', 'how many'],
+}
+
+const REPLY_KEY: Record<Exclude<Intent, 'generic'>, MsgKey> = {
+  coffee: 'land.tgSimReplyCoffee',
+  income: 'land.tgSimReplyIncome',
+  transfer: 'land.tgSimReplyTransfer',
+  query: 'land.tgSimReplyQuery',
+}
+
+/** A question wins over a keyword: "how much on coffee?" is a query, not a log. */
+function detectIntent(text: string): Intent {
+  const lower = text.toLowerCase()
+  if (INTENT_WORDS.query.some((w) => lower.includes(w))) return 'query'
+  if (INTENT_WORDS.transfer.some((w) => lower.includes(w))) return 'transfer'
+  if (INTENT_WORDS.income.some((w) => lower.includes(w))) return 'income'
+  if (INTENT_WORDS.coffee.some((w) => lower.includes(w))) return 'coffee'
+  return 'generic'
+}
+
+const MAX_DEMO_MESSAGES = 8
+
 export function TelegramSimulator() {
   const { t } = useT()
   const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: '1',
-      sender: 'user',
-      text: 'makan siang 35k pakai gopay',
-      timestamp: '12:30',
-    },
-    {
-      id: '2',
-      sender: 'bot',
-      text: '✅ Transaksi dicatat! Rp 35.000 (Kategori: Makan & Minum, Dompet: GoPay). Sisa budget harian: Rp 140.000.',
-      timestamp: '12:30',
-    },
+    { id: 'seed-user', sender: 'user', text: t('land.tgSimSeedUser'), timestamp: '12:30' },
+    { id: 'seed-bot', sender: 'bot', text: t('land.tgSimSeedBot'), timestamp: '12:30' },
   ])
 
   const [inputVal, setInputVal] = useState('')
@@ -32,75 +64,71 @@ export function TelegramSimulator() {
   const chatContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
-    }
+    const el = chatContainerRef.current
+    // Keep the newest message in view without dragging the whole page along.
+    if (el) el.scrollTop = el.scrollHeight
   }, [messages, isTyping])
 
-  // Auto Demo Replay Loop
+  const sendText = useCallback(
+    (userText: string, intent?: Intent) => {
+      const text = userText.trim()
+      if (!text) return
+
+      const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      setMessages((prev) => [
+        ...prev,
+        { id: `${Date.now()}-u`, sender: 'user', text, timestamp: now },
+      ])
+      setInputVal('')
+      setIsTyping(true)
+
+      const resolved = intent ?? detectIntent(text)
+      const reply =
+        resolved === 'generic'
+          ? t('land.tgSimReplyGeneric', { text })
+          : t(REPLY_KEY[resolved])
+
+      setTimeout(() => {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `${Date.now()}-b`,
+            sender: 'bot',
+            text: reply,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          },
+        ])
+        setIsTyping(false)
+      }, 1200)
+    },
+    [t]
+  )
+
+  // Self-running demo. The step counter is a ref so the sequence keeps advancing
+  // across the re-renders each new message causes, instead of replaying preset 1
+  // forever. Guarded by a ref for the same reason: reading `messages`/`isTyping`
+  // from state here would restart the interval on every tick.
+  const stepRef = useRef(0)
+  const busyRef = useRef(false)
+  const countRef = useRef(0)
+
   useEffect(() => {
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reduced) return
+    busyRef.current = isTyping
+    countRef.current = messages.length
+  }, [isTyping, messages.length])
 
-    const autoPrompts = [
-      'Kopi 25k BCA',
-      'Transfer 200k ke Gopay',
-      'Berapa pengeluaran kopi bulan ini?',
-    ]
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
 
-    let step = 0
     const interval = setInterval(() => {
-      if (messages.length < 8 && !isTyping) {
-        handleSendText(autoPrompts[step % autoPrompts.length])
-        step++
-      }
+      if (busyRef.current || countRef.current >= MAX_DEMO_MESSAGES) return
+      const preset = PRESETS[stepRef.current % PRESETS.length]
+      stepRef.current += 1
+      sendText(t(preset.key), preset.intent)
     }, 7000)
 
     return () => clearInterval(interval)
-  }, [messages, isTyping])
-
-  const handleSendText = (userText: string) => {
-    if (!userText.trim() || isTyping) return
-
-    const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    const userMsg: ChatMessage = {
-      id: Date.now().toString(),
-      sender: 'user',
-      text: userText,
-      timestamp: now,
-    }
-
-    setMessages((prev) => [...prev, userMsg])
-    setInputVal('')
-    setIsTyping(true)
-
-    setTimeout(() => {
-      let botResponse = ''
-      const lower = userText.toLowerCase()
-
-      if (lower.includes('kopi')) {
-        botResponse = '☕ Transaksi dicatat! Rp 25.000 (Kategori: Kopi & Cafe, Dompet: BCA). Sisa budget harian: Rp 115.000.'
-      } else if (lower.includes('gaji')) {
-        botResponse = '💰 Pemasukan dicatat! +Rp 8.500.000 ke rekening BCA. Total saldo kini Rp 18.500.000.'
-      } else if (lower.includes('transfer')) {
-        botResponse = '🔄 Transfer berhasil dicatat! Rp 200.000 dari BCA ➔ GoPay. Bebas admin!'
-      } else if (lower.includes('berapa')) {
-        botResponse = '📊 Total pengeluaran Kopi bulan ini: Rp 245.000 (12 transaksi). Lebih hemat 15% dari bulan lalu! 🚀'
-      } else {
-        botResponse = `✅ Transaksi dicatat! "${userText}" telah dikategorikan otomatis oleh AI.`
-      }
-
-      const botMsg: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        sender: 'bot',
-        text: botResponse,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      }
-
-      setMessages((prev) => [...prev, botMsg])
-      setIsTyping(false)
-    }, 1200)
-  }
+  }, [sendText, t])
 
   return (
     <section id="telegram-demo" className="scroll-mt-12 border-y border-border bg-surface/50 py-20 sm:py-24">
@@ -121,20 +149,16 @@ export function TelegramSimulator() {
 
           {/* Presets buttons */}
           <div className="mt-6 flex flex-wrap gap-2">
-            {[
-              t('land.tgSimPreset1'),
-              t('land.tgSimPreset2'),
-              t('land.tgSimPreset3'),
-              t('land.tgSimPreset4'),
-            ].map((presetText) => (
+            {PRESETS.map((preset) => (
               <button
-                key={presetText}
+                key={preset.key}
                 type="button"
-                onClick={() => handleSendText(presetText)}
-                className="pressable inline-flex items-center gap-1.5 rounded-xl border border-sky-500/30 bg-sky-500/5 px-3 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-500/15 dark:text-sky-300 transition"
+                onClick={() => sendText(t(preset.key), preset.intent)}
+                disabled={isTyping}
+                className="pressable inline-flex items-center gap-1.5 rounded-xl border border-sky-500/30 bg-sky-500/5 px-3 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-500/15 disabled:opacity-50 dark:text-sky-300 transition"
               >
                 <Sparkles className="h-3.5 w-3.5 text-sky-500" />
-                {presetText}
+                {t(preset.key)}
               </button>
             ))}
           </div>
@@ -167,7 +191,7 @@ export function TelegramSimulator() {
               <Bot className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm font-bold leading-none">Tracr Telegram Assistant</p>
+              <p className="text-sm font-bold leading-none">Tracr Telegram Bot</p>
               <p className="mt-1 text-xs font-medium text-sky-100 flex items-center gap-1">
                 <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
                 {t('land.tgSimBotStatus')}
@@ -176,7 +200,12 @@ export function TelegramSimulator() {
           </div>
 
           {/* Messages Feed */}
-          <div ref={chatContainerRef} className="h-80 overflow-y-auto bg-slate-100/50 dark:bg-slate-950/40 p-4 space-y-3 text-sm font-medium">
+          <div
+            ref={chatContainerRef}
+            role="log"
+            aria-label={t('land.tgSimChatAria')}
+            className="h-80 overflow-y-auto bg-slate-100/50 dark:bg-slate-950/40 p-4 space-y-3 text-sm font-medium"
+          >
             {messages.map((msg) => (
               <div
                 key={msg.id}
@@ -216,7 +245,7 @@ export function TelegramSimulator() {
           <form
             onSubmit={(e) => {
               e.preventDefault()
-              handleSendText(inputVal)
+              if (!isTyping) sendText(inputVal)
             }}
             className="flex items-center gap-2 border-t border-border bg-surface p-3"
           >
@@ -225,11 +254,13 @@ export function TelegramSimulator() {
               value={inputVal}
               onChange={(e) => setInputVal(e.target.value)}
               placeholder={t('land.tgSimPlaceholder')}
+              aria-label={t('land.tgSimPlaceholder')}
               className="flex-1 rounded-xl border border-border bg-background px-4 py-2.5 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-500"
             />
             <button
               type="submit"
               disabled={isTyping || !inputVal.trim()}
+              aria-label={t('land.tgSimSendAria')}
               className="pressable flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-600 text-white transition hover:bg-sky-700 disabled:opacity-50"
             >
               <Send className="h-4 w-4" />

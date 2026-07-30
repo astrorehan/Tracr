@@ -301,7 +301,7 @@ function AccountFormBody({
                   backgroundColor: c,
                   borderColor: color === c ? 'var(--foreground)' : 'transparent',
                 }}
-                aria-label={`Color ${c}`}
+                aria-label={t('acc.form.colorSwatch', { hex: c })}
               />
             ))}
           </div>

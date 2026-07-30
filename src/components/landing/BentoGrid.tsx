@@ -21,7 +21,7 @@ export function BentoGrid() {
         </p>
       </div>
 
-      {/* 6-Item Bento Grid */}
+      {/* Five cards; the first spans two columns on desktop. */}
       <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* Item 1: Telegram Bot (Span 2 cols on desktop) */}
         <div className="group card-surface card-hover lg:col-span-2 relative overflow-hidden rounded-3xl p-8 border border-border/80 flex flex-col justify-between">

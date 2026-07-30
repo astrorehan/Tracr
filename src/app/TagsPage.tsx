@@ -30,7 +30,7 @@ export function TagsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="max-w-3xl space-y-6">
       <PageHeader
         title={t('tags.title')}
         action={

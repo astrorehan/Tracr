@@ -31,6 +31,7 @@ export function BookToggleSection() {
           <button
             type="button"
             onClick={() => setActiveTab('personal')}
+            aria-pressed={activeTab === 'personal'}
             className={cn(
               'pressable flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition-all duration-300',
               activeTab === 'personal'
@@ -44,6 +45,7 @@ export function BookToggleSection() {
           <button
             type="button"
             onClick={() => setActiveTab('business')}
+            aria-pressed={activeTab === 'business'}
             className={cn(
               'pressable flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition-all duration-300',
               activeTab === 'business'
@@ -72,11 +74,11 @@ export function BookToggleSection() {
               </p>
               <div className="mt-5 space-y-2 rounded-2xl bg-background p-3 text-xs">
                 <div className="flex justify-between font-semibold">
-                  <span>GoPay Balance</span>
+                  <span>{t('land.bookPers1Row1')}</span>
                   <span className="font-bold text-foreground">Rp 1.450.000</span>
                 </div>
                 <div className="flex justify-between font-semibold">
-                  <span>Bank BCA Rekening</span>
+                  <span>{t('land.bookPers1Row2')}</span>
                   <span className="font-bold text-foreground">Rp 10.500.000</span>
                 </div>
               </div>
@@ -112,11 +114,11 @@ export function BookToggleSection() {
               </p>
               <div className="mt-5 space-y-2 rounded-2xl bg-background p-3 text-xs">
                 <div className="flex justify-between font-semibold">
-                  <span>☕ Kopi & Dining</span>
+                  <span>{t('land.bookPers3Row1')}</span>
                   <span className="font-bold text-amber-500">Rp 320.000</span>
                 </div>
                 <div className="flex justify-between font-semibold">
-                  <span>🍿 Entertainment</span>
+                  <span>{t('land.bookPers3Row2')}</span>
                   <span className="font-bold text-violet-500">Rp 186.000</span>
                 </div>
               </div>
@@ -156,11 +158,11 @@ export function BookToggleSection() {
               </p>
               <div className="mt-5 space-y-2 rounded-2xl bg-background p-3 text-xs">
                 <div className="flex justify-between font-semibold">
-                  <span>Nasi Goreng Special</span>
+                  <span>{t('land.bookBiz2Item1')}</span>
                   <span className="font-bold text-positive">{t('land.bookBiz2ProfitNasi')}</span>
                 </div>
                 <div className="flex justify-between font-semibold">
-                  <span>Es Teh Manis</span>
+                  <span>{t('land.bookBiz2Item2')}</span>
                   <span className="font-bold text-positive">{t('land.bookBiz2ProfitTeh')}</span>
                 </div>
               </div>
@@ -177,11 +179,11 @@ export function BookToggleSection() {
               </p>
               <div className="mt-5 space-y-2 rounded-2xl bg-background p-3 text-xs">
                 <div className="flex justify-between font-semibold">
-                  <span>Bu Sari (Warung)</span>
+                  <span>{t('land.bookBiz3Name1')}</span>
                   <span className="font-bold text-rose-500">{t('land.bookBiz3Debt', { amount: 'Rp 125.000' })}</span>
                 </div>
                 <div className="flex justify-between font-semibold">
-                  <span>Pak Ahmad</span>
+                  <span>{t('land.bookBiz3Name2')}</span>
                   <span className="font-bold text-emerald-500">{t('land.bookBiz3Paid')}</span>
                 </div>
               </div>

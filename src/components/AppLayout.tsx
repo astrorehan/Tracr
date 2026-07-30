@@ -286,17 +286,20 @@ export function AppLayout() {
           </div>
         </div>
 
-        {/* Scrolling body. The home route drops padding so its gradient hero can
-            bleed edge-to-edge; the page manages its own spacing there. */}
+        {/* Scrolling body. Every route shares one content width and one gutter so
+            the left edge never shifts when you switch tabs. Home is the single
+            exception below sm: it drops the horizontal padding so its gradient
+            hero can bleed edge-to-edge, and supplies its own top gap (the hero's
+            sm:mt-6) in place of pt-6. */}
         <main
           className={cn(
             'flex-1 pb-28 sm:pb-10',
-            !isHome && 'px-4 pt-6 sm:px-6 lg:px-8',
+            isHome ? 'sm:px-6 lg:px-8' : 'px-4 pt-6 sm:px-6 lg:px-8',
           )}
         >
           <div
             key={animationKeyFor(pathname)}
-            className="mx-auto w-full max-w-[1500px]"
+            className="mx-auto w-full max-w-[1280px]"
           >
             {/* One back control for the whole shell, in the same spot on every
                 route (Home is the root, so PageBack renders nothing there). */}
