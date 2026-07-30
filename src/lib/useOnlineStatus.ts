@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   getOfflineQueue,
@@ -8,6 +8,7 @@ import {
   retryFailedMutation,
   removeFailedMutation,
   clearFailedMutations,
+  subscribeOfflineQueue,
   type QueuedMutation,
 } from './offlineQueue'
 import { qk } from './queryClient'
@@ -26,6 +27,9 @@ export function useOnlineStatus() {
   )
 
   const queryClient = useQueryClient()
+  // Guarding on the `isSyncing` state instead would make `syncNow` a new
+  // function on every sync, re-running the listener effect each time.
+  const syncingRef = useRef(false)
 
   const refreshCounts = useCallback(() => {
     setPendingCount(getOfflineQueue().length)
@@ -35,7 +39,8 @@ export function useOnlineStatus() {
   }, [])
 
   const syncNow = useCallback(async () => {
-    if (!navigator.onLine || isSyncing) return
+    if (!navigator.onLine || syncingRef.current) return
+    syncingRef.current = true
     setIsSyncing(true)
 
     try {
@@ -436,9 +441,10 @@ export function useOnlineStatus() {
     } catch {
       // ignore
     } finally {
+      syncingRef.current = false
       setIsSyncing(false)
     }
-  }, [isSyncing, queryClient, refreshCounts])
+  }, [queryClient, refreshCounts])
 
   useEffect(() => {
     const handleOnline = () => {
@@ -453,13 +459,15 @@ export function useOnlineStatus() {
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
 
-    // Interval check for pending items in localStorage / IndexedDB memory cache
-    const interval = setInterval(refreshCounts, 2000)
+    // The queue pushes changes to us, so no timer is needed. Run once on mount
+    // to pick up anything the async IndexedDB restore loaded before we mounted.
+    const unsubscribe = subscribeOfflineQueue(refreshCounts)
+    refreshCounts()
 
     return () => {
       window.removeEventListener('online', handleOnline)
       window.removeEventListener('offline', handleOffline)
-      clearInterval(interval)
+      unsubscribe()
     }
   }, [refreshCounts, syncNow])
 

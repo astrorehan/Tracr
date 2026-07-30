@@ -123,4 +123,63 @@ describe('offlineQueue', () => {
     expect(getOfflineQueue().length).toBe(1)
     expect(getOfflineQueue()[0].retryCount).toBe(0)
   })
+
+  it('keeps mutations that were enqueued while a sync was in flight', async () => {
+    enqueueOfflineMutation('CREATE_TRANSACTION', { amount: 100 })
+
+    const result = await processOfflineQueue(async () => {
+      // Simulates the user adding a transaction mid-sync.
+      enqueueOfflineMutation('CREATE_TRANSACTION', { amount: 999 })
+      return true
+    })
+
+    expect(result.processed).toBe(1)
+    const queue = getOfflineQueue()
+    expect(queue.length).toBe(1)
+    expect(queue[0].payload.amount).toBe(999)
+  })
+
+  it('sees temp IDs remapped by an earlier mutation in the same run', async () => {
+    enqueueOfflineMutation('CREATE_TRANSACTION', { tempId: 'temp-tx-1', amount: 100 })
+    enqueueOfflineMutation('SET_TRANSACTION_TAGS', { transactionId: 'temp-tx-1', tagIds: ['a'] })
+
+    const seen: string[] = []
+    await processOfflineQueue(async (mut: QueuedMutation) => {
+      if (mut.type === 'CREATE_TRANSACTION') {
+        remapQueuedTempIds('temp-tx-1', 'real-uuid-1')
+      } else {
+        seen.push(mut.payload.transactionId)
+      }
+      return true
+    })
+
+    expect(seen).toEqual(['real-uuid-1'])
+  })
+
+  it('drops each accepted mutation before moving on, so a crash cannot replay it', async () => {
+    enqueueOfflineMutation('CREATE_TRANSACTION', { amount: 100 })
+    enqueueOfflineMutation('CREATE_TRANSACTION', { amount: 200 })
+
+    const queueLengthDuringSecond: number[] = []
+    await processOfflineQueue(async () => {
+      queueLengthDuringSecond.push(getOfflineQueue().length)
+      return true
+    })
+
+    expect(queueLengthDuringSecond).toEqual([2, 1])
+  })
+
+  it('refuses to run a second drain concurrently', async () => {
+    enqueueOfflineMutation('CREATE_TRANSACTION', { amount: 100 })
+
+    let reentrant: { processed: number; failed: number } | null = null
+    const outer = await processOfflineQueue(async () => {
+      reentrant = await processOfflineQueue(async () => true)
+      return true
+    })
+
+    expect(outer.processed).toBe(1)
+    expect(reentrant).toEqual({ processed: 0, failed: 0 })
+    expect(getOfflineQueue()).toEqual([])
+  })
 })

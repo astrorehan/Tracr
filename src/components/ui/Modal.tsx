@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { lockBodyScroll } from '@/lib/scrollLock'
 
 interface ModalProps {
   open: boolean
@@ -26,17 +27,13 @@ export function Modal({ open, onClose, title, description, children, footer, hea
   const currentDragYRef = useRef(0)
 
   useEffect(() => {
-    if (!open) {
-      setDragY(0)
-      setIsDragging(false)
-      return
-    }
+    if (!open) return
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     document.addEventListener('keydown', onKey)
-    document.body.style.overflow = 'hidden'
+    const releaseScroll = lockBodyScroll()
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
+      releaseScroll()
     }
   }, [open, onClose])
 
@@ -49,6 +46,9 @@ export function Modal({ open, onClose, title, description, children, footer, hea
 
     startYRef.current = e.clientY
     currentDragYRef.current = 0
+    // Starting fresh each gesture is what the old reset-on-close effect was for;
+    // doing it here avoids a state update on an already-closed modal.
+    setDragY(0)
     setIsDragging(true)
     ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
   }

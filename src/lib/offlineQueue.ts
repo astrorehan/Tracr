@@ -62,8 +62,28 @@ const MAX_RETRIES = 3
 let inMemoryQueue: QueuedMutation[] = []
 let inMemoryFailed: QueuedMutation[] = []
 
+const listeners = new Set<() => void>()
+
+/**
+ * Subscribe to queue changes. Lets the UI react to enqueue/drain events instead
+ * of polling the in-memory arrays on a timer.
+ */
+export function subscribeOfflineQueue(listener: () => void): () => void {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
+
+function notify(): void {
+  for (const listener of listeners) listener()
+}
+
+// One connection per tab, reused. Opening a fresh handle on every write leaks
+// connections and blocks any future version upgrade.
+let dbPromise: Promise<IDBDatabase> | null = null
+
 function openDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
+  if (dbPromise) return dbPromise
+  dbPromise = new Promise<IDBDatabase>((resolve, reject) => {
     if (typeof window === 'undefined' || !window.indexedDB) {
       return reject(new Error('IndexedDB not supported'))
     }
@@ -83,6 +103,11 @@ function openDB(): Promise<IDBDatabase> {
     request.onsuccess = () => resolve(request.result)
     request.onerror = () => reject(request.error)
   })
+  // A failed open must not poison every later call.
+  dbPromise.catch(() => {
+    dbPromise = null
+  })
+  return dbPromise
 }
 
 /** Async persister to IndexedDB with localStorage fallback */
@@ -152,6 +177,8 @@ export async function initOfflineStorage(): Promise<void> {
       }
     }
   }
+  // The hook mounts before this async load finishes, so tell it to re-read.
+  notify()
 }
 
 // Auto-trigger storage init on module import in browser
@@ -173,12 +200,14 @@ export function getFailedMutations(): QueuedMutation[] {
 export function saveOfflineQueue(queue: QueuedMutation[]): void {
   inMemoryQueue = [...queue]
   void persistToStorage()
+  notify()
 }
 
 /** Save updated failed array. */
 export function saveFailedMutations(failed: QueuedMutation[]): void {
   inMemoryFailed = [...failed]
   void persistToStorage()
+  notify()
 }
 
 /** Add a new mutation payload to the offline FIFO queue. */
@@ -206,12 +235,14 @@ export function dequeueOfflineMutation(id: string): void {
 export function clearOfflineQueue(): void {
   inMemoryQueue = []
   void persistToStorage()
+  notify()
 }
 
 /** Clear all failed mutations. */
 export function clearFailedMutations(): void {
   inMemoryFailed = []
   void persistToStorage()
+  notify()
 }
 
 /** Remove a failed mutation by ID. */
@@ -247,49 +278,76 @@ export function remapQueuedTempIds(tempId: string, realId: string): void {
   saveOfflineQueue(updated)
 }
 
+// Module-level lock. `isSyncing` state inside a hook is per-component-instance,
+// so two mounted consumers (or an `online` event landing during a manual sync)
+// could otherwise run the queue twice and double-write every mutation.
+let isProcessing = false
+
+/** True while processOfflineQueue is draining the queue. */
+export function isProcessingOfflineQueue(): boolean {
+  return isProcessing
+}
+
 /**
  * Sequential FIFO worker that processes queued offline mutations using a handler callback.
  * If a handler returns true, the item is removed from queue. If false/throws, retryCount increments.
  * Items reaching MAX_RETRIES are moved to inMemoryFailed queue.
+ *
+ * Each item is settled against the live queue immediately rather than in one
+ * batch at the end. That matters for three reasons:
+ *  - mutations enqueued while a sync is in flight must survive it;
+ *  - `remapQueuedTempIds` rewrites later payloads mid-run, so each item has to
+ *    be re-read from the live queue right before it executes;
+ *  - a tab closed halfway through must not replay the items already accepted.
  */
 export async function processOfflineQueue(
   executor: (mutation: QueuedMutation) => Promise<boolean>,
 ): Promise<{ processed: number; failed: number }> {
-  const queue = [...inMemoryQueue]
-  if (queue.length === 0) return { processed: 0, failed: 0 }
+  if (isProcessing) return { processed: 0, failed: 0 }
+  const ids = inMemoryQueue.map((item) => item.id)
+  if (ids.length === 0) return { processed: 0, failed: 0 }
 
+  isProcessing = true
   let processed = 0
   let failed = 0
-  const remaining: QueuedMutation[] = []
-  const newFailed: QueuedMutation[] = [...inMemoryFailed]
 
-  for (const item of queue) {
-    try {
-      const ok = await executor(item)
+  try {
+    for (const id of ids) {
+      const item = inMemoryQueue.find((m) => m.id === id)
+      if (!item) continue // dequeued or cleared while we were awaiting
+
+      let ok = false
+      let errMsg: string | undefined
+      try {
+        ok = await executor(item)
+        if (!ok) errMsg = 'Executor returned false'
+      } catch (err: any) {
+        errMsg = err?.message || 'Unknown network/server error'
+      }
+
+      // Re-read: the executor may have remapped this item's payload.
+      const settled = inMemoryQueue.find((m) => m.id === id) ?? item
+
       if (ok) {
         processed++
-      } else {
-        item.retryCount++
-        if (item.retryCount < MAX_RETRIES) {
-          remaining.push(item)
-        } else {
-          failed++
-          newFailed.push({ ...item, lastError: 'Executor returned false' })
-        }
+        saveOfflineQueue(inMemoryQueue.filter((m) => m.id !== id))
+        continue
       }
-    } catch (err: any) {
-      item.retryCount++
-      const errMsg = err?.message || 'Unknown network/server error'
-      if (item.retryCount < MAX_RETRIES) {
-        remaining.push({ ...item, lastError: errMsg })
+
+      const retryCount = settled.retryCount + 1
+      if (retryCount < MAX_RETRIES) {
+        saveOfflineQueue(
+          inMemoryQueue.map((m) => (m.id === id ? { ...m, retryCount, lastError: errMsg } : m)),
+        )
       } else {
         failed++
-        newFailed.push({ ...item, lastError: errMsg })
+        saveFailedMutations([...inMemoryFailed, { ...settled, retryCount, lastError: errMsg }])
+        saveOfflineQueue(inMemoryQueue.filter((m) => m.id !== id))
       }
     }
+  } finally {
+    isProcessing = false
   }
 
-  saveFailedMutations(newFailed)
-  saveOfflineQueue(remaining)
   return { processed, failed }
 }

@@ -27,6 +27,7 @@ import {
   type Backup,
 } from './backup'
 import { useImportTransactions } from './api'
+import { dateLocale } from '@/i18n'
 import type { Transaction } from '@/types/db'
 
 export function DataCard() {
@@ -260,7 +261,9 @@ export function DataCard() {
             </div>
             {restorePreview.exported_at && (
               <p className="px-1 text-xs text-muted-foreground">
-                {t('data.exportedAt', { date: format(new Date(restorePreview.exported_at), 'd MMM yyyy, HH:mm') })}
+                {t('data.exportedAt', { date: format(new Date(restorePreview.exported_at), 'd MMM yyyy, HH:mm', {
+                    locale: dateLocale(),
+                  }) })}
               </p>
             )}
             <div className="flex gap-3">

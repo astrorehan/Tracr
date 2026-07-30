@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
+import { lockBodyScroll } from '@/lib/scrollLock'
 import { useT } from '@/features/settings/language-context'
 import { ConfirmContext, type ConfirmFn, type ConfirmOptions } from './confirm-context'
 
@@ -49,10 +50,10 @@ function ConfirmDialog({
       if (e.key === 'Escape') onResolve(false)
     }
     document.addEventListener('keydown', onKey)
-    document.body.style.overflow = 'hidden'
+    const releaseScroll = lockBodyScroll()
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
+      releaseScroll()
     }
   }, [onResolve])
 

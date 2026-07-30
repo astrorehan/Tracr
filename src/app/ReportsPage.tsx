@@ -53,7 +53,7 @@ import { toCsv, downloadTextFile } from '@/lib/csv'
 import { AiInsightCard } from '@/features/ai/AiInsightCard'
 import { formatMoney, fromMinorUnits } from '@/lib/money'
 import { useT } from '@/features/settings/language-context'
-import type { MsgKey } from '@/i18n'
+import { dateLocale, type MsgKey } from '@/i18n'
 import { cn } from '@/lib/utils'
 import type { Account, Transaction, TransactionSplit } from '@/types/db'
 
@@ -311,7 +311,7 @@ export function ReportsPage() {
     <div className="mx-auto max-w-5xl space-y-5">
       <PageHeader
         title={t('nav.reports')}
-        subtitle={`${format(from, 'd MMM yyyy')} – ${format(to, 'd MMM yyyy')} · ${base}`}
+        subtitle={`${format(from, 'd MMM yyyy', { locale: dateLocale() })} – ${format(to, 'd MMM yyyy', { locale: dateLocale() })} · ${base}`}
         action={
           <div className="flex items-center gap-2 print:hidden">
           <button
@@ -812,7 +812,7 @@ function CalendarHeatmap({
         <div className="mb-1 flex gap-[3px]">
           {weeks.map((week, i) => (
             <span key={i} className="w-[13px] text-xs font-semibold text-muted-foreground">
-              {week[0].getDate() <= 7 ? format(week[0], 'MMM') : ''}
+              {week[0].getDate() <= 7 ? format(week[0], 'MMM', { locale: dateLocale() }) : ''}
             </span>
           ))}
         </div>
@@ -828,7 +828,7 @@ function CalendarHeatmap({
                 return (
                   <div
                     key={key}
-                    title={inRange ? `${format(day, 'd MMM yyyy')}: ${formatMoney(value, base, { signDisplay: 'never' })}` : undefined}
+                    title={inRange ? `${format(day, 'd MMM yyyy', { locale: dateLocale() })}: ${formatMoney(value, base, { signDisplay: 'never' })}` : undefined}
                     className={cn('h-[13px] w-[13px] rounded-[3px]', !inRange && 'opacity-0')}
                     style={{
                       backgroundColor: value > 0 ? 'var(--primary)' : 'var(--surface-muted)',
@@ -873,7 +873,7 @@ function BiggestRow({
           {tx.note || categoryName || t(income ? 'common.income' : 'common.expense')}
         </p>
         <p className="text-xs font-medium text-muted-foreground">
-          {format(new Date(tx.occurred_at), 'd MMM yyyy')}
+          {format(new Date(tx.occurred_at), 'd MMM yyyy', { locale: dateLocale() })}
           {categoryName ? ` · ${categoryName}` : ''}
         </p>
       </div>

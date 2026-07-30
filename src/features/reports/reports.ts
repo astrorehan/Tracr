@@ -1,4 +1,5 @@
 import { eachDayOfInterval, eachMonthOfInterval, endOfDay, endOfMonth, format } from 'date-fns'
+import { dateLocale } from '@/i18n'
 import type { Category, FxRate, Tag, Transaction, TransactionSplit } from '@/types/db'
 import { categoryContributions } from '@/features/transactions/splits'
 import { buildRateTable, convertMinor } from '@/features/fx/fx'
@@ -66,9 +67,12 @@ export interface TimeBucket {
 }
 
 function bucketKey(d: Date, gran: Granularity) {
+  // `key` identifies the bucket and must stay locale-free; `label` is displayed,
+  // so it follows the active language.
+  const opts = { locale: dateLocale() }
   return gran === 'month'
-    ? { key: format(d, 'yyyy-MM'), label: format(d, 'MMM yy') }
-    : { key: format(d, 'yyyy-MM-dd'), label: format(d, 'd MMM') }
+    ? { key: format(d, 'yyyy-MM'), label: format(d, 'MMM yy', opts) }
+    : { key: format(d, 'yyyy-MM-dd'), label: format(d, 'd MMM', opts) }
 }
 
 /** Income vs expense (and net) per day/month, with empty buckets seeded for continuity. */

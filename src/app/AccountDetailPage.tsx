@@ -19,6 +19,7 @@ import { useTransactionSplits } from '@/features/transactions/splits'
 import { TransactionRow } from '@/features/transactions/TransactionRow'
 import { AccountForm } from '@/features/accounts/AccountForm'
 import { accountTypeMeta } from '@/features/accounts/meta'
+import { dateLocale } from '@/i18n'
 import { indexById } from '@/lib/collections'
 import { chartTooltipStyle } from '@/lib/chartTheme'
 import { amountToMinor, formatMoney, fromMinorUnits } from '@/lib/money'
@@ -75,11 +76,11 @@ export function AccountDetailPage() {
       byDay.set(format(new Date(tx.occurred_at), 'yyyy-MM-dd'), running)
     }
     const points = Array.from(byDay.entries()).map(([date, bal]) => ({
-      label: format(new Date(date), 'd MMM'),
+      label: format(new Date(date), 'd MMM', { locale: dateLocale() }),
       balance: bal,
     }))
     return [{ label: t('acc.start'), balance: account.opening_balance }, ...points]
-  }, [account, transactions])
+  }, [account, transactions, t])
 
   if (la) return <DetailSkeleton />
   if (!account) return <Navigate to="/accounts" replace />

@@ -17,6 +17,7 @@ import { useT } from '@/features/settings/language-context'
 import { useActiveBook } from '@/features/books/useActiveBook'
 import { qk } from '@/lib/queryClient'
 import { cn } from '@/lib/utils'
+import { lockBodyScroll } from '@/lib/scrollLock'
 import { AiMarkdown } from './Markdown'
 import { prepareScanImages } from './image'
 import type { MsgKey } from '@/i18n'
@@ -181,10 +182,10 @@ export const ChatSheet = forwardRef<ChatSheetHandle, ChatSheetProps>(function Ch
     if (!open) return
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     document.addEventListener('keydown', onKey)
-    document.body.style.overflow = 'hidden'
+    const releaseScroll = lockBodyScroll()
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
+      releaseScroll()
     }
   }, [open, onClose])
 
