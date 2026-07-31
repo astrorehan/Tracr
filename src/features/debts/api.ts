@@ -2,7 +2,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { qk } from '@/lib/queryClient'
 import { useActiveBook } from '@/features/books/useActiveBook'
-import type { Contact, Debt, NewContact, NewDebt, NewDebtPayment } from '@/types/db'
+import type {
+  Contact,
+  Debt,
+  DebtDirection,
+  NewContact,
+  NewDebt,
+  NewDebtPayment,
+} from '@/types/db'
 
 import { enqueueOfflineMutation } from '@/lib/offlineQueue'
 import { getAuthenticatedUserId } from '@/lib/authHelpers'
@@ -192,6 +199,50 @@ export function useDebts() {
   })
 }
 
+/**
+ * The category a repayment lands in when the user didn't pick one: a per-book
+ * "Pelunasan Piutang" / "Pelunasan Utang", created the first time it's needed.
+ * Returns null if it can't be resolved — a payment is still worth recording
+ * without a category.
+ */
+async function resolveDebtCategoryId(
+  direction: DebtDirection,
+  bookId: string,
+  userId: string,
+): Promise<string | null> {
+  const kind = direction === 'receivable' ? 'income' : 'expense'
+  const categoryName = direction === 'receivable' ? 'Pelunasan Piutang' : 'Pelunasan Utang'
+  try {
+    const { data: existingCat } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('book_id', bookId)
+      .eq('name', categoryName)
+      .eq('kind', kind)
+      .limit(1)
+      .maybeSingle()
+    if (existingCat?.id) return existingCat.id as string
+
+    const { data: newCat } = await supabase
+      .from('categories')
+      .insert({
+        user_id: userId,
+        book_id: bookId,
+        name: categoryName,
+        kind,
+        parent_id: null,
+        icon: direction === 'receivable' ? 'hand-coins' : 'receipt',
+        color: direction === 'receivable' ? '#10b981' : '#f59e0b',
+      })
+      .select('id')
+      .single()
+    return (newCat?.id as string | undefined) ?? null
+  } catch (e) {
+    console.error('Failed to resolve default debt category:', e)
+    return null
+  }
+}
+
 export function useCreateDebt() {
   const qc = useQueryClient()
   const { activeBookId } = useActiveBook()
@@ -282,41 +333,8 @@ export function useRecordPayment() {
           ? (contactName ? `Pelunasan piutang: ${contactName}` : 'Pelunasan piutang')
           : (contactName ? `Pelunasan utang: ${contactName}` : 'Pelunasan utang')
 
-        let resolvedCategoryId = category_id || null
-        if (!resolvedCategoryId) {
-          try {
-            const kind = debt.direction === 'receivable' ? 'income' : 'expense'
-            const categoryName = debt.direction === 'receivable' ? 'Pelunasan Piutang' : 'Pelunasan Utang'
-            const { data: existingCat } = await supabase
-              .from('categories')
-              .select('id')
-              .eq('book_id', activeBookId!)
-              .eq('name', categoryName)
-              .eq('kind', kind)
-              .limit(1)
-              .maybeSingle()
-            if (existingCat?.id) {
-              resolvedCategoryId = existingCat.id
-            } else {
-              const { data: newCat } = await supabase
-                .from('categories')
-                .insert({
-                  user_id: userId,
-                  book_id: activeBookId,
-                  name: categoryName,
-                  kind,
-                  parent_id: null,
-                  icon: debt.direction === 'receivable' ? 'hand-coins' : 'receipt',
-                  color: debt.direction === 'receivable' ? '#10b981' : '#f59e0b',
-                })
-                .select('id')
-                .single()
-              if (newCat?.id) resolvedCategoryId = newCat.id
-            }
-          } catch (e) {
-            console.error('Failed to resolve default debt category:', e)
-          }
-        }
+        const resolvedCategoryId =
+          category_id || (await resolveDebtCategoryId(debt.direction, activeBookId!, userId))
 
         const txPayload = {
           user_id: userId,
@@ -362,6 +380,151 @@ export function useRecordPayment() {
           enqueueOfflineMutation('UPDATE_DEBT', { id: debt.id, paid: newPaid, status: newStatus })
         }
         throw err
+      }
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: qk.debts })
+      void qc.invalidateQueries({ queryKey: qk.debtPayments })
+      void qc.invalidateQueries({ queryKey: qk.balances })
+      void qc.invalidateQueries({ queryKey: ['transactions'] })
+    },
+  })
+}
+
+/**
+ * Correct a note that was written down wrong: who it's with, which way it goes,
+ * the amount, the due date or the text. Payments already recorded against it are
+ * untouched, so the caller passes a `status` recomputed against `paid`.
+ */
+export function useUpdateDebt() {
+  const qc = useQueryClient()
+  const { activeBookId } = useActiveBook()
+  return useMutation({
+    mutationFn: async ({ id, patch }: { id: string; patch: Partial<Debt> }) => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        enqueueOfflineMutation('UPDATE_DEBT', { id, ...patch })
+        qc.setQueriesData({ queryKey: [...qk.debts, activeBookId] }, (old: DebtWithContact[] | undefined) =>
+          old ? old.map((d) => (d.id === id ? { ...d, ...patch } : d)) : [],
+        )
+        return
+      }
+
+      try {
+        const { error } = await supabase.from('debts').update(patch).eq('id', id)
+        if (error) throw error
+      } catch (err) {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          enqueueOfflineMutation('UPDATE_DEBT', { id, ...patch })
+        }
+        throw err
+      }
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: qk.debts })
+      void qc.invalidateQueries({ queryKey: qk.balances })
+    },
+  })
+}
+
+/**
+ * Close out every open note one person has in one go — the common counter case
+ * where someone with four separate tabs pays the lot at once.
+ *
+ * Each note still gets its own `debt_payments` row (the history stays honest),
+ * but the money only moves once, so this books a single transaction for the
+ * grand total instead of one per note.
+ */
+export function useSettleAllDebts() {
+  const qc = useQueryClient()
+  const { activeBookId } = useActiveBook()
+  return useMutation({
+    mutationFn: async ({
+      debts,
+      paid_on,
+      note,
+      account_id,
+      category_id,
+    }: {
+      debts: DebtWithContact[]
+      paid_on?: string
+      note?: string | null
+      account_id?: string | null
+      category_id?: string | null
+    }) => {
+      const outstanding = debts
+        .map((d) => ({ debt: d, remaining: Math.max(0, d.amount - d.paid) }))
+        .filter((r) => r.remaining > 0)
+      if (outstanding.length === 0) return
+
+      const userId = await getAuthenticatedUserId()
+      const date = paid_on ?? new Date().toISOString().slice(0, 10)
+      const total = outstanding.reduce((s, r) => s + r.remaining, 0)
+      const { direction, currency } = outstanding[0].debt
+      const name = outstanding[0].debt.contact?.name ?? ''
+
+      if (account_id) {
+        const label = direction === 'receivable' ? 'Pelunasan piutang' : 'Pelunasan utang'
+        const defaultNote = `${label}${name ? `: ${name}` : ''} (${outstanding.length} catatan)`
+        const resolvedCategoryId =
+          category_id || (await resolveDebtCategoryId(direction, activeBookId!, userId))
+
+        const { error: txErr } = await supabase.from('transactions').insert({
+          user_id: userId,
+          book_id: activeBookId,
+          account_id,
+          category_id: resolvedCategoryId,
+          type: direction === 'receivable' ? 'income' : 'expense',
+          amount: total,
+          currency,
+          occurred_at: new Date(date).toISOString(),
+          note: note ? `${defaultNote} - ${note}` : defaultNote,
+          source: 'web' as const,
+          status: 'pending' as const,
+        })
+        if (txErr) console.error('Error inserting settlement transaction:', txErr)
+      }
+
+      const payments = outstanding.map(({ debt, remaining }) => ({
+        ...({
+          debt_id: debt.id,
+          amount: remaining,
+          paid_on: date,
+          note: note ?? null,
+        } satisfies NewDebtPayment),
+        user_id: userId,
+        book_id: activeBookId,
+      }))
+
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        for (const [i, payment] of payments.entries()) {
+          enqueueOfflineMutation('ADD_DEBT_PAYMENT', payment)
+          enqueueOfflineMutation('UPDATE_DEBT', {
+            id: outstanding[i].debt.id,
+            paid: outstanding[i].debt.amount,
+            status: 'paid',
+          })
+        }
+        const settledIds = new Set(outstanding.map((r) => r.debt.id))
+        qc.setQueriesData({ queryKey: [...qk.debts, activeBookId] }, (old: DebtWithContact[] | undefined) =>
+          old
+            ? old.map((d) =>
+                settledIds.has(d.id) ? { ...d, paid: d.amount, status: 'paid' as const } : d,
+              )
+            : [],
+        )
+        return
+      }
+
+      const { error: payErr } = await supabase.from('debt_payments').insert(payments)
+      if (payErr) throw payErr
+
+      // `paid` differs per row, so this can't collapse into one .in() update.
+      for (const { debt } of outstanding) {
+        const { error: updErr } = await supabase
+          .from('debts')
+          .update({ paid: debt.amount, status: 'paid' })
+          .eq('id', debt.id)
+        if (updErr) throw updErr
       }
     },
     onSuccess: () => {

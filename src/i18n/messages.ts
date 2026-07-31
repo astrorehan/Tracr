@@ -1410,23 +1410,74 @@ export const MESSAGES = {
 
   // ── Billing / AI credits (migration 0034) ───────────────────────────────
   'billing.title': { en: 'Credits & plan', id: 'Kredit & paket' },
+  'billing.subtitle': {
+    en: 'Credits are what receipt scanning and asking the AI run on.',
+    id: 'Kredit dipakai tiap scan struk dan tanya ke AI.',
+  },
   'billing.chipAria': { en: '{n} credits left', id: '{n} kredit tersisa' },
   'billing.planFree': { en: 'Free', id: 'Gratis' },
   'billing.planPro': { en: 'Pro', id: 'Pro' },
-  'billing.currentPlan': { en: 'Current plan', id: 'Paket saat ini' },
+  'billing.currentBadge': { en: 'Your plan', id: 'Paket kamu' },
+  'billing.recommended': { en: 'Recommended', id: 'Disarankan' },
+  'billing.walletLabel': { en: 'Credits left', id: 'Sisa kredit' },
+  'billing.creditsUnit': { en: 'credits', id: 'kredit' },
+  'billing.creditMeaning': {
+    en: '1 credit = one receipt scanned, or one question to the AI',
+    id: '1 kredit = 1 struk discan, atau 1 pertanyaan ke AI',
+  },
   'billing.subscriptionPool': { en: 'Monthly credits', id: 'Kredit bulanan' },
   'billing.topupPool': { en: 'Top-up credits', id: 'Kredit top-up' },
-  'billing.resetsMonthly': { en: 'Resets on the 1st — unused credits don’t carry over', id: 'Reset tiap tanggal 1 — sisa kredit tidak terbawa ke bulan depan' },
+  'billing.resetsShort': { en: 'Resets on the 1st', id: 'Reset tiap tanggal 1' },
+  'billing.topupShort': { en: 'Buy once, use whenever', id: 'Sekali beli, dipakai kapan saja' },
   'billing.topupNeverExpires': { en: 'Never expires', id: 'Tidak pernah hangus' },
   'billing.usedOfGranted': { en: '{used} of {granted} used', id: '{used} dari {granted} terpakai' },
-  'billing.upgrade': { en: 'Upgrade to Pro', id: 'Upgrade ke Pro' },
-  'billing.comingSoon': { en: 'Coming soon', id: 'Segera hadir' },
-  'billing.upgradeComingSoon': {
-    en: 'Pro upgrades open soon — {credits} credits/month.',
-    id: 'Upgrade Pro segera dibuka — {credits} kredit/bulan.',
+  'billing.plansHead': { en: 'Plans', id: 'Paket' },
+  'billing.freeForever': { en: 'Free forever', id: 'Gratis selamanya' },
+  'billing.perMonthSuffix': { en: '/month', id: '/bulan' },
+  'billing.perMonth': { en: '{price}/month', id: '{price}/bulan' },
+  'billing.billedMonthly': { en: 'Billed every month', id: 'Ditagih tiap bulan' },
+  'billing.perkMonthly': { en: '{n} credits every month', id: '{n} kredit tiap bulan' },
+  'billing.perkReset': { en: 'Fresh credits every 1st', id: 'Kredit baru tiap tanggal 1' },
+  'billing.perkAllFeatures': {
+    en: 'Every recording and report feature stays open',
+    id: 'Semua fitur catat & laporan tetap terbuka',
   },
+  'billing.perkMultiple': {
+    en: '{n}× the credits of the free plan',
+    id: '{n}× lipat kredit paket gratis',
+  },
+  'billing.perkHeavy': {
+    en: 'Enough to scan receipts every single day',
+    id: 'Cukup buat scan struk tiap hari',
+  },
+  'billing.upgrade': { en: 'Upgrade to Pro', id: 'Upgrade ke Pro' },
   'billing.buyCredits': { en: 'Buy more credits', id: 'Beli kredit tambahan' },
-  'billing.packComingSoon': { en: 'Top-up opens soon', id: 'Top-up segera dibuka' },
+  'billing.buyCreditsHint': {
+    en: 'No subscription. Top-up credits sit there until you use them.',
+    id: 'Tanpa langganan. Kredit top-up nunggu sampai kamu pakai.',
+  },
+  'billing.perCredit': { en: '{price} per credit', id: '{price}/kredit' },
+  'billing.savePct': { en: 'Save {n}%', id: 'Hemat {n}%' },
+  'billing.securePay': { en: 'Secure checkout', id: 'Pembayaran aman' },
+  'billing.packTitle': { en: '{n} credits', id: '{n} kredit' },
+  'billing.packMeta': { en: 'Top-up credits, never expire', id: 'Kredit top-up, tidak hangus' },
+  'billing.proCreditsMeta': { en: '{n} credits every month', id: '{n} kredit tiap bulan' },
+  'billing.soonTitle': { en: 'Checkout opens shortly', id: 'Pembayaran sebentar lagi dibuka' },
+  'billing.soonBody': {
+    en: 'The payment page is built — we’re only waiting for the payment provider to switch it on. The moment they do, this button goes straight through.',
+    id: 'Halaman bayarnya sudah jadi — tinggal nunggu izin dari penyedia pembayaran. Begitu keluar, tombol ini langsung jalan.',
+  },
+  'billing.soonStep1': { en: 'Plans and prices set', id: 'Paket & harga sudah fix' },
+  'billing.soonStep2': { en: 'Payment page built', id: 'Halaman bayar sudah dibuat' },
+  'billing.soonStep3': {
+    en: 'Waiting on the payment provider',
+    id: 'Menunggu izin penyedia pembayaran',
+  },
+  'billing.soonMeanwhile': {
+    en: 'Meanwhile you still get {n} free credits every month.',
+    id: 'Sementara ini kamu tetap dapat {n} kredit gratis tiap bulan.',
+  },
+  'billing.soonOk': { en: 'Got it', id: 'Oke, mengerti' },
   'billing.buy': { en: 'Buy', id: 'Beli' },
   'billing.buyError': { en: 'Payment failed to start. Please try again.', id: 'Pembayaran gagal dimulai. Coba lagi ya.' },
   'billing.history': { en: 'History', id: 'Riwayat' },
@@ -1495,6 +1546,8 @@ export const MESSAGES = {
   'debt.payBack': { en: 'Record repayment', id: 'Catat pelunasan' },
   'debt.payShort': { en: 'Pay', id: 'Bayar' },
   'debt.remind': { en: 'Remind', id: 'Ingatkan' },
+  'debt.settleAll': { en: 'Settle all · {amount}', id: 'Lunasi semua · {amount}' },
+  'debt.moreActions': { en: 'More actions', id: 'Opsi lain' },
   'debt.noNote': { en: 'No note', id: 'Tanpa catatan' },
   'debt.due': { en: 'due {date}', id: 'tempo {date}' },
   'debt.dueOverdue': { en: 'due {date} · overdue', id: 'tempo {date} · lewat' },
@@ -1584,6 +1637,15 @@ export const MESSAGES = {
 
   // ── Kasbon form ──────────────────────────────────────────────────────────
   'dform.new': { en: 'New note', id: 'Catat utang & piutang' },
+  'dform.edit': { en: 'Edit note', id: 'Ubah catatan' },
+  'dform.editPaidHint': {
+    en: '{amount} has been paid on this note already.',
+    id: 'Catatan ini sudah dibayar {amount}.',
+  },
+  'dform.errBelowPaid': {
+    en: 'Can’t be less than the {amount} already paid.',
+    id: 'Tidak boleh kurang dari {amount} yang sudah dibayar.',
+  },
   'dform.type': { en: 'Which is it?', id: 'Jenisnya' },
   'dform.customer': { en: 'Customer', id: 'Pelanggan' },
   'dform.supplier': { en: 'Supplier', id: 'Supplier' },
@@ -1611,6 +1673,15 @@ export const MESSAGES = {
   'pay.errPos': { en: 'Enter an amount above zero.', id: 'Isi jumlah lebih dari nol.' },
   'pay.errTooMuch': { en: "That's more than what's left ({amount}).", id: 'Itu lebih dari sisanya ({amount}).' },
   'pay.save': { en: 'Save payment', id: 'Simpan bayaran' },
+
+  // ── Settle every open note one person has, in one go ─────────────────────
+  'settle.title': { en: 'Settle all', id: 'Lunasi semua' },
+  'settle.count': { en: '{n} notes at once', id: '{n} catatan sekaligus' },
+  'settle.oneEntry': {
+    en: 'All of it goes into your book as one entry.',
+    id: 'Semuanya masuk ke buku jadi satu catatan.',
+  },
+  'settle.confirm': { en: 'Settle {amount}', id: 'Lunaskan {amount}' },
 
   // ── Laba-Rugi ────────────────────────────────────────────────────────────
   'profit.subtitle': {

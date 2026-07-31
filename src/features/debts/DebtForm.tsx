@@ -5,9 +5,9 @@ import { Field, Input, Select } from '@/components/ui/Input'
 import { Segmented } from '@/components/ui/Segmented'
 import { useT } from '@/features/settings/language-context'
 import { getCurrency } from '@/lib/currencies'
-import { amountToMinor } from '@/lib/money'
+import { amountToMinor, fromMinorUnits, formatMoney } from '@/lib/money'
 import { useAuth } from '@/features/auth/useAuth'
-import { useContacts, useCreateContact, useCreateDebt } from './api'
+import { useContacts, useCreateContact, useCreateDebt, useUpdateDebt, type DebtWithContact } from './api'
 import type { DebtDirection } from '@/types/db'
 
 import { useActiveBook } from '@/features/books/useActiveBook'
@@ -19,6 +19,8 @@ interface Props {
   initialDirection?: DebtDirection
   /** Preselect the person — used when the note starts from the contacts page. */
   initialContactId?: string
+  /** Pass a note to correct it instead of writing a new one. */
+  debt?: DebtWithContact | null
 }
 
 export function DebtForm({
@@ -26,15 +28,20 @@ export function DebtForm({
   onClose,
   initialDirection = 'receivable',
   initialContactId,
+  debt,
 }: Props) {
   const { t } = useT()
   return (
-    <Modal open={open} onClose={onClose} title={t('dform.new')}>
+    <Modal open={open} onClose={onClose} title={t(debt ? 'dform.edit' : 'dform.new')}>
       {open && (
         <DebtFormBody
+          // A fresh body per note keeps the fields from carrying over when the
+          // user closes one row's editor and opens another.
+          key={debt?.id ?? 'new'}
           onClose={onClose}
-          initialDirection={initialDirection}
-          initialContactId={initialContactId}
+          initialDirection={debt?.direction ?? initialDirection}
+          initialContactId={debt?.contact_id ?? initialContactId}
+          debt={debt ?? null}
         />
       )}
     </Modal>
@@ -45,10 +52,12 @@ function DebtFormBody({
   onClose,
   initialDirection,
   initialContactId,
+  debt,
 }: {
   onClose: () => void
   initialDirection: DebtDirection
   initialContactId?: string
+  debt: DebtWithContact | null
 }) {
   const { t } = useT()
   const { profile } = useAuth()
@@ -60,17 +69,23 @@ function DebtFormBody({
   const { data: contacts = [] } = useContacts()
   const createContact = useCreateContact()
   const createDebt = useCreateDebt()
+  const updateDebt = useUpdateDebt()
+
+  const isEdit = debt != null
+  const alreadyPaid = debt?.paid ?? 0
 
   const [direction, setDirection] = useState<DebtDirection>(initialDirection)
   const [contactId, setContactId] = useState(initialContactId ?? '') // '' = add a new person
   const [newName, setNewName] = useState('')
   const [newPhone, setNewPhone] = useState('')
-  const [amount, setAmount] = useState('')
-  const [dueDate, setDueDate] = useState('')
-  const [note, setNote] = useState('')
+  const [amount, setAmount] = useState(
+    debt ? String(fromMinorUnits(debt.amount, debt.currency)) : '',
+  )
+  const [dueDate, setDueDate] = useState(debt?.due_date ?? '')
+  const [note, setNote] = useState(debt?.note ?? '')
   const [error, setError] = useState<string | null>(null)
 
-  const pending = createContact.isPending || createDebt.isPending
+  const pending = createContact.isPending || createDebt.isPending || updateDebt.isPending
   const whoLabel = isPersonal
     ? t('dform.contactPersonal')
     : direction === 'receivable'
@@ -84,6 +99,13 @@ function DebtFormBody({
     const amountMinor = amountToMinor(amount, currency)
     if (amountMinor <= 0) return setError(t('dform.errAmount'))
     if (!contactId && !newName.trim()) return setError(t('dform.errWho'))
+    if (isEdit && amountMinor < alreadyPaid) {
+      return setError(
+        t('dform.errBelowPaid', {
+          amount: formatMoney(alreadyPaid, currency, { signDisplay: 'never' }),
+        }),
+      )
+    }
 
     try {
       let resolvedContactId: string | null = contactId || null
@@ -94,6 +116,24 @@ function DebtFormBody({
           kind: direction === 'receivable' ? 'customer' : 'supplier',
         })
         resolvedContactId = contact.id
+      }
+
+      if (isEdit) {
+        await updateDebt.mutateAsync({
+          id: debt.id,
+          patch: {
+            contact_id: resolvedContactId,
+            direction,
+            amount: amountMinor,
+            due_date: dueDate || null,
+            note: note.trim() || null,
+            // Trimming a note down to what's already been paid closes it;
+            // raising it again reopens it.
+            status: amountMinor <= alreadyPaid ? 'paid' : 'open',
+          },
+        })
+        onClose()
+        return
       }
 
       await createDebt.mutateAsync({
@@ -112,6 +152,14 @@ function DebtFormBody({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {isEdit && alreadyPaid > 0 && (
+        <p className="rounded-xl bg-surface-muted px-4 py-3 text-sm font-medium text-muted-foreground">
+          {t('dform.editPaidHint', {
+            amount: formatMoney(alreadyPaid, currency, { signDisplay: 'never' }),
+          })}
+        </p>
+      )}
+
       <Field label={t('dform.type')}>
         <Segmented
           value={direction}
@@ -129,6 +177,11 @@ function DebtFormBody({
       <Field label={whoLabel}>
         <Select value={contactId} onChange={(e) => setContactId(e.target.value)}>
           <option value="">{t('dform.addNew')}</option>
+          {/* An archived person is kept out of the picker, but the note being
+              edited still belongs to them — so list them anyway. */}
+          {debt?.contact && !contacts.some((c) => c.id === debt.contact!.id) && (
+            <option value={debt.contact.id}>{debt.contact.name}</option>
+          )}
           {contacts.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
