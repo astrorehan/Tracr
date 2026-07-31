@@ -1,7 +1,7 @@
-# Proposal Veternity Beraksi 2026 — sumber teks
+# Proposal Veternity Beraksi 2026: sumber teks
 
 > **Cara pakai.** Berkas ini adalah salinan teks final yang sudah masuk ke `VB2026_WebDev_IDUBmandus.docx`
-> (15 halaman: 1 sampul + **13 halaman isi** + 1 lampiran — tepat batas panitia).
+> (16 halaman: 1 sampul + **13 halaman isi** + 2 lampiran; isi tepat di batas panitia).
 > Teks yang benar-benar dipakai untuk membangun `.docx` ada di [`build_proposal.py`](build_proposal.py).
 > Kalau mengubah kalimat di sini, ubah juga di skrip itu lalu jalankan ulang:
 >
@@ -9,14 +9,18 @@
 > python docs/veternity/build_diagrams.py && python docs/veternity/build_proposal.py
 > ```
 >
-> Menambah teks akan menambah halaman — cek ulang jumlah halaman sebelum kirim.
+> Menambah teks akan menambah halaman. Halaman isi sudah penuh, jadi cek ulang jumlah halaman sebelum kirim.
+>
+> **Tanpa em dash.** Naskah ini sengaja tidak memakai tanda em dash (—). Kalau menambah kalimat,
+> pakai koma, titik dua, titik koma, atau tanda kurung.
 
 ---
 
 ## Halaman Sampul
 
-PROPOSAL KARYA — Diajukan untuk Babak Penyisihan
-Web Development Competition — Veternity Beraksi 2026
+PROPOSAL KARYA
+Diajukan untuk Babak Penyisihan
+Web Development Competition, Veternity Beraksi 2026
 
 Tema: *Bridging the Gap: Digital Platforms for Equitable Economic Access*
 Sub Tema: Micro-Capital Crowdfunding & Financial Management
@@ -27,9 +31,9 @@ Buku Kas Digital yang Tetap Berjalan Saat Sinyal Mati: Platform Manajemen Keuang
 | | |
 |---|---|
 | Nama Tim | IDUB mandus |
-| Anggota 1 | Muhammad Choirudin Ammar — 25/556251/TK/62735 |
-| Anggota 2 | Muhammad Raihan Surya — 25/560713/TK/63338 |
-| Anggota 3 | Ahmad Rafi Firdaus — 25/560526/TK/63314 |
+| Anggota 1 | Muhammad Choirudin Ammar (25/556251/TK/62735) |
+| Anggota 2 | Muhammad Raihan Surya (25/560713/TK/63338) |
+| Anggota 3 | Ahmad Rafi Firdaus (25/560526/TK/63314) |
 | Perguruan Tinggi | Universitas Gadjah Mada |
 | Program Studi | Teknologi Informasi, Fakultas Teknik |
 | Tautan Website | https://tracr-ai.vercel.app |
@@ -41,11 +45,11 @@ Buku Kas Digital yang Tetap Berjalan Saat Sinyal Mati: Platform Manajemen Keuang
 
 ## 1. Judul Karya & Nama Tim
 
-**Judul Karya:** Tracr — Buku Kas Digital yang Tetap Berjalan Saat Sinyal Mati: Platform Manajemen Keuangan Mikro Berbasis *Offline-First* untuk Pelaku Usaha Mikro dan Masyarakat *Unbanked*.
+**Judul Karya:** Tracr, Buku Kas Digital yang Tetap Berjalan Saat Sinyal Mati: Platform Manajemen Keuangan Mikro Berbasis *Offline-First* untuk Pelaku Usaha Mikro dan Masyarakat *Unbanked*.
 
-**Nama Tim:** IDUB mandus — Universitas Gadjah Mada.
+**Nama Tim:** IDUB mandus, Universitas Gadjah Mada.
 
-**Sub Tema:** Sub Tema 2 — Micro-Capital Crowdfunding & Financial Management.
+**Sub Tema:** Sub Tema 2, Micro-Capital Crowdfunding & Financial Management.
 
 Tracr adalah aplikasi web pencatatan keuangan mikro yang berfungsi penuh tanpa koneksi internet, menggunakan bahasa sehari-hari alih-alih istilah akuntansi, dan dapat dipasang ke layar utama telepon genggam tanpa melalui toko aplikasi. Satu antarmuka melayani dua kebutuhan sekaligus: pencatatan keuangan pribadi dan pembukuan usaha mikro (Buku Usaha), yang dipisahkan secara tegas melalui mekanisme multi-book.
 
@@ -55,9 +59,11 @@ Tracr adalah aplikasi web pencatatan keuangan mikro yang berfungsi penuh tanpa k
 
 ### 2.1 Kesenjangan Ekonomi yang Disasar
 
-UMKM merupakan tulang punggung perekonomian Indonesia: sekitar 64 juta unit, menyumbang sekitar 61% Produk Domestik Bruto dan menyerap sekitar 97% tenaga kerja `[verifikasi: Kemenkop UKM]`. Namun lebih dari 90% di antaranya berskala mikro — warung kelontong, pedagang kaki lima, penjual makanan rumahan, penjahit — dan menjalankan usaha tanpa pencatatan keuangan formal dalam bentuk apa pun `[verifikasi: sumber proporsi usaha mikro]`. Pada saat yang sama, sebagian besar penduduk dewasa masih tergolong *unbanked* atau *underbanked* `[verifikasi: SNLIK OJK]` sehingga hampir seluruh transaksinya berjalan tunai. Akibatnya, solusi keuangan digital yang mengandalkan sinkronisasi rekening bank — *open banking*, agregasi mutasi, kategorisasi otomatis dari pesan bank — tidak dapat menjangkau mereka sama sekali, karena data sumbernya memang tidak pernah ada.
+UMKM adalah tulang punggung perekonomian Indonesia: sekitar 64,2 juta unit yang menyumbang 61,07% Produk Domestik Bruto dan menyerap 97% tenaga kerja nasional (Kementerian Koperasi dan UKM, 2021). Strukturnya timpang jauh ke bawah: basis data tunggal SIDT-UMKM mencatat 30.209.069 unit usaha terverifikasi per 31 Desember 2025 dan 99,70% di antaranya berskala mikro (Kementerian UMKM, 2025), yakni warung kelontong, pedagang kaki lima, penjual makanan rumahan, dan penjahit. Justru pada kelompok itulah pencatatan keuangan paling jarang ditemukan. Kajian lapangan di Pekanbaru mendapati pelaku UMKM umumnya hanya mencatat pemasukan dan pengeluaran seadanya, bahkan ada yang tidak mencatat sewa tempat sebagai beban sehingga usahanya tampak berlaba besar (Fatwitawati, 2018); dari 30 pelaku UMKM di Medan Timur, hanya sebagian kecil yang memahami akuntansi sederhana (Fadhia dan Ningsih, 2024).
 
-Kesenjangan itu diperparah sebaran kualitas jaringan yang tidak merata; sejumlah wilayah pedesaan masih berstatus *blank spot* `[verifikasi: APJII]`. Bagi pedagang pasar yang sedang melayani pembeli, aplikasi yang menampilkan layar kosong belasan detik karena menunggu peladen bukan sekadar tidak nyaman — aplikasi itu tidak dapat dipakai.
+Akses keuangan formal pun belum merata. SNLIK 2025 mencatat indeks inklusi keuangan 80,51% berbanding indeks literasi keuangan 66,46%, sehingga sekitar satu dari lima penduduk dewasa masih di luar layanan keuangan formal dan selisih 14,05 poin itu memperlihatkan banyak orang memegang produk keuangan tanpa memahaminya; di perdesaan jaraknya melebar menjadi 75,70% berbanding 59,60% (OJK dan BPS, 2025). Transaksi kelompok ini karenanya berjalan tunai, dan solusi digital yang bertumpu pada sinkronisasi rekening bank (*open banking*, agregasi mutasi, kategorisasi otomatis dari pesan bank) tidak dapat menjangkau mereka karena data sumbernya memang tidak pernah ada.
+
+Kesenjangan itu diperparah sebaran kualitas jaringan yang timpang. Pendataan Potensi Desa 2024, sensus atas 84.276 wilayah setingkat desa, mencatat 17,52% desa hanya menerima sinyal seluler lemah dan 3,70% tidak menerima sinyal sama sekali; 2,47% desa masih bergantung pada internet 2G/EDGE dan 1,26% tanpa sinyal internet (BPS, 2024). Bagi pedagang pasar yang sedang melayani pembeli, aplikasi yang menampilkan layar kosong belasan detik karena menunggu peladen bukan sekadar tidak nyaman; aplikasi itu tidak dapat dipakai.
 
 ### 2.2 Empat Lapis Hambatan
 
@@ -66,13 +72,13 @@ Kesenjangan itu diperparah sebaran kualitas jaringan yang tidak merata; sejumlah
 | Geografis | Sinyal putus-putus atau hilang di pasar, pelosok desa, dan area produksi | Pencatatan tertunda lalu terlupakan; data keuangan usaha tidak pernah lengkap |
 | Literasi | Istilah "aset", "liabilitas", "rekonsiliasi", "jurnal" pada aplikasi yang ada | Pengguna awam merasa aplikasi bukan untuk dirinya dan berhenti di langkah pertama |
 | Perangkat & kuota | Telepon kelas pemula, memori hampir penuh, kuota terbatas | Enggan memasang aplikasi puluhan megabita dari toko aplikasi |
-| Akses permodalan | Tidak ada rekam jejak keuangan tertulis saat mengajukan KUR atau pinjaman koperasi | Pengajuan modal ditolak; usaha tidak naik kelas meskipun sehat secara arus kas |
+| Akses permodalan | Tidak ada rekam jejak keuangan tertulis saat mengajukan KUR atau pinjaman koperasi | Pengajuan modal ditolak; usaha tidak naik kelas meskipun sehat secara arus kas (IFC, 2025) |
 
-Hambatan keempat adalah simpul persoalan yang sesungguhnya, dan menjadi alasan karya ini relevan dengan *equitable economic access* — bukan sekadar *financial management*. Pelaku usaha mikro dapat memiliki arus kas sehat bertahun-tahun namun tetap ditolak saat mengajukan modal, semata-mata karena tidak memiliki dokumen yang membuktikannya. Bagi lembaga keuangan, usaha tanpa catatan adalah usaha yang tidak terlihat.
+Hambatan keempat adalah simpul persoalan yang sesungguhnya, dan menjadi alasan karya ini relevan dengan *equitable economic access*, bukan sekadar *financial management*. Pelaku usaha mikro dapat memiliki arus kas sehat bertahun-tahun namun tetap ditolak saat mengajukan modal, semata-mata karena tidak memiliki dokumen yang membuktikannya. IFC menyebut akarnya sebagai asimetri informasi: pemberi pinjaman tidak memiliki cukup keterangan untuk menilai kelayakan kredit UMKM, sehingga risikonya dipersepsikan lebih tinggi (IFC, 2025). Bagi lembaga keuangan, usaha tanpa catatan adalah usaha yang tidak terlihat.
 
 ### 2.3 Mengapa Solusi yang Ada Belum Menjawab
 
-Aplikasi pembukuan yang beredar mengandaikan tiga hal yang justru tidak dimiliki kelompok sasaran: koneksi stabil, keakraban dengan istilah akuntansi, dan kesediaan memasang aplikasi berukuran besar. Sebagian juga mengunci laporan laba rugi dan ekspor data di balik langganan berbayar, tepat ketika data itu mulai berguna. Yang paling menentukan, banyak aplikasi memperlakukan dukungan luring hanya sebagai penyimpanan sementara untuk membaca data; ketika pengguna mencoba menulis, operasi tersebut gagal atau menggantung. Padahal justru menulis itulah inti sebuah buku kas.
+Aplikasi pembukuan yang beredar mengandaikan tiga hal yang justru tidak dimiliki kelompok sasaran: koneksi stabil, keakraban dengan istilah akuntansi, dan kesediaan memasang aplikasi berukuran besar. Sebagian juga mengunci laporan laba rugi dan ekspor data di balik langganan berbayar, tepat ketika data itu mulai berguna. Yang paling menentukan, banyak aplikasi memperlakukan dukungan luring hanya sebagai penyimpanan sementara untuk membaca data; ketika pengguna mencoba menulis, operasi tersebut gagal atau menggantung. Padahal justru menulis itulah inti sebuah buku kas. Evaluasi aplikasi akuntansi UMKM berbasis awan menyimpulkan kunci penerimaan pengguna justru terletak pada logika debit-kredit yang disembunyikan di balik antarmuka (Mayasari dkk., 2025).
 
 ### 2.4 Rumusan Masalah
 
@@ -88,7 +94,7 @@ Aplikasi pembukuan yang beredar mengandaikan tiga hal yang justru tidak dimiliki
 
 Tracr menjawab ketiga rumusan masalah melalui tiga pilar rancangan yang seluruhnya sudah terimplementasi dan berjalan pada website yang dinilai.
 
-#### Pilar 1 — *Offline-First* yang Sesungguhnya
+#### Pilar 1: *Offline-First* yang Sesungguhnya
 
 Tracr tidak sekadar menyimpan salinan data untuk dibaca. Setiap operasi penulisan yang dilakukan saat perangkat luring masuk ke antrian mutasi di IndexedDB peramban, dengan cadangan `localStorage`. Ketika koneksi pulih, pekerja antrian memutar ulang mutasi satu per satu sesuai urutan masuk (FIFO) ke basis data. Rancangan ini menangani tiga persoalan yang biasanya diabaikan implementasi luring sederhana:
 
@@ -98,21 +104,21 @@ Tracr tidak sekadar menyimpan salinan data untuk dibaca. Setiap operasi penulisa
 
 Lebih dari 40 jenis operasi didukung secara luring: transaksi, akun, kategori, anggaran, target tabungan, utang-piutang, produk, dan cicilan.
 
-#### Pilar 2 — Bahasa Manusia, Bukan Bahasa Akuntansi
+#### Pilar 2: Bahasa Manusia, Bukan Bahasa Akuntansi
 
-Antarmuka berbahasa Indonesia secara bawaan dan sengaja menghindari istilah akuntansi. Pengguna tidak pernah bertemu kata "liabilitas"; yang muncul adalah jenis akun "Kartu Kredit" atau "Pinjaman" yang menjelaskan dirinya sebagai uang yang harus dibayar. Pada modul utang-piutang pilihannya "Pelanggan ngutang" dan "Saya ngutang"; pada modul usaha kolomnya bernama "Modal" dan hasilnya "Untung". Aksesibilitas juga ditangani secara teknis: pengaturan ukuran teks, mode gelap, kontras yang dijaga, navigasi bawah pada tampilan telepon, serta status kosong yang selalu menawarkan satu tindakan berikutnya.
+Antarmuka berbahasa Indonesia secara bawaan dan sengaja menghindari istilah akuntansi. Pengguna tidak pernah bertemu kata "liabilitas"; yang muncul adalah jenis akun "Kartu Kredit" atau "Pinjaman" yang menjelaskan dirinya sebagai uang yang harus dibayar. Pada modul utang-piutang pilihannya "Pelanggan ngutang" dan "Saya ngutang"; pada modul usaha kolomnya bernama "Modal" dan hasilnya "Untung". Rinciannya dibahas pada Bagian 8.
 
-#### Pilar 3 — Dua Buku dalam Satu Aplikasi
+#### Pilar 3: Dua Buku dalam Satu Aplikasi
 
-Nasihat pertama setiap pendamping UMKM adalah memisahkan uang pribadi dari uang usaha. Tracr menjadikannya satu ketukan: setiap catatan dipartisi berdasarkan `book_id`, dan setiap buku berjenis `personal` atau `business`. Saat pengguna berpindah ke buku usaha, aplikasi membuka tiga alat yang tidak relevan bagi pengguna pribadi — Produk & Kasir Sederhana, Utang-Piutang, dan Laba Rugi.
+Nasihat pertama setiap pendamping UMKM adalah memisahkan uang pribadi dari uang usaha. Tracr menjadikannya satu ketukan: setiap catatan dipartisi berdasarkan `book_id`, dan setiap buku berjenis `personal` atau `business`. Saat pengguna berpindah ke buku usaha, aplikasi membuka tiga alat yang tidak relevan bagi pengguna pribadi: Produk & Kasir Sederhana, Utang-Piutang, dan Laba Rugi.
 
 #### Jembatan Menuju Akses Permodalan
 
-Ketiga pilar bermuara pada satu keluaran yang menjawab hambatan keempat pada Bagian 2.2. Setelah beberapa bulan mencatat, pengguna dapat menghasilkan Laporan Laba Rugi dan riwayat transaksi lengkap dalam bentuk PDF maupun CSV — dokumen yang selama ini tidak dimiliki pelaku usaha mikro saat berhadapan dengan bank, koperasi, atau program pendanaan. Tracr karena itu bukan sekadar alat catat-mencatat, melainkan mesin pembentuk rekam jejak keuangan yang mengubah usaha yang tidak terlihat menjadi usaha yang dapat dinilai.
+Ketiga pilar bermuara pada satu keluaran yang menjawab hambatan keempat pada Bagian 2.2. Setelah beberapa bulan mencatat, pengguna dapat menghasilkan Laporan Laba Rugi dan riwayat transaksi lengkap dalam bentuk PDF maupun CSV, dokumen yang selama ini tidak dimiliki pelaku usaha mikro saat berhadapan dengan bank, koperasi, atau program pendanaan. Tracr karena itu bukan sekadar alat catat-mencatat, melainkan pembentuk rekam jejak yang mengubah usaha tak terlihat menjadi usaha yang dapat dinilai.
 
 ### 3.2 Tujuan
 
-1. Membangun platform manajemen keuangan mikro yang berfungsi penuh — termasuk operasi penulisan — tanpa koneksi internet, dan menyinkronkan data secara berurutan serta dapat diaudit ketika koneksi pulih.
+1. Membangun platform manajemen keuangan mikro yang berfungsi penuh, termasuk operasi penulisan, tanpa koneksi internet, dan menyinkronkan data secara berurutan serta dapat diaudit ketika koneksi pulih.
 2. Menyediakan antarmuka berbahasa Indonesia bebas istilah akuntansi sehingga dapat dipakai pelaku usaha mikro tanpa pelatihan formal.
 3. Memisahkan pembukuan usaha dari keuangan pribadi melalui mekanisme multi-book tanpa mengharuskan pengguna membuat akun kedua.
 4. Menghasilkan laporan laba rugi dan riwayat transaksi yang dapat diekspor sebagai dokumen pendukung pengajuan permodalan, serta menjaga seluruh fitur inti tetap gratis di atas arsitektur yang biayanya tidak bertambah linier terhadap jumlah pengguna.
@@ -151,7 +157,7 @@ Ketiga pilar bermuara pada satu keluaran yang menjawab hambatan keempat pada Bag
 ### 4.3 Asumsi
 
 1. Pengguna memiliki telepon genggam dengan peramban modern yang mendukung Service Worker dan IndexedDB.
-2. Pengguna memiliki akses internet sesekali — tidak harus terus-menerus — untuk masuk pertama kali dan menyinkronkan data.
+2. Pengguna memiliki akses internet sesekali, tidak harus terus-menerus, untuk masuk pertama kali dan menyinkronkan data.
 3. Pengguna memiliki akun Google untuk masuk; opsi masuk tanpa Google merupakan pengembangan lanjutan yang sudah direncanakan.
 
 ---
@@ -173,7 +179,7 @@ Ketiga pilar bermuara pada satu keluaran yang menjawab hambatan keempat pada Bag
 
 Tujuh Edge Function menangani seluruh pekerjaan yang tidak boleh berjalan di peramban. `recurring-autopost` dipanggil pg_cron setiap hari untuk memasang transaksi berulang yang jatuh tempo, menyusul periode terlewat, lalu memajukan tanggal jatuh tempo. `tg-webhook` dan `wa-webhook` mengubah pesan bot menjadi transaksi pada buku yang tertaut dan berbagi inti pemrosesan. `send-push` mengirim notifikasi pengingat tagihan, `ai-analysis` menyediakan ringkasan pengeluaran opsional (Bagian 6.4), sedangkan `billing-checkout` dan `midtrans-webhook` merupakan jalur pembayaran opsional yang tidak diaktifkan pada versi lomba.
 
-Seluruh nilai uang disimpan sebagai bilangan bulat satuan terkecil (`bigint`) — rupiah tanpa desimal, sen untuk mata uang dua desimal, satoshi untuk aset kripto. Tidak ada nilai uang yang pernah disimpan sebagai bilangan pecahan; konversi hanya terjadi di tepi sistem melalui `src/lib/money.ts`, sehingga galat pembulatan pecahan biner yang lazim pada aplikasi keuangan berbasis JavaScript tidak dapat muncul. Saldo akun pun tidak dihitung di sisi klien: view SQL `account_balances` menjumlahkan saldo awal ditambah seluruh mutasi bertanda, termasuk transfer yang mendebit akun asal dan mengkredit akun tujuan, dan klien hanya membaca hasilnya.
+Seluruh nilai uang disimpan sebagai bilangan bulat satuan terkecil (`bigint`), yakni rupiah tanpa desimal, sen untuk mata uang dua desimal, satoshi untuk aset kripto. Konversi hanya terjadi di tepi sistem melalui `src/lib/money.ts`, sehingga galat pembulatan pecahan biner yang lazim pada aplikasi keuangan berbasis JavaScript tidak dapat muncul. Saldo akun pun tidak dihitung di sisi klien: view SQL `account_balances` menjumlahkan saldo awal ditambah seluruh mutasi bertanda, termasuk transfer yang mendebit akun asal dan mengkredit akun tujuan.
 
 ---
 
@@ -187,28 +193,28 @@ Seluruh nilai uang disimpan sebagai bilangan bulat satuan terkecil (`bigint`) �
 | Perencanaan | Anggaran per kategori atau menyeluruh dengan ambang peringatan; tagihan berulang dengan pemasangan otomatis; target tabungan; cicilan bertenor |
 | Laporan & data | Pemasukan vs pengeluaran, komposisi kategori, tren kekayaan bersih, perbandingan antarperiode, peta panas harian; ekspor CSV dan PDF; impor CSV bervalidasi; cadangan dan pemulihan JSON |
 | Buku Usaha | Produk & kasir sederhana (harga jual dan modal, keranjang sekali ketuk, satu penjualan = satu transaksi berikut rinciannya); utang-piutang dikelompokkan per orang dengan pembayaran sebagian, usia utang berbahasa manusia, dan pengingat WhatsApp; laporan Laba Rugi (Penjualan, Modal, Laba Kotor, Biaya, Laba Bersih) beserta produk terlaris |
-| Aksesibilitas | Mode luring penuh untuk lebih dari 40 jenis operasi tulis; pemasangan PWA tanpa toko aplikasi; dwibahasa Indonesia–Inggris; pengaturan ukuran teks dan mode gelap; bot Telegram; notifikasi Web Push |
+| Aksesibilitas | Mode luring penuh untuk lebih dari 40 jenis operasi tulis; pemasangan PWA tanpa toko aplikasi; dwibahasa Indonesia-Inggris; pengaturan ukuran teks dan mode gelap; bot Telegram; notifikasi Web Push |
 
 ### 6.2 Nilai Keunikan (Orisinalitas)
 
 Lima keputusan rekayasa berikut membedakan Tracr dari aplikasi pencatatan keuangan pada umumnya, dan seluruhnya dapat ditunjukkan pada kode sumber.
 
-1. **Antrian mutasi luring dengan pemetaan ulang identitas sementara.** Sebagian besar aplikasi menyebut dirinya mendukung mode luring padahal hanya menyinggahkan data untuk dibaca. Tracr mengantre operasi penulisan, memutarnya ulang berurutan, memindahkan kegagalan ke antrian yang terlihat pengguna, dan — bagian yang paling jarang ditemui — menukar identitas sementara dengan UUID asli pada seluruh mutasi yang masih mengantre, sehingga entitas yang dibuat dan langsung dipakai saat luring tidak menghasilkan rujukan menggantung.
-2. **Pembekuan harga jual dan modal pada setiap baris penjualan.** Tabel `transaction_items` menyimpan `unit_price` dan `unit_cost` sebagai salinan saat penjualan terjadi, bukan rujukan ke harga produk saat ini. Ketika pedagang menaikkan harga bulan depan, laba bulan lalu tidak ikut berubah. Implementasi naif yang menghitung laba dengan menggabungkan penjualan ke harga produk terkini menghasilkan laporan historis yang keliru — dan kekeliruan itu tidak terlihat sampai harga berubah.
-3. **Uang sebagai bilangan bulat satuan terkecil di seluruh sistem.** Dari kolom basis data, tipe TypeScript, keadaan formulir, hingga hasil perhitungan laba, tidak ada bilangan pecahan. Ketepatan terjaga secara struktural, bukan karena pembulatan di akhir.
+1. **Antrian mutasi luring dengan pemetaan ulang identitas sementara.** Yang paling jarang ditemui bukan antriannya, melainkan penukaran identitas sementara dengan UUID asli pada seluruh mutasi yang masih mengantre, sehingga entitas yang dibuat dan langsung dipakai saat luring tidak menghasilkan rujukan menggantung.
+2. **Pembekuan harga jual dan modal pada setiap baris penjualan.** Tabel `transaction_items` menyimpan `unit_price` dan `unit_cost` sebagai salinan saat penjualan terjadi, bukan rujukan ke harga produk saat ini. Ketika pedagang menaikkan harga bulan depan, laba bulan lalu tidak ikut berubah. Implementasi naif yang menggabungkan penjualan ke harga produk terkini menghasilkan laporan historis yang keliru, dan kekeliruan itu tidak terlihat sampai harga berubah.
+3. **Uang sebagai bilangan bulat satuan terkecil di seluruh sistem.** Dari kolom basis data hingga hasil perhitungan laba tidak ada bilangan pecahan; ketepatan terjaga secara struktural, bukan karena pembulatan di akhir.
 4. **Saldo dihitung basis data, bukan klien.** View `account_balances` adalah satu-satunya sumber kebenaran saldo, menghilangkan seluruh kelas galat "saldo di layar berbeda dengan saldo sebenarnya".
-5. **Pembekuan kurs pada setiap transaksi.** Setiap transaksi menyimpan `base_amount` dan `fx_rate` saat pembuatan, sehingga riwayat keuangan tidak berubah ketika kurs bergerak — perilaku yang benar secara akuntansi dan jarang diterapkan aplikasi sejenis.
+5. **Pembekuan kurs pada setiap transaksi.** Setiap transaksi menyimpan `base_amount` dan `fx_rate` saat pembuatan, sehingga riwayat keuangan tidak berubah ketika kurs bergerak, perilaku yang benar secara akuntansi dan jarang diterapkan aplikasi sejenis.
 
 ### 6.3 Keamanan dan Manajemen Data
 
-- Row Level Security pada seluruh tabel dengan kebijakan `auth.uid() = user_id`; tabel penghubung menyalin `user_id` agar kebijakan tetap sederhana. Tidak ada jalur baca atau tulis yang dapat menembus batas antarpengguna, bahkan bila kunci publik klien bocor — sebab kunci tersebut memang dirancang untuk publik.
-- Rahasia tidak pernah berada di peramban: seluruh kunci pihak ketiga berada pada Edge Functions, dan rahasia pemanggilan pg_cron disimpan pada tabel `app_secrets` yang terkunci RLS. Lampiran pun privat — bucket Storage tidak dapat diakses publik dan hanya terbuka melalui URL bertanda tangan berumur pendek.
+- Row Level Security pada seluruh tabel dengan kebijakan `auth.uid() = user_id`; tabel penghubung menyalin `user_id` agar kebijakan tetap sederhana. Tidak ada jalur baca atau tulis yang dapat menembus batas antarpengguna, bahkan bila kunci publik klien bocor, sebab kunci tersebut memang dirancang untuk publik.
+- Rahasia tidak pernah berada di peramban: seluruh kunci pihak ketiga berada pada Edge Functions, dan rahasia pemanggilan pg_cron disimpan pada tabel `app_secrets` yang terkunci RLS. Lampiran pun privat: bucket Storage tidak dapat diakses publik dan hanya terbuka melalui URL bertanda tangan berumur pendek.
 - Validasi berlapis: Zod di sisi klien, batasan `check` di basis data (jumlah harus positif, arah utang harus salah satu dari dua nilai sah), dan RLS sebagai lapisan terakhir.
 - Kedaulatan data: cadangan JSON menyeluruh dan ekspor CSV tersedia tanpa syarat.
 
 ### 6.4 Keberlanjutan Layanan
 
-Seluruh fitur inti — pencatatan, laporan, Buku Usaha, mode luring, dan ekspor data — direncanakan tetap gratis tanpa batas waktu; frontend berupa berkas statis sedangkan basis data dan autentikasi berjalan pada paket gratis. Untuk pembiayaan jangka panjang, Tracr menyiapkan lapisan analisis berbasis kecerdasan buatan sebagai layanan tambahan opsional berbasis kredit yang berada sepenuhnya di luar jalur pencatatan: pengguna yang tidak pernah membelinya tetap memperoleh aplikasi yang utuh. Skemanya bersifat subsidi silang — pengguna yang mampu membiayai kelangsungan layanan bagi yang tidak mampu. Pada versi yang dinilai dalam kompetisi ini, jalur pembayaran dinonaktifkan.
+Seluruh fitur inti (pencatatan, laporan, Buku Usaha, mode luring, dan ekspor data) direncanakan tetap gratis tanpa batas waktu; frontend berupa berkas statis sedangkan basis data dan autentikasi berjalan pada paket gratis. Untuk pembiayaan jangka panjang, Tracr menyiapkan lapisan analisis berbasis kecerdasan buatan sebagai layanan tambahan opsional berbasis kredit di luar jalur pencatatan, sehingga pengguna yang tidak pernah membelinya tetap memperoleh aplikasi yang utuh dan pengguna yang mampu menyubsidi yang tidak mampu. Pada versi yang dinilai dalam kompetisi ini, jalur pembayaran dinonaktifkan.
 
 ---
 
@@ -216,7 +222,7 @@ Seluruh fitur inti — pencatatan, laporan, Buku Usaha, mode luring, dan ekspor 
 
 ### 7.1 Arsitektur Sistem
 
-Tracr menggunakan arsitektur *serverless* tiga lapis tanpa peladen aplikasi yang dikelola sendiri. Frontend adalah berkas statis; seluruh logika istimewa berada pada Edge Functions; basis data menegakkan keamanannya sendiri melalui Row Level Security. Alur pencatatan luring dan sinkronisasi ulang — jalur paling menentukan bagi kelompok sasaran — digambarkan tersendiri pada Gambar 4 di Lampiran.
+Tracr menggunakan arsitektur *serverless* tiga lapis tanpa peladen aplikasi yang dikelola sendiri: frontend berupa berkas statis, seluruh logika istimewa pada Edge Functions, dan basis data yang menegakkan keamanannya sendiri melalui Row Level Security. Alur pencatatan luring dan sinkronisasi ulang digambarkan tersendiri pada Gambar 4 di Lampiran.
 
 ![Arsitektur sistem Tracr](img/01-arsitektur.png)
 *Gambar 1. Arsitektur sistem Tracr*
@@ -235,11 +241,11 @@ Basis data terdiri atas 40 migrasi bernomor. Seluruh tabel dipartisi per penggun
 
 ### 7.4 Skenario Penggunaan Utama
 
-**Skenario A — Pedagang di pasar tanpa sinyal.** Bu Sari berjualan nasi di pasar dengan sinyal hilang timbul. Ia membuka Tracr dari layar utama telepon genggamnya; aplikasi terbuka seketika karena cangkangnya sudah tersimpan di perangkat. Ia mengetuk tiga produk pada layar kasir lalu menekan "Catat Jualan"; catatan langsung muncul dan spanduk memberitahu satu catatan menunggu sinkronisasi. Sore hari, saat terhubung Wi-Fi rumah, seluruh antrian terkirim berurutan tanpa perlu ia lakukan apa pun.
+**Skenario A. Pedagang di pasar tanpa sinyal.** Bu Sari berjualan nasi di pasar dengan sinyal hilang timbul. Ia membuka Tracr dari layar utama telepon genggamnya; aplikasi terbuka seketika karena cangkangnya sudah tersimpan di perangkat. Ia mengetuk tiga produk pada layar kasir lalu menekan "Catat Jualan"; catatan langsung muncul dan spanduk memberitahu satu catatan menunggu sinkronisasi. Sore hari, saat terhubung Wi-Fi rumah, seluruh antrian terkirim berurutan.
 
-**Skenario B — Menagih utang pelanggan.** Pak Budi membuka halaman Utang-Piutang yang tersusun per orang. Kartu "Wati" menunjukkan total Rp185.000 dengan keterangan "Lewat 4 hari"; ia membentangkannya, lalu mengetuk tombol pengingat — aplikasi membuka WhatsApp dengan pesan yang sudah tersusun.
+**Skenario B. Menagih utang pelanggan.** Pak Budi membuka halaman Utang-Piutang yang tersusun per orang. Kartu "Wati" menunjukkan total Rp185.000 dengan keterangan "Lewat 4 hari"; ia membentangkannya, lalu mengetuk tombol pengingat, dan aplikasi membuka WhatsApp dengan pesan yang sudah tersusun.
 
-**Skenario C — Mengajukan modal.** Setelah enam bulan mencatat, Bu Sari membuka Laba Rugi, memilih periode satu tahun, lalu menekan "Cetak / PDF". Dokumen hasilnya ia lampirkan dalam pengajuan kredit usaha rakyat — bukti tertulis yang sebelumnya tidak pernah ia miliki.
+**Skenario C. Mengajukan modal.** Setelah enam bulan mencatat, Bu Sari membuka Laba Rugi, memilih periode satu tahun, lalu menekan "Cetak / PDF". Dokumen hasilnya ia lampirkan dalam pengajuan kredit usaha rakyat, bukti tertulis yang sebelumnya tidak pernah ia miliki.
 
 ---
 
@@ -250,11 +256,9 @@ Basis data terdiri atas 40 migrasi bernomor. Seluruh tabel dipartisi per penggun
 1. Satu tindakan utama per layar: satu tombol berwarna paling menonjol, sisanya netral.
 2. Angka lebih besar daripada label, sebab pelaku usaha mencari nominal.
 3. Status kosong yang menawarkan langkah berikutnya, bukan layar hampa.
-4. Kata sehari-hari: "Pelanggan ngutang", "Modal", "Untung" — bukan "piutang", "harga pokok penjualan", "laba bersih". Navigasi utama pun berada di bawah pada tampilan telepon genggam agar terjangkau ibu jari.
+4. Kata sehari-hari: "Pelanggan ngutang", "Modal", "Untung", bukan "piutang", "harga pokok penjualan", "laba bersih"; navigasi utama di bawah agar terjangkau ibu jari.
 
 ### 8.2 Tangkapan Layar
-
-> `[PLACEHOLDER — tangkapan layar antarmuka diisi sebelum berkas dikirimkan]`
 
 | | | |
 |---|---|---|
@@ -268,16 +272,16 @@ Basis data terdiri atas 40 migrasi bernomor. Seluruh tabel dipartisi per penggun
 |---|---|---|
 | Beranda | `/` | Kartu kekayaan bersih, ringkasan arus kas bulan berjalan, grafik pengeluaran, dek kartu akun, dan aktivitas terakhir |
 | Akun & rinciannya | `/accounts` | Kartu per akun terbagi menjadi Harta dan Utang; halaman rincian memuat grafik saldo harian, buku besar, dan penyesuaian saldo |
-| Aktivitas & formulir transaksi | `/transactions` | Daftar per hari, panel penyaring lengkap, chip penyaring aktif, mode pilih-banyak dengan tindakan massal; formulir modal memuat tiga tab jenis transaksi, kolom jumlah berkalkulator, pemilih kategori bertingkat, chip label, mode terbagi, dan lampiran struk |
+| Aktivitas & formulir transaksi | `/transactions` | Daftar per hari, panel penyaring lengkap, mode pilih-banyak; formulir modal memuat tiga tab jenis transaksi, kolom berkalkulator, kategori bertingkat, label, dan lampiran struk |
 | Kasir Sederhana | `/products` | Petak produk berikon; ketukan menambah ke keranjang; bilah keranjang menempel di bawah; lembar pembayaran menyerupai nota |
 | Utang-Piutang | `/debts` | Kartu per orang yang dapat dibentangkan, usia utang berbahasa manusia, tombol bayar dan pengingat WhatsApp per baris |
-| Laba Rugi & Laporan | `/profit`, `/reports` | Kartu Penjualan, Modal, Laba Kotor, Biaya, Laba Bersih; pemilih rentang tanggal yang menggerakkan seluruh grafik; donat kategori; tren kekayaan bersih; peta panas harian; cetak/PDF |
+| Laba Rugi & Laporan | `/profit`, `/reports` | Kartu Penjualan, Modal, Laba Kotor, Biaya, Laba Bersih; pemilih rentang tanggal, donat kategori, peta panas harian, cetak/PDF |
 | Perencanaan & Buku | `/budgets`, `/books` | Anggaran, tagihan, dan target tabungan dalam satu halaman bertab; daftar buku dengan lencana jenis usaha atau pribadi |
 
 ### 8.4 Aksesibilitas
 
-- Bahasa Indonesia sebagai bahasa bawaan; pengaturan ukuran teks di dalam aplikasi, terpisah dari pengaturan sistem; mode terang dan gelap dengan rasio kontras yang dijaga.
-- Sasaran ketukan yang lapang dan kerangka pemuatan berukuran tetap sehingga tata letak tidak melompat saat data tiba. Di atas semua itu, aplikasi tetap dapat digunakan penuh tanpa jaringan — aksesibilitas yang paling menentukan bagi pengguna di daerah bersinyal terbatas.
+- Bahasa Indonesia sebagai bahasa bawaan; pengaturan ukuran teks di dalam aplikasi, terpisah dari pengaturan sistem; mode terang dan gelap dengan rasio kontras yang dijaga; sasaran ketukan yang lapang dan kerangka pemuatan berukuran tetap sehingga tata letak tidak melompat saat data tiba.
+- Yang paling menentukan: aplikasi tetap dapat dipakai penuh tanpa jaringan.
 
 ---
 
@@ -291,13 +295,45 @@ Basis data terdiri atas 40 migrasi bernomor. Seluruh tabel dipartisi per penggun
 ![Alur pencatatan luring](img/02-alur-luring.png)
 *Gambar 4. Alur pencatatan luring dan sinkronisasi ulang (rujukan Bagian 7.1)*
 
-**Catatan penyusunan:** seluruh angka statistik yang ditandai `[verifikasi]` pada Bagian 2 wajib dicocokkan dengan sumber resmi dan dilengkapi sitasi sebelum berkas dikirimkan.
+### Daftar Pustaka
+
+Badan Pusat Statistik. (2024). *Statistik Potensi Desa Indonesia 2024* (Katalog 1105014, Nomor Publikasi 04300.24002). Jakarta: Badan Pusat Statistik. Diakses dari https://www.bps.go.id/id/publication/2024/12/10/2f5217e2d6a695a0830290a7/statistik-potensi-desa-indonesia-2024.html
+
+Fadhia, N., dan Ningsih, D. A. (2024). Penggunaan Pencatatan Akuntansi pada Usaha Mikro Kecil dan Menengah. *Liabilities: Jurnal Pendidikan Akuntansi*, 7(1), 30-37. ISSN 2620-5866. Diakses dari https://jurnal.umsu.ac.id/index.php/LIAB/article/view/15883
+
+Fatwitawati, R. (2018). Pengelolaan Keuangan bagi Usaha Mikro Kecil Menengah (UMKM) di Kelurahan Airputih, Kecamatan Tampan, Kota Pekanbaru. *Sembadha: Seminar Hasil Pengabdian kepada Masyarakat*. Jakarta: PKN STAN Press. Diakses dari https://jurnal.pknstan.ac.id/index.php/sembadha/article/view/376
+
+International Finance Corporation. (2025). *MSME Finance Gap: An Updated Estimation and Evolution of the Micro, Small and Medium Enterprises Gap in Emerging and Developing Markets*. Washington, DC: World Bank Group. Diakses dari https://www.smefinanceforum.org/data-sites/msme-finance-gap
+
+Kementerian Koperasi dan UKM. (2021). Data UMKM Semester I 2021, dikutip dalam Junaidi, M. (2024), *UMKM Hebat, Perekonomian Nasional Meningkat*. Direktorat Jenderal Perbendaharaan, Kementerian Keuangan Republik Indonesia. Diakses dari https://djpb.kemenkeu.go.id/kppn/curup/id/data-publikasi/artikel/2885-umkm-hebat,-perekonomian-nasional-meningkat.html
+
+Kementerian UMKM Republik Indonesia. (2025). *Sistem Informasi Data Tunggal UMKM (SIDT-UMKM)*, posisi 31 Desember 2025. Diakses melalui https://satudata.kemenkopukm.go.id dan https://ukmindonesia.id/baca-deskripsi-posts/data-umkm-jumlah-dan-pertumbuhan-usaha-mikro-kecil-dan-menengah-di-indonesia
+
+Mayasari, M., Supardianto, Irawati, R., dan Lawita, N. F. (2025). Persepsi Pengguna terhadap Perangkat Lunak Akuntansi Usaha Kecil Berbasis Cloud. *Jurnal Akuntansi dan Ekonomika*, 15(1), 178-187. https://doi.org/10.37859/jae.v15i1.8505
+
+Otoritas Jasa Keuangan dan Badan Pusat Statistik. (2025). *Siaran Pers Bersama: Indeks Literasi dan Inklusi Keuangan Masyarakat Meningkat, Hasil Survei Nasional Literasi dan Inklusi Keuangan (SNLIK) Tahun 2025*. Nomor SP 69/OJK/GKPB/V/2025, 2 Mei 2025. Diakses dari https://ojk.go.id/id/berita-dan-kegiatan/siaran-pers/Pages/OJK-dan-BPS-Umumkan-Hasil-Survei-Nasional-Literasi-Dan-Inklusi-Keuangan-SNLIK-Tahun-2025.aspx
 
 ---
 
 ## Sisa pekerjaan sebelum kirim
 
-1. **Tangkapan layar** — 9 slot placeholder di Bagian 8.2 (`build_proposal.py`, bagian `h2("8.2 …")`). Menambah gambar akan menambah halaman; kompensasi dengan memangkas tabel 8.3 bila perlu.
-2. **Verifikasi statistik** — 4 tanda `[verifikasi]` di Bagian 2.1 dan tabel 2.2 (Kemenkop UKM, proporsi usaha mikro, SNLIK OJK, APJII). Tambahkan sitasi.
+1. **Tangkapan layar.** 9 slot placeholder di Bagian 8.2 (`build_proposal.py`, bagian `h2("8.2 …")`). Halaman isi sudah pas 13, jadi menambah gambar **pasti** menambah halaman. Cara mengompensasi yang paling murah: pindahkan tabel 8.3 ke Lampiran (lampiran tidak dihitung panitia) dan sisakan satu kalimat penunjuk di Bagian 8.3.
+2. ~~Verifikasi statistik.~~ **Selesai.** Empat tanda `[verifikasi]` di Bagian 2 sudah diganti angka bersumber, sitasi dalam teks, dan Daftar Pustaka di Lampiran.
 3. **Lembar Pernyataan Orisinalitas** bermeterai Rp10.000, bukti unggah Twibbon, dan pendaftaran Batch 2 (tutup 31 Juli 2026).
 4. **Repositori GitHub harus publik** selama masa penjurian.
+
+---
+
+## Catatan sumber (untuk pertanyaan juri)
+
+| Angka di Bagian 2 | Sumber | Catatan |
+|---|---|---|
+| 64,2 juta unit; 61,07% PDB; 97% tenaga kerja | Kementerian Koperasi dan UKM, data Semester I 2021, dikutip artikel resmi DJPb Kementerian Keuangan (2024) | Ini angka estimasi nasional yang paling sering dipakai lembaga pemerintah, termasuk usaha yang belum terdaftar |
+| 30.209.069 unit; 99,70% mikro | SIDT-UMKM, Kementerian UMKM, posisi 31 Desember 2025 | Basis data terverifikasi (hanya usaha terdaftar), karena itu jumlahnya jauh di bawah angka estimasi 64,2 juta. Keduanya disebut agar tidak terbaca kontradiktif |
+| Inklusi 80,51%; literasi 66,46%; perdesaan 75,70% dan 59,60% | SNLIK 2025, OJK dan BPS, SP 69/OJK/GKPB/V/2025 (2 Mei 2025) | Survei 10.800 responden usia 15-79 tahun di 120 kabupaten/kota, 34 provinsi |
+| 17,52% sinyal lemah; 3,70% tanpa sinyal; 2,47% hanya 2G; 1,26% tanpa internet | BPS, *Statistik Potensi Desa Indonesia 2024* (rilis 10 Desember 2024) | Podes 2024 adalah sensus, bukan sampel: 84.276 wilayah setingkat desa |
+| Asimetri informasi sebagai akar penolakan kredit | IFC, *MSME Finance Gap* (Maret 2025), World Bank Group | Dipakai untuk klaim "usaha tanpa catatan adalah usaha yang tidak terlihat" |
+| Logika akuntansi disembunyikan di balik antarmuka | Mayasari dkk. (2025), *Jurnal Akuntansi dan Ekonomika* 15(1), DOI 10.37859/jae.v15i1.8505 | Jurnal terakreditasi; mendukung Pilar 2 |
+| UMKM mikro jarang membukukan dengan benar | Fatwitawati (2018), PKN STAN; Fadhia dan Ningsih (2024), *Liabilities* 7(1) | Studi lapangan Pekanbaru dan Medan Timur |
+
+> **Catatan kejujuran data.** Kalimat lama "sebagian besar penduduk dewasa masih tergolong *unbanked* atau *underbanked*" dihapus karena bertentangan dengan SNLIK 2025 (inklusi 80,51%). Yang dipakai sekarang: sekitar satu dari lima penduduk dewasa masih di luar layanan keuangan formal, ditambah selisih 14,05 poin antara inklusi dan literasi.

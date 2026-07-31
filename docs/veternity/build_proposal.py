@@ -174,15 +174,17 @@ def figure(fname, caption, width=9.0):
          space_after=7, spacing=1.0)
 
 
-def page_break():
-    doc.add_paragraph().add_run().add_break(WD_BREAK.PAGE)
+def page_break(p):
+    """Break before p, so no stray empty paragraph can land on its own page."""
+    p.paragraph_format.page_break_before = True
+    return p
 
 
 # ====================================================================== COVER
 para("", space_after=0)
 para("PROPOSAL KARYA", size=16, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=2)
 para("Diajukan untuk Babak Penyisihan", align=WD_ALIGN_PARAGRAPH.CENTER, space_after=2)
-para("Web Development Competition — Veternity Beraksi 2026", bold=True,
+para("Web Development Competition, Veternity Beraksi 2026", bold=True,
      align=WD_ALIGN_PARAGRAPH.CENTER, space_after=12)
 para("Tema: “Bridging the Gap: Digital Platforms for Equitable Economic Access”",
      size=11, italic=True, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=2)
@@ -194,27 +196,26 @@ para("Buku Kas Digital yang Tetap Berjalan Saat Sinyal Mati: Platform Manajemen 
      size=13, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=26)
 table([
     ["Nama Tim", "IDUB mandus"],
-    ["Anggota 1", "Muhammad Choirudin Ammar — 25/556251/TK/62735"],
-    ["Anggota 2", "Muhammad Raihan Surya — 25/560713/TK/63338"],
-    ["Anggota 3", "Ahmad Rafi Firdaus — 25/560526/TK/63314"],
+    ["Anggota 1", "Muhammad Choirudin Ammar (25/556251/TK/62735)"],
+    ["Anggota 2", "Muhammad Raihan Surya (25/560713/TK/63338)"],
+    ["Anggota 3", "Ahmad Rafi Firdaus (25/560526/TK/63314)"],
     ["Perguruan Tinggi", "Universitas Gadjah Mada"],
     ["Program Studi", "Teknologi Informasi, Fakultas Teknik"],
     ["Tautan Website", "https://tracr-ai.vercel.app"],
     ["Repositori GitHub", "https://github.com/astrorehan/FinancialTracker"],
 ], widths=[4.2, 9.8], size=11, header=False)
 para("2026", size=13, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, space_before=16)
-page_break()
 
 # ======================================================= 1. JUDUL & NAMA TIM
-h1("1. JUDUL KARYA & NAMA TIM")
+page_break(h1("1. JUDUL KARYA & NAMA TIM"))
 rich([("Judul Karya: ", True, False),
-      ("Tracr — Buku Kas Digital yang Tetap Berjalan Saat Sinyal Mati: Platform Manajemen "
+      ("Tracr, Buku Kas Digital yang Tetap Berjalan Saat Sinyal Mati: Platform Manajemen "
        "Keuangan Mikro Berbasis ", False, False), ("Offline-First", False, True),
       (" untuk Pelaku Usaha Mikro dan Masyarakat ", False, False), ("Unbanked", False, True),
       (".", False, False)])
-rich([("Nama Tim: ", True, False), ("IDUB mandus — Universitas Gadjah Mada.", False, False)])
+rich([("Nama Tim: ", True, False), ("IDUB mandus, Universitas Gadjah Mada.", False, False)])
 rich([("Sub Tema: ", True, False),
-      ("Sub Tema 2 — Micro-Capital Crowdfunding & Financial Management.", False, False)])
+      ("Sub Tema 2, Micro-Capital Crowdfunding & Financial Management.", False, False)])
 para("Tracr adalah aplikasi web pencatatan keuangan mikro yang berfungsi penuh tanpa koneksi "
      "internet, menggunakan bahasa sehari-hari alih-alih istilah akuntansi, dan dapat dipasang ke "
      "layar utama telepon genggam tanpa melalui toko aplikasi. Satu antarmuka melayani dua "
@@ -224,20 +225,30 @@ para("Tracr adalah aplikasi web pencatatan keuangan mikro yang berfungsi penuh t
 # ================================================== 2. LATAR BELAKANG MASALAH
 h1("2. LATAR BELAKANG MASALAH")
 h2("2.1 Kesenjangan Ekonomi yang Disasar")
-para("UMKM merupakan tulang punggung perekonomian Indonesia: sekitar 64 juta unit, menyumbang "
-     "sekitar 61% Produk Domestik Bruto dan menyerap sekitar 97% tenaga kerja "
-     "[verifikasi: Kemenkop UKM]. Namun lebih dari 90% di antaranya berskala mikro — warung "
-     "kelontong, pedagang kaki lima, penjual makanan rumahan, penjahit — dan menjalankan usaha "
-     "tanpa pencatatan keuangan formal dalam bentuk apa pun [verifikasi: sumber proporsi usaha "
-     "mikro]. Pada saat yang sama, sebagian besar penduduk dewasa masih tergolong unbanked atau "
-     "underbanked [verifikasi: SNLIK OJK] sehingga hampir seluruh transaksinya berjalan tunai. "
-     "Akibatnya, solusi keuangan digital yang mengandalkan sinkronisasi rekening bank — open "
-     "banking, agregasi mutasi, kategorisasi otomatis dari pesan bank — tidak dapat menjangkau "
-     "mereka sama sekali, karena data sumbernya memang tidak pernah ada.")
-para("Kesenjangan itu diperparah sebaran kualitas jaringan yang tidak merata; sejumlah wilayah "
-     "pedesaan masih berstatus blank spot [verifikasi: APJII]. Bagi pedagang pasar yang sedang "
-     "melayani pembeli, aplikasi yang menampilkan layar kosong belasan detik karena menunggu "
-     "peladen bukan sekadar tidak nyaman — aplikasi itu tidak dapat dipakai.")
+para("UMKM adalah tulang punggung perekonomian Indonesia: sekitar 64,2 juta unit yang menyumbang "
+     "61,07% Produk Domestik Bruto dan menyerap 97% tenaga kerja nasional (Kementerian Koperasi "
+     "dan UKM, 2021). Strukturnya timpang jauh ke bawah: basis data tunggal SIDT-UMKM mencatat "
+     "30.209.069 unit usaha terverifikasi per 31 Desember 2025 dan 99,70% di antaranya berskala "
+     "mikro (Kementerian UMKM, 2025), yakni warung kelontong, pedagang kaki lima, penjual makanan "
+     "rumahan, dan penjahit. Justru pada kelompok itulah pencatatan keuangan paling jarang "
+     "ditemukan. Kajian lapangan di Pekanbaru mendapati pelaku UMKM umumnya hanya mencatat "
+     "pemasukan dan pengeluaran seadanya, bahkan ada yang tidak mencatat sewa tempat sebagai beban "
+     "sehingga usahanya tampak berlaba besar (Fatwitawati, 2018); dari 30 pelaku UMKM di Medan "
+     "Timur, hanya sebagian kecil yang memahami akuntansi sederhana (Fadhia dan Ningsih, 2024).")
+para("Akses keuangan formal pun belum merata. SNLIK 2025 mencatat indeks inklusi keuangan 80,51% "
+     "berbanding indeks literasi keuangan 66,46%, sehingga sekitar satu dari lima penduduk dewasa "
+     "masih di luar layanan keuangan formal dan selisih 14,05 poin itu memperlihatkan banyak orang "
+     "memegang produk keuangan tanpa memahaminya; di perdesaan jaraknya melebar menjadi 75,70% "
+     "berbanding 59,60% (OJK dan BPS, 2025). Transaksi kelompok ini karenanya berjalan tunai, dan "
+     "solusi digital yang bertumpu pada sinkronisasi rekening bank (open banking, agregasi mutasi, "
+     "kategorisasi otomatis dari pesan bank) tidak dapat menjangkau mereka karena data sumbernya "
+     "memang tidak pernah ada.")
+para("Kesenjangan itu diperparah sebaran kualitas jaringan yang timpang. Pendataan Potensi Desa "
+     "2024, sensus atas 84.276 wilayah setingkat desa, mencatat 17,52% desa hanya menerima sinyal "
+     "seluler lemah dan 3,70% tidak menerima sinyal sama sekali; 2,47% desa masih bergantung pada "
+     "internet 2G/EDGE dan 1,26% tanpa sinyal internet (BPS, 2024). Bagi pedagang pasar yang "
+     "sedang melayani pembeli, aplikasi yang menampilkan layar kosong belasan detik karena "
+     "menunggu peladen bukan sekadar tidak nyaman; aplikasi itu tidak dapat dipakai.")
 
 h2("2.2 Empat Lapis Hambatan")
 table([
@@ -249,13 +260,15 @@ table([
     ["Perangkat & kuota", "Telepon kelas pemula, memori hampir penuh, kuota terbatas",
      "Enggan memasang aplikasi puluhan megabita dari toko aplikasi"],
     ["Akses permodalan", "Tidak ada rekam jejak keuangan tertulis saat mengajukan KUR atau pinjaman koperasi",
-     "Pengajuan modal ditolak; usaha tidak naik kelas meskipun sehat secara arus kas"],
+     "Pengajuan modal ditolak; usaha tidak naik kelas meskipun sehat secara arus kas (IFC, 2025)"],
 ], widths=[2.6, 5.7, 5.7])
 para("Hambatan keempat adalah simpul persoalan yang sesungguhnya, dan menjadi alasan karya ini "
-     "relevan dengan equitable economic access — bukan sekadar financial management. Pelaku usaha "
+     "relevan dengan equitable economic access, bukan sekadar financial management. Pelaku usaha "
      "mikro dapat memiliki arus kas sehat bertahun-tahun namun tetap ditolak saat mengajukan "
-     "modal, semata-mata karena tidak memiliki dokumen yang membuktikannya. Bagi lembaga "
-     "keuangan, usaha tanpa catatan adalah usaha yang tidak terlihat.", space_before=4)
+     "modal, semata-mata karena tidak memiliki dokumen yang membuktikannya. IFC menyebut akarnya "
+     "sebagai asimetri informasi: pemberi pinjaman tidak memiliki cukup keterangan untuk menilai "
+     "kelayakan kredit UMKM, sehingga risikonya dipersepsikan lebih tinggi (IFC, 2025). Bagi "
+     "lembaga keuangan, usaha tanpa catatan adalah usaha yang tidak terlihat.", space_before=4)
 
 h2("2.3 Mengapa Solusi yang Ada Belum Menjawab")
 para("Aplikasi pembukuan yang beredar mengandaikan tiga hal yang justru tidak dimiliki kelompok "
@@ -264,7 +277,9 @@ para("Aplikasi pembukuan yang beredar mengandaikan tiga hal yang justru tidak di
      "berbayar, tepat ketika data itu mulai berguna. Yang paling menentukan, banyak aplikasi "
      "memperlakukan dukungan luring hanya sebagai penyimpanan sementara untuk membaca data; ketika "
      "pengguna mencoba menulis, operasi tersebut gagal atau menggantung. Padahal justru menulis "
-     "itulah inti sebuah buku kas.")
+     "itulah inti sebuah buku kas. Evaluasi aplikasi akuntansi UMKM berbasis awan menyimpulkan "
+     "kunci penerimaan pengguna justru terletak pada logika debit-kredit yang disembunyikan di "
+     "balik antarmuka (Mayasari dkk., 2025).")
 
 h2("2.4 Rumusan Masalah")
 numbered("Bagaimana merancang platform manajemen keuangan mikro yang tetap menerima pencatatan "
@@ -280,7 +295,7 @@ h1("3. SOLUSI, TUJUAN, DAN MANFAAT APLIKASI")
 h2("3.1 Gagasan Solusi")
 para("Tracr menjawab ketiga rumusan masalah melalui tiga pilar rancangan yang seluruhnya sudah "
      "terimplementasi dan berjalan pada website yang dinilai.")
-h3("Pilar 1 — Offline-First yang Sesungguhnya")
+h3("Pilar 1: Offline-First yang Sesungguhnya")
 para("Tracr tidak sekadar menyimpan salinan data untuk dibaca. Setiap operasi penulisan yang "
      "dilakukan saat perangkat luring masuk ke antrian mutasi di IndexedDB peramban, dengan "
      "cadangan localStorage. Ketika koneksi pulih, pekerja antrian memutar ulang mutasi satu per "
@@ -297,31 +312,29 @@ numbered("Kejelasan status. Spanduk status menampilkan kondisi luring dan jumlah
          "menunggu sinkronisasi, sehingga pengguna tahu catatannya aman meskipun belum terkirim.")
 para("Lebih dari 40 jenis operasi didukung secara luring: transaksi, akun, kategori, anggaran, "
      "target tabungan, utang-piutang, produk, dan cicilan.")
-h3("Pilar 2 — Bahasa Manusia, Bukan Bahasa Akuntansi")
+h3("Pilar 2: Bahasa Manusia, Bukan Bahasa Akuntansi")
 para("Antarmuka berbahasa Indonesia secara bawaan dan sengaja menghindari istilah akuntansi. "
      "Pengguna tidak pernah bertemu kata “liabilitas”; yang muncul adalah jenis akun “Kartu "
      "Kredit” atau “Pinjaman” yang menjelaskan dirinya sebagai uang yang harus dibayar. Pada modul "
      "utang-piutang pilihannya “Pelanggan ngutang” dan “Saya ngutang”; pada modul usaha kolomnya "
-     "bernama “Modal” dan hasilnya “Untung”. Aksesibilitas juga ditangani secara teknis: "
-     "pengaturan ukuran teks, mode gelap, kontras yang dijaga, navigasi bawah pada tampilan "
-     "telepon, serta status kosong yang selalu menawarkan satu tindakan berikutnya.")
-h3("Pilar 3 — Dua Buku dalam Satu Aplikasi")
+     "bernama “Modal” dan hasilnya “Untung”. Rinciannya dibahas pada Bagian 8.")
+h3("Pilar 3: Dua Buku dalam Satu Aplikasi")
 para("Nasihat pertama setiap pendamping UMKM adalah memisahkan uang pribadi dari uang usaha. "
      "Tracr menjadikannya satu ketukan: setiap catatan dipartisi berdasarkan book_id, dan setiap "
      "buku berjenis personal atau business. Saat pengguna berpindah ke buku usaha, aplikasi "
-     "membuka tiga alat yang tidak relevan bagi pengguna pribadi — Produk & Kasir Sederhana, "
+     "membuka tiga alat yang tidak relevan bagi pengguna pribadi: Produk & Kasir Sederhana, "
      "Utang-Piutang, dan Laba Rugi.")
 h3("Jembatan Menuju Akses Permodalan")
 para("Ketiga pilar bermuara pada satu keluaran yang menjawab hambatan keempat pada Bagian 2.2. "
      "Setelah beberapa bulan mencatat, pengguna dapat menghasilkan Laporan Laba Rugi dan riwayat "
-     "transaksi lengkap dalam bentuk PDF maupun CSV — dokumen yang selama ini tidak dimiliki "
+     "transaksi lengkap dalam bentuk PDF maupun CSV, dokumen yang selama ini tidak dimiliki "
      "pelaku usaha mikro saat berhadapan dengan bank, koperasi, atau program pendanaan. Tracr "
-     "karena itu bukan sekadar alat catat-mencatat, melainkan mesin pembentuk rekam jejak "
-     "keuangan yang mengubah usaha yang tidak terlihat menjadi usaha yang dapat dinilai.")
+     "karena itu bukan sekadar alat catat-mencatat, melainkan pembentuk rekam jejak yang mengubah "
+     "usaha tak terlihat menjadi usaha yang dapat dinilai.")
 
 h2("3.2 Tujuan")
-numbered("Membangun platform manajemen keuangan mikro yang berfungsi penuh — termasuk operasi "
-         "penulisan — tanpa koneksi internet, dan menyinkronkan data secara berurutan serta dapat "
+numbered("Membangun platform manajemen keuangan mikro yang berfungsi penuh, termasuk operasi "
+         "penulisan, tanpa koneksi internet, dan menyinkronkan data secara berurutan serta dapat "
          "diaudit ketika koneksi pulih.")
 numbered("Menyediakan antarmuka berbahasa Indonesia bebas istilah akuntansi sehingga dapat "
          "dipakai pelaku usaha mikro tanpa pelatihan formal.")
@@ -371,7 +384,7 @@ table([
 h2("4.3 Asumsi")
 numbered("Pengguna memiliki telepon genggam dengan peramban modern yang mendukung Service Worker "
          "dan IndexedDB.")
-numbered("Pengguna memiliki akses internet sesekali — tidak harus terus-menerus — untuk masuk "
+numbered("Pengguna memiliki akses internet sesekali, tidak harus terus-menerus, untuk masuk "
          "pertama kali dan menyinkronkan data.")
 numbered("Pengguna memiliki akun Google untuk masuk; opsi masuk tanpa Google merupakan "
          "pengembangan lanjutan yang sudah direncanakan.")
@@ -403,14 +416,13 @@ para("Tujuh Edge Function menangani seluruh pekerjaan yang tidak boleh berjalan 
      "pemrosesan. send-push mengirim notifikasi pengingat tagihan, ai-analysis menyediakan "
      "ringkasan pengeluaran opsional (Bagian 6.4), sedangkan billing-checkout dan midtrans-webhook "
      "merupakan jalur pembayaran opsional yang tidak diaktifkan pada versi lomba.")
-para("Seluruh nilai uang disimpan sebagai bilangan bulat satuan terkecil (bigint) — rupiah tanpa "
-     "desimal, sen untuk mata uang dua desimal, satoshi untuk aset kripto. Tidak ada nilai uang "
-     "yang pernah disimpan sebagai bilangan pecahan; konversi hanya terjadi di tepi sistem melalui "
-     "src/lib/money.ts, sehingga galat pembulatan pecahan biner yang lazim pada aplikasi keuangan "
-     "berbasis JavaScript tidak dapat muncul. Saldo akun pun tidak dihitung di sisi klien: view "
-     "SQL account_balances menjumlahkan saldo awal ditambah seluruh mutasi bertanda, termasuk "
-     "transfer yang mendebit akun asal dan mengkredit akun tujuan, dan klien hanya membaca "
-     "hasilnya.", space_before=4)
+para("Seluruh nilai uang disimpan sebagai bilangan bulat satuan terkecil (bigint), yakni rupiah tanpa "
+     "desimal, sen untuk mata uang dua desimal, satoshi untuk aset kripto. Konversi hanya terjadi "
+     "di tepi sistem melalui src/lib/money.ts, sehingga galat pembulatan pecahan biner yang lazim "
+     "pada aplikasi keuangan berbasis JavaScript tidak dapat muncul. Saldo akun pun tidak dihitung "
+     "di sisi klien: view SQL account_balances menjumlahkan saldo awal ditambah seluruh mutasi "
+     "bertanda, termasuk transfer yang mendebit akun asal dan mengkredit akun tujuan.",
+     space_before=4)
 
 # ============================================ 6. FITUR UTAMA & NILAI KEUNIKAN
 h1("6. FITUR UTAMA & NILAI KEUNIKAN APLIKASI")
@@ -426,68 +438,62 @@ table([
     ["Buku Usaha",
      "Produk & kasir sederhana (harga jual dan modal, keranjang sekali ketuk, satu penjualan = satu transaksi berikut rinciannya); utang-piutang dikelompokkan per orang dengan pembayaran sebagian, usia utang berbahasa manusia, dan pengingat WhatsApp; laporan Laba Rugi (Penjualan, Modal, Laba Kotor, Biaya, Laba Bersih) beserta produk terlaris"],
     ["Aksesibilitas",
-     "Mode luring penuh untuk lebih dari 40 jenis operasi tulis; pemasangan PWA tanpa toko aplikasi; dwibahasa Indonesia–Inggris; pengaturan ukuran teks dan mode gelap; bot Telegram; notifikasi Web Push"],
+     "Mode luring penuh untuk lebih dari 40 jenis operasi tulis; pemasangan PWA tanpa toko aplikasi; dwibahasa Indonesia-Inggris; pengaturan ukuran teks dan mode gelap; bot Telegram; notifikasi Web Push"],
 ], widths=[3.2, 10.8])
 
 h2("6.2 Nilai Keunikan (Orisinalitas)")
 para("Lima keputusan rekayasa berikut membedakan Tracr dari aplikasi pencatatan keuangan pada "
      "umumnya, dan seluruhnya dapat ditunjukkan pada kode sumber.")
 rich([("1. Antrian mutasi luring dengan pemetaan ulang identitas sementara. ", True, False),
-      ("Sebagian besar aplikasi menyebut dirinya mendukung mode luring padahal hanya "
-       "menyinggahkan data untuk dibaca. Tracr mengantre operasi penulisan, memutarnya ulang "
-       "berurutan, memindahkan kegagalan ke antrian yang terlihat pengguna, dan — bagian yang "
-       "paling jarang ditemui — menukar identitas sementara dengan UUID asli pada seluruh mutasi "
-       "yang masih mengantre, sehingga entitas yang dibuat dan langsung dipakai saat luring tidak "
-       "menghasilkan rujukan menggantung.", False, False)])
+      ("Yang paling jarang ditemui bukan antriannya, melainkan penukaran identitas sementara "
+       "dengan UUID asli pada seluruh mutasi yang masih mengantre, sehingga entitas yang dibuat "
+       "dan langsung dipakai saat luring tidak menghasilkan rujukan menggantung.", False, False)])
 rich([("2. Pembekuan harga jual dan modal pada setiap baris penjualan. ", True, False),
       ("Tabel transaction_items menyimpan unit_price dan unit_cost sebagai salinan saat penjualan "
        "terjadi, bukan rujukan ke harga produk saat ini. Ketika pedagang menaikkan harga bulan "
-       "depan, laba bulan lalu tidak ikut berubah. Implementasi naif yang menghitung laba dengan "
-       "menggabungkan penjualan ke harga produk terkini menghasilkan laporan historis yang "
-       "keliru — dan kekeliruan itu tidak terlihat sampai harga berubah.", False, False)])
+       "depan, laba bulan lalu tidak ikut berubah. Implementasi naif yang menggabungkan penjualan "
+       "ke harga produk terkini menghasilkan laporan historis yang keliru, dan kekeliruan itu "
+       "tidak terlihat sampai harga berubah.", False, False)])
 rich([("3. Uang sebagai bilangan bulat satuan terkecil di seluruh sistem. ", True, False),
-      ("Dari kolom basis data, tipe TypeScript, keadaan formulir, hingga hasil perhitungan laba, "
-       "tidak ada bilangan pecahan. Ketepatan terjaga secara struktural, bukan karena pembulatan "
-       "di akhir.", False, False)])
+      ("Dari kolom basis data hingga hasil perhitungan laba tidak ada bilangan pecahan; ketepatan "
+       "terjaga secara struktural, bukan karena pembulatan di akhir.", False, False)])
 rich([("4. Saldo dihitung basis data, bukan klien. ", True, False),
       ("View account_balances adalah satu-satunya sumber kebenaran saldo, menghilangkan seluruh "
        "kelas galat “saldo di layar berbeda dengan saldo sebenarnya”.", False, False)])
 rich([("5. Pembekuan kurs pada setiap transaksi. ", True, False),
       ("Setiap transaksi menyimpan base_amount dan fx_rate saat pembuatan, sehingga riwayat "
-       "keuangan tidak berubah ketika kurs bergerak — perilaku yang benar secara akuntansi dan "
+       "keuangan tidak berubah ketika kurs bergerak, perilaku yang benar secara akuntansi dan "
        "jarang diterapkan aplikasi sejenis.", False, False)])
 
 h2("6.3 Keamanan dan Manajemen Data")
 bullet("Row Level Security pada seluruh tabel dengan kebijakan auth.uid() = user_id; tabel "
        "penghubung menyalin user_id agar kebijakan tetap sederhana. Tidak ada jalur baca atau "
-       "tulis yang dapat menembus batas antarpengguna, bahkan bila kunci publik klien bocor — "
+       "tulis yang dapat menembus batas antarpengguna, bahkan bila kunci publik klien bocor, "
        "sebab kunci tersebut memang dirancang untuk publik.")
 bullet("Rahasia tidak pernah berada di peramban: seluruh kunci pihak ketiga berada pada Edge "
        "Functions, dan rahasia pemanggilan pg_cron disimpan pada tabel app_secrets yang terkunci "
-       "RLS. Lampiran pun privat — bucket Storage tidak dapat diakses publik dan hanya terbuka "
+       "RLS. Lampiran pun privat: bucket Storage tidak dapat diakses publik dan hanya terbuka "
        "melalui URL bertanda tangan berumur pendek.")
 bullet("Validasi berlapis: Zod di sisi klien, batasan check di basis data (jumlah harus positif, "
        "arah utang harus salah satu dari dua nilai sah), dan RLS sebagai lapisan terakhir.")
 bullet("Kedaulatan data: cadangan JSON menyeluruh dan ekspor CSV tersedia tanpa syarat.")
 
 h2("6.4 Keberlanjutan Layanan")
-para("Seluruh fitur inti — pencatatan, laporan, Buku Usaha, mode luring, dan ekspor data — "
+para("Seluruh fitur inti (pencatatan, laporan, Buku Usaha, mode luring, dan ekspor data) "
      "direncanakan tetap gratis tanpa batas waktu; frontend berupa berkas statis sedangkan basis "
      "data dan autentikasi berjalan pada paket gratis. Untuk pembiayaan jangka panjang, Tracr "
      "menyiapkan lapisan analisis berbasis kecerdasan buatan sebagai layanan tambahan opsional "
-     "berbasis kredit yang berada sepenuhnya di luar jalur pencatatan: pengguna yang tidak pernah "
-     "membelinya tetap memperoleh aplikasi yang utuh. Skemanya bersifat subsidi silang — pengguna "
-     "yang mampu membiayai kelangsungan layanan bagi yang tidak mampu. Pada versi yang dinilai "
-     "dalam kompetisi ini, jalur pembayaran dinonaktifkan.")
+     "berbasis kredit di luar jalur pencatatan, sehingga pengguna yang tidak pernah membelinya "
+     "tetap memperoleh aplikasi yang utuh dan pengguna yang mampu menyubsidi yang tidak mampu. "
+     "Pada versi yang dinilai dalam kompetisi ini, jalur pembayaran dinonaktifkan.")
 
 # ================================================== 7. ARSITEKTUR & USE CASE
 h1("7. ARSITEKTUR SISTEM & USE CASE DIAGRAM")
 h2("7.1 Arsitektur Sistem")
 para("Tracr menggunakan arsitektur serverless tiga lapis tanpa peladen aplikasi yang dikelola "
-     "sendiri. Frontend adalah berkas statis; seluruh logika istimewa berada pada Edge Functions; "
-     "basis data menegakkan keamanannya sendiri melalui Row Level Security. Alur pencatatan luring "
-     "dan sinkronisasi ulang — jalur paling menentukan bagi kelompok sasaran — digambarkan "
-     "tersendiri pada Gambar 4 di Lampiran.")
+     "sendiri: frontend berupa berkas statis, seluruh logika istimewa pada Edge Functions, dan "
+     "basis data yang menegakkan keamanannya sendiri melalui Row Level Security. Alur pencatatan "
+     "luring dan sinkronisasi ulang digambarkan tersendiri pada Gambar 4 di Lampiran.")
 figure("01-arsitektur.png", "Gambar 1. Arsitektur sistem Tracr")
 h2("7.2 Rancangan Basis Data")
 para("Basis data terdiri atas 40 migrasi bernomor. Seluruh tabel dipartisi per pengguna melalui "
@@ -496,22 +502,21 @@ figure("03-erd.png", "Gambar 2. Rancangan basis data (inti yang relevan dengan s
 h2("7.3 Use Case Diagram")
 figure("04-usecase.png", "Gambar 3. Use case diagram Tracr")
 h2("7.4 Skenario Penggunaan Utama")
-rich([("Skenario A — Pedagang di pasar tanpa sinyal. ", True, False),
+rich([("Skenario A. Pedagang di pasar tanpa sinyal. ", True, False),
       ("Bu Sari berjualan nasi di pasar dengan sinyal hilang timbul. Ia membuka Tracr dari layar "
        "utama telepon genggamnya; aplikasi terbuka seketika karena cangkangnya sudah tersimpan di "
        "perangkat. Ia mengetuk tiga produk pada layar kasir lalu menekan “Catat Jualan”; catatan "
        "langsung muncul dan spanduk memberitahu satu catatan menunggu sinkronisasi. Sore hari, "
-       "saat terhubung Wi-Fi rumah, seluruh antrian terkirim berurutan tanpa perlu ia lakukan "
-       "apa pun.", False, False)])
-rich([("Skenario B — Menagih utang pelanggan. ", True, False),
+       "saat terhubung Wi-Fi rumah, seluruh antrian terkirim berurutan.", False, False)])
+rich([("Skenario B. Menagih utang pelanggan. ", True, False),
       ("Pak Budi membuka halaman Utang-Piutang yang tersusun per orang. Kartu “Wati” menunjukkan "
        "total Rp185.000 dengan keterangan “Lewat 4 hari”; ia membentangkannya, lalu mengetuk "
-       "tombol pengingat — aplikasi membuka WhatsApp dengan pesan yang sudah tersusun.",
+       "tombol pengingat, dan aplikasi membuka WhatsApp dengan pesan yang sudah tersusun.",
        False, False)])
-rich([("Skenario C — Mengajukan modal. ", True, False),
+rich([("Skenario C. Mengajukan modal. ", True, False),
       ("Setelah enam bulan mencatat, Bu Sari membuka Laba Rugi, memilih periode satu tahun, lalu "
        "menekan “Cetak / PDF”. Dokumen hasilnya ia lampirkan dalam pengajuan kredit usaha "
-       "rakyat — bukti tertulis yang sebelumnya tidak pernah ia miliki.", False, False)])
+       "rakyat, bukti tertulis yang sebelumnya tidak pernah ia miliki.", False, False)])
 
 # ============================================================== 8. ANTARMUKA
 h1("8. DESAIN ANTARMUKA")
@@ -519,13 +524,10 @@ h2("8.1 Prinsip Rancangan")
 numbered("Satu tindakan utama per layar: satu tombol berwarna paling menonjol, sisanya netral.")
 numbered("Angka lebih besar daripada label, sebab pelaku usaha mencari nominal.")
 numbered("Status kosong yang menawarkan langkah berikutnya, bukan layar hampa.")
-numbered("Kata sehari-hari: “Pelanggan ngutang”, “Modal”, “Untung” — bukan “piutang”, “harga "
-         "pokok penjualan”, “laba bersih”. Navigasi utama pun berada di bawah pada tampilan "
-         "telepon genggam agar terjangkau ibu jari.")
+numbered("Kata sehari-hari: “Pelanggan ngutang”, “Modal”, “Untung”, bukan “piutang”, “harga "
+         "pokok penjualan”, “laba bersih”; navigasi utama di bawah agar terjangkau ibu jari.")
 
 h2("8.2 Tangkapan Layar")
-para("[PLACEHOLDER — tangkapan layar antarmuka diisi sebelum berkas dikirimkan]",
-     size=11, italic=True, align=WD_ALIGN_PARAGRAPH.CENTER)
 table([
     ["[G1: Halaman Masuk]", "[G2: Beranda]", "[G3: Formulir Catat Transaksi]"],
     ["[G4: Aktivitas & penyaring]", "[G5: Kasir Sederhana]", "[G6: Nota Penjualan]"],
@@ -537,24 +539,22 @@ table([
     ["Halaman", "Rute", "Deskripsi antarmuka"],
     ["Beranda", "/", "Kartu kekayaan bersih, ringkasan arus kas bulan berjalan, grafik pengeluaran, dek kartu akun, dan aktivitas terakhir"],
     ["Akun & rinciannya", "/accounts", "Kartu per akun terbagi menjadi Harta dan Utang; halaman rincian memuat grafik saldo harian, buku besar, dan penyesuaian saldo"],
-    ["Aktivitas & formulir transaksi", "/transactions", "Daftar per hari, panel penyaring lengkap, chip penyaring aktif, mode pilih-banyak dengan tindakan massal; formulir modal memuat tiga tab jenis transaksi, kolom jumlah berkalkulator, pemilih kategori bertingkat, chip label, mode terbagi, dan lampiran struk"],
+    ["Aktivitas & formulir transaksi", "/transactions", "Daftar per hari, panel penyaring lengkap, mode pilih-banyak; formulir modal memuat tiga tab jenis transaksi, kolom berkalkulator, kategori bertingkat, label, dan lampiran struk"],
     ["Kasir Sederhana", "/products", "Petak produk berikon; ketukan menambah ke keranjang; bilah keranjang menempel di bawah; lembar pembayaran menyerupai nota"],
     ["Utang-Piutang", "/debts", "Kartu per orang yang dapat dibentangkan, usia utang berbahasa manusia, tombol bayar dan pengingat WhatsApp per baris"],
-    ["Laba Rugi & Laporan", "/profit, /reports", "Kartu Penjualan, Modal, Laba Kotor, Biaya, Laba Bersih; pemilih rentang tanggal yang menggerakkan seluruh grafik; donat kategori; tren kekayaan bersih; peta panas harian; cetak/PDF"],
+    ["Laba Rugi & Laporan", "/profit, /reports", "Kartu Penjualan, Modal, Laba Kotor, Biaya, Laba Bersih; pemilih rentang tanggal, donat kategori, peta panas harian, cetak/PDF"],
     ["Perencanaan & Buku", "/budgets, /books", "Anggaran, tagihan, dan target tabungan dalam satu halaman bertab; daftar buku dengan lencana jenis usaha atau pribadi"],
 ], widths=[3.0, 2.8, 8.2])
 
 h2("8.4 Aksesibilitas")
 bullet("Bahasa Indonesia sebagai bahasa bawaan; pengaturan ukuran teks di dalam aplikasi, "
-       "terpisah dari pengaturan sistem; mode terang dan gelap dengan rasio kontras yang dijaga.")
-bullet("Sasaran ketukan yang lapang dan kerangka pemuatan berukuran tetap sehingga tata letak "
-       "tidak melompat saat data tiba. Di atas semua itu, aplikasi tetap dapat digunakan penuh "
-       "tanpa jaringan — aksesibilitas yang paling menentukan bagi pengguna di daerah bersinyal "
-       "terbatas.")
+       "terpisah dari pengaturan sistem; mode terang dan gelap dengan rasio kontras yang dijaga; "
+       "sasaran ketukan yang lapang dan kerangka pemuatan berukuran tetap sehingga tata letak "
+       "tidak melompat saat data tiba.")
+bullet("Yang paling menentukan: aplikasi tetap dapat dipakai penuh tanpa jaringan.")
 
 # ================================================================= LAMPIRAN
-page_break()
-h1("LAMPIRAN")
+page_break(h1("LAMPIRAN"))
 table([
     ["Keterangan", "Tautan"],
     ["Website (aktif, dapat diakses publik)", "https://tracr-ai.vercel.app"],
@@ -562,9 +562,51 @@ table([
 ], widths=[6.0, 8.0])
 figure("02-alur-luring.png", "Gambar 4. Alur pencatatan luring dan sinkronisasi ulang "
        "(rujukan Bagian 7.1)", width=12.5)
-para("Catatan penyusunan: seluruh angka statistik yang ditandai [verifikasi] pada Bagian 2 wajib "
-     "dicocokkan dengan sumber resmi dan dilengkapi sitasi sebelum berkas dikirimkan.",
-     size=11, italic=True, space_before=6)
+h2("Daftar Pustaka")
+for _ref in [
+    "Badan Pusat Statistik. (2024). Statistik Potensi Desa Indonesia 2024 (Katalog 1105014, "
+    "Nomor Publikasi 04300.24002). Jakarta: Badan Pusat Statistik. Diakses dari "
+    "https://www.bps.go.id/id/publication/2024/12/10/2f5217e2d6a695a0830290a7/"
+    "statistik-potensi-desa-indonesia-2024.html",
+
+    "Fadhia, N., dan Ningsih, D. A. (2024). Penggunaan Pencatatan Akuntansi pada Usaha Mikro "
+    "Kecil dan Menengah. Liabilities: Jurnal Pendidikan Akuntansi, 7(1), 30-37. ISSN 2620-5866. "
+    "Diakses dari https://jurnal.umsu.ac.id/index.php/LIAB/article/view/15883",
+
+    "Fatwitawati, R. (2018). Pengelolaan Keuangan bagi Usaha Mikro Kecil Menengah (UMKM) di "
+    "Kelurahan Airputih, Kecamatan Tampan, Kota Pekanbaru. Sembadha: Seminar Hasil Pengabdian "
+    "kepada Masyarakat. Jakarta: PKN STAN Press. Diakses dari "
+    "https://jurnal.pknstan.ac.id/index.php/sembadha/article/view/376",
+
+    "International Finance Corporation. (2025). MSME Finance Gap: An Updated Estimation and "
+    "Evolution of the Micro, Small and Medium Enterprises Gap in Emerging and Developing "
+    "Markets. Washington, DC: World Bank Group. Diakses dari "
+    "https://www.smefinanceforum.org/data-sites/msme-finance-gap",
+
+    "Kementerian Koperasi dan UKM. (2021). Data UMKM Semester I 2021, dikutip dalam Junaidi, M. "
+    "(2024), UMKM Hebat, Perekonomian Nasional Meningkat. Direktorat Jenderal Perbendaharaan, "
+    "Kementerian Keuangan Republik Indonesia. Diakses dari "
+    "https://djpb.kemenkeu.go.id/kppn/curup/id/data-publikasi/artikel/"
+    "2885-umkm-hebat,-perekonomian-nasional-meningkat.html",
+
+    "Kementerian UMKM Republik Indonesia. (2025). Sistem Informasi Data Tunggal UMKM "
+    "(SIDT-UMKM), posisi 31 Desember 2025. Diakses melalui https://satudata.kemenkopukm.go.id "
+    "dan https://ukmindonesia.id/baca-deskripsi-posts/"
+    "data-umkm-jumlah-dan-pertumbuhan-usaha-mikro-kecil-dan-menengah-di-indonesia",
+
+    "Mayasari, M., Supardianto, Irawati, R., dan Lawita, N. F. (2025). Persepsi Pengguna "
+    "terhadap Perangkat Lunak Akuntansi Usaha Kecil Berbasis Cloud. Jurnal Akuntansi dan "
+    "Ekonomika, 15(1), 178-187. https://doi.org/10.37859/jae.v15i1.8505",
+
+    "Otoritas Jasa Keuangan dan Badan Pusat Statistik. (2025). Siaran Pers Bersama: Indeks "
+    "Literasi dan Inklusi Keuangan Masyarakat Meningkat, Hasil Survei Nasional Literasi dan "
+    "Inklusi Keuangan (SNLIK) Tahun 2025. Nomor SP 69/OJK/GKPB/V/2025, 2 Mei 2025. Diakses dari "
+    "https://ojk.go.id/id/berita-dan-kegiatan/siaran-pers/Pages/"
+    "OJK-dan-BPS-Umumkan-Hasil-Survei-Nasional-Literasi-Dan-Inklusi-Keuangan-SNLIK-Tahun-2025.aspx",
+]:
+    _p = para(_ref, size=10, space_after=4, spacing=1.0)
+    _p.paragraph_format.left_indent = Cm(1.0)
+    _p.paragraph_format.first_line_indent = Cm(-1.0)
 
 doc.save(OUT)
 print("saved", OUT)
