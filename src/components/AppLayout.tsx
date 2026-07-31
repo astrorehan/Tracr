@@ -19,7 +19,6 @@ import {
   Sparkles,
   Moon,
   Sun,
-  Search,
   FolderTree,
   Tags,
   Wand2,
