@@ -535,6 +535,234 @@ export const tools: any[] = [
       },
     },
   },
+
+  // --- utang-piutang (kasbon) ------------------------------------------------
+  {
+    type: 'function',
+    function: {
+      name: 'list_debts',
+      description:
+        'Kasbon / utang-piutang: money lent out or borrowed that is tracked per ' +
+        'person, separately from account balances. Each row shows the direction ' +
+        '(receivable = they owe the user, payable = the user owes them), how much ' +
+        'is left, the due date and how late it is. Use for "siapa yang masih ' +
+        'utang?", "berapa piutang saya?", and ALWAYS before record_debt_payment — ' +
+        'that needs the debt_id this returns.',
+      parameters: {
+        type: 'object',
+        properties: {
+          direction: {
+            type: 'string',
+            enum: ['receivable', 'payable'],
+            description: 'receivable = owed TO the user. payable = owed BY the user. Omit for both.',
+          },
+          status: {
+            type: 'string',
+            enum: ['open', 'paid', 'all'],
+            description: 'Defaults to open (still unsettled).',
+          },
+          contact_name: { type: 'string', description: 'Only this person’s records.' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'list_contacts',
+      description:
+        'People the book deals with (customers, suppliers), each with what they ' +
+        'still owe and what is still owed to them. Use for "siapa saja pelanggan ' +
+        'saya?" and before record_debt so you reuse an existing person.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'record_debt',
+      description:
+        'Write down a new kasbon: money the user lent to someone (receivable) or ' +
+        'borrowed from someone (payable). Call ONLY after the user explicitly ' +
+        'confirms the person and the amount. This does NOT move any account ' +
+        'balance — it is a separate record of who owes what. A person whose name ' +
+        'is not in the book yet is added automatically.',
+      parameters: {
+        type: 'object',
+        properties: {
+          direction: {
+            type: 'string',
+            enum: ['receivable', 'payable'],
+            description:
+              'receivable = the user lent it out / the customer owes them. ' +
+              'payable = the user borrowed it / owes someone.',
+          },
+          contact_name: { type: 'string', description: 'Who it is with, e.g. "Bu Sri".' },
+          amount: { type: 'number', description: 'MAJOR units, > 0.' },
+          currency: { type: 'string', description: 'ISO code; defaults to the book currency.' },
+          due_date: { type: 'string', description: 'When it should be settled, YYYY-MM-DD.' },
+          note: { type: 'string' },
+        },
+        required: ['direction', 'contact_name', 'amount'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'record_debt_payment',
+      description:
+        'Record part or all of a kasbon being settled. Find the record with ' +
+        'list_debts first, show the user which one you mean, and call ONLY after ' +
+        'they confirm. Pass account_name as well when the cash actually moved, so ' +
+        'the money also lands in the ledger; leave it out to only update the ' +
+        'kasbon tally.',
+      parameters: {
+        type: 'object',
+        properties: {
+          debt_id: { type: 'string', description: 'The debt_id from list_debts.' },
+          amount: { type: 'number', description: 'MAJOR units paid now, > 0.' },
+          paid_on: { type: 'string', description: 'YYYY-MM-DD; defaults to today.' },
+          account_name: {
+            type: 'string',
+            description:
+              'Wallet the money went into (receivable) or came out of (payable). ' +
+              'Omit when no cash moved.',
+          },
+          note: { type: 'string' },
+        },
+        required: ['debt_id', 'amount'],
+      },
+    },
+  },
+
+  // --- buku usaha: products, sales, laba-rugi --------------------------------
+  {
+    type: 'function',
+    function: {
+      name: 'list_products',
+      description:
+        'Items the business sells, with selling price, cost and margin each. ' +
+        'Business books only. Call before record_sale so you use the real item ' +
+        'names and the user does not have to repeat prices.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'record_sale',
+      description:
+        'Record a sale of listed items (POS-style): one income transaction plus a ' +
+        'line per item, each freezing that item’s price and cost so later ' +
+        're-pricing never rewrites past profit. Business books only. Call ONLY ' +
+        'after the user confirms what was sold and how many. For money coming in ' +
+        'that is not an item sale, use record_transaction instead.',
+      parameters: {
+        type: 'object',
+        properties: {
+          items: {
+            type: 'array',
+            description: 'What was sold. Each product_name must match list_products.',
+            items: {
+              type: 'object',
+              properties: {
+                product_name: { type: 'string' },
+                qty: { type: 'number', description: 'How many, > 0.' },
+              },
+              required: ['product_name', 'qty'],
+            },
+          },
+          account_name: { type: 'string', description: 'Wallet the money went into.' },
+          customer: { type: 'string', description: 'Buyer name, if the user gave one.' },
+          occurred_at: { type: 'string', description: 'YYYY-MM-DD; defaults to today.' },
+          note: { type: 'string' },
+        },
+        required: ['items'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'profit_summary',
+      description:
+        'Laba-rugi for a date range: sales, cost of the goods sold, gross profit, ' +
+        'running costs and net profit, plus the best-selling items. Business books ' +
+        'only. Use for "untung berapa?", "laba bulan ini". Cost of goods comes from ' +
+        'the sale line items only, so it is never double-counted with expenses.',
+      parameters: {
+        type: 'object',
+        properties: {
+          start: { type: 'string', description: 'Start date, inclusive, YYYY-MM-DD.' },
+          end: { type: 'string', description: 'End date, inclusive, YYYY-MM-DD.' },
+        },
+        required: ['start', 'end'],
+      },
+    },
+  },
+
+  // --- cicilan, budgets, goals ----------------------------------------------
+  {
+    type: 'function',
+    function: {
+      name: 'list_installments',
+      description:
+        'Cicilan / instalment plans being paid off, with the monthly amount, how ' +
+        'many months are done, what is left and the next due date. Use for "cicilan ' +
+        'saya apa saja?" and "sisa cicilan berapa?".',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'create_budget',
+      description:
+        'Set a spending limit for one category, or an overall limit when no ' +
+        'category is given. Call ONLY after the user confirms the category, the ' +
+        'amount and the period. Check budget_status first — a category that already ' +
+        'has a limit is changed, not duplicated.',
+      parameters: {
+        type: 'object',
+        properties: {
+          category_name: {
+            type: 'string',
+            description: 'Existing expense category. Omit for an overall spending limit.',
+          },
+          amount: { type: 'number', description: 'MAJOR units, > 0.' },
+          currency: { type: 'string', description: 'ISO code; defaults to the book currency.' },
+          period: { type: 'string', enum: ['weekly', 'monthly', 'yearly'], description: 'Default monthly.' },
+          rollover: {
+            type: 'boolean',
+            description: 'Carry what was left over into the next period. Default false.',
+          },
+        },
+        required: ['amount'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'contribute_to_goal',
+      description:
+        'Put money aside toward a savings goal. Call goal_progress first to get the ' +
+        'exact goal name, and call this ONLY after the user confirms the amount. ' +
+        'This is tracked separately and does NOT move any real account balance — ' +
+        'say that when you confirm.',
+      parameters: {
+        type: 'object',
+        properties: {
+          goal_name: { type: 'string', description: 'The goal name from goal_progress.' },
+          amount: { type: 'number', description: 'MAJOR units, > 0.' },
+          occurred_at: { type: 'string', description: 'YYYY-MM-DD; defaults to today.' },
+          note: { type: 'string' },
+        },
+        required: ['goal_name', 'amount'],
+      },
+    },
+  },
 ]
 
 type Row = Record<string, unknown>
@@ -757,6 +985,16 @@ export async function runTool(ctx: ToolCtx, name: string, args: Record<string, u
   if (name === 'goal_progress') return goalProgress(ctx)
   if (name === 'list_recurring') return listRecurring(ctx)
   if (name === 'create_recurring') return createRecurring(ctx, args)
+  if (name === 'list_debts') return listDebts(ctx, args)
+  if (name === 'list_contacts') return listContacts(ctx)
+  if (name === 'record_debt') return recordDebt(ctx, args)
+  if (name === 'record_debt_payment') return recordDebtPayment(ctx, args)
+  if (name === 'list_products') return listProducts(ctx)
+  if (name === 'record_sale') return recordSale(ctx, args)
+  if (name === 'profit_summary') return profitSummary(ctx, args)
+  if (name === 'list_installments') return listInstallments(ctx)
+  if (name === 'create_budget') return createBudget(ctx, args)
+  if (name === 'contribute_to_goal') return contributeToGoal(ctx, args)
 
   return { error: `unknown tool: ${name}` }
 }
@@ -1824,6 +2062,791 @@ export async function recordTransaction(ctx: ToolCtx, args: Record<string, unkno
   }
 }
 
+// --- kasbon: contacts + utang-piutang ---------------------------------------
+
+const todayIso = () => new Date().toISOString().slice(0, 10)
+
+/** Whole days from `from` to today; negative when `from` is still ahead. */
+const daysSince = (from: string) =>
+  Math.floor((Date.now() - Date.parse(`${from}T00:00:00Z`)) / 86_400_000)
+
+/** 'personal' | 'business' for the book this call is scoped to. Products, sales
+ *  and laba-rugi only exist in a business book (BizLayout gates them in the app),
+ *  so the bot must refuse them the same way instead of writing rows no screen
+ *  will ever show. */
+async function bookType(ctx: ToolCtx): Promise<string | null> {
+  const { data } = await ctx.supabase.from('books').select('type').eq('id', ctx.bookId).maybeSingle()
+  return data?.type ?? null
+}
+
+/** Null when this is a business book; otherwise the refusal to hand back. */
+async function refuseIfNotBusiness(ctx: ToolCtx, what: string): Promise<{ error: string } | null> {
+  const type = await bookType(ctx)
+  if (type === 'business') return null
+  return {
+    error:
+      `${what} only exists in a business book (Buku Usaha), and this ledger is a ` +
+      `personal one. Tell the user to open or create a business book first.`,
+  }
+}
+
+/** People in this book, A-Z, unarchived. */
+async function loadContacts(ctx: ToolCtx): Promise<Row[] | { error: string }> {
+  const { data, error } = await ctx.supabase
+    .from('contacts')
+    .select('id, name, phone, kind')
+    .eq('book_id', ctx.bookId)
+    .eq('is_archived', false)
+    .order('name')
+  if (error) return { error: error.message }
+  return data ?? []
+}
+
+/** Find-or-create a person by name — same rule as the app's useCreateContact: a
+ *  name typed twice is one person, and someone recorded as a customer who now
+ *  supplies us becomes 'both' rather than a second row. */
+async function resolveContact(
+  ctx: ToolCtx,
+  wanted: string,
+  kind: string,
+): Promise<{ id: string; name: string; created: boolean } | { error: string }> {
+  const name = wanted.trim().slice(0, 80)
+  if (!name) return { error: 'contact_name is required' }
+
+  const { data: existing, error: exErr } = await ctx.supabase
+    .from('contacts')
+    .select('id, name, kind, is_archived')
+    .eq('book_id', ctx.bookId)
+    .ilike('name', name)
+    .limit(1)
+  if (exErr) return { error: exErr.message }
+
+  if (existing?.[0]) {
+    const prev = existing[0]
+    const nextKind = prev.kind !== kind ? 'both' : prev.kind
+    if (nextKind !== prev.kind || prev.is_archived) {
+      await ctx.supabase
+        .from('contacts')
+        .update({ kind: nextKind, is_archived: false })
+        .eq('id', prev.id)
+    }
+    return { id: String(prev.id), name: String(prev.name), created: false }
+  }
+
+  const { data, error } = await ctx.supabase
+    .from('contacts')
+    .insert({ user_id: ctx.userId, book_id: ctx.bookId, name, kind })
+    .select('id, name')
+    .single()
+  if (error) return { error: error.message }
+  return { id: String(data.id), name: String(data.name), created: true }
+}
+
+/** Kasbon rows. Returns debt_id — the only handle record_debt_payment accepts,
+ *  and it is re-checked against this book before anything is written. */
+export async function listDebts(ctx: ToolCtx, args: Record<string, unknown>): Promise<unknown> {
+  const { supabase, bookId } = ctx
+
+  let query = supabase
+    .from('debts')
+    .select('id, direction, amount, paid, currency, due_date, status, note, contact_id')
+    .eq('book_id', bookId)
+
+  const status = String(args.status ?? 'open')
+  if (status === 'open' || status === 'paid') query = query.eq('status', status)
+
+  const direction = String(args.direction ?? '')
+  if (direction === 'receivable' || direction === 'payable') query = query.eq('direction', direction)
+
+  const { data, error } = await query.order('due_date', { nullsFirst: false }).limit(100)
+  if (error) return { error: error.message }
+
+  const contacts = await loadContacts(ctx)
+  const nameById = new Map(
+    ('error' in contacts ? [] : contacts).map((c) => [String(c.id), String(c.name)]),
+  )
+
+  const wantedContact = String(args.contact_name ?? '').trim().toLowerCase()
+  const rows = (data as Row[] ?? [])
+    .map((d) => {
+      const currency = String(d.currency)
+      const remaining = Math.max(0, Number(d.amount) - Number(d.paid))
+      const late = d.status === 'open' && d.due_date ? daysSince(String(d.due_date)) : 0
+      return {
+        debt_id: d.id,
+        person: d.contact_id ? nameById.get(String(d.contact_id)) ?? null : null,
+        direction: d.direction,
+        who_owes: d.direction === 'receivable' ? 'they owe the user' : 'the user owes them',
+        total: formatMoney(Number(d.amount), currency),
+        paid: formatMoney(Number(d.paid), currency),
+        remaining: formatMoney(remaining, currency),
+        due_date: d.due_date ?? null,
+        days_late: late > 0 ? late : 0,
+        status: d.status,
+        note: d.note ?? null,
+      }
+    })
+    .filter((r) => !wantedContact || (r.person ?? '').toLowerCase().includes(wantedContact))
+
+  if (!rows.length) return { rows: [], note: 'no kasbon records match' }
+  return { rows }
+}
+
+/** People plus what is still moving with each — the same roll-up the kasbon
+ *  page shows (see tallyByContact in src/features/debts/tally.ts). */
+export async function listContacts(ctx: ToolCtx): Promise<unknown> {
+  const contacts = await loadContacts(ctx)
+  if ('error' in contacts) return contacts
+  if (!contacts.length) return { rows: [], note: 'no people saved in this book yet' }
+
+  const { data: debts, error } = await ctx.supabase
+    .from('debts')
+    .select('contact_id, direction, amount, paid, currency, status')
+    .eq('book_id', ctx.bookId)
+    .eq('status', 'open')
+  if (error) return { error: error.message }
+
+  const tally = new Map<string, { owesMe: number; iOwe: number; currency: string }>()
+  for (const d of (debts as Row[]) ?? []) {
+    if (!d.contact_id) continue
+    const key = String(d.contact_id)
+    const entry = tally.get(key) ?? { owesMe: 0, iOwe: 0, currency: String(d.currency) }
+    const remaining = Math.max(0, Number(d.amount) - Number(d.paid))
+    if (d.direction === 'receivable') entry.owesMe += remaining
+    else entry.iOwe += remaining
+    tally.set(key, entry)
+  }
+
+  return {
+    rows: contacts.map((c) => {
+      const t = tally.get(String(c.id))
+      const currency = t?.currency ?? ctx.baseCurrency
+      return {
+        name: c.name,
+        kind: c.kind,
+        phone: c.phone ?? null,
+        they_owe_user: formatMoney(t?.owesMe ?? 0, currency),
+        user_owes_them: formatMoney(t?.iOwe ?? 0, currency),
+      }
+    }),
+  }
+}
+
+/** Write a kasbon. Deliberately touches no account balance — utang-piutang is a
+ *  separate record of who owes what; the cash movement is recorded when the debt
+ *  is actually settled (record_debt_payment with an account). */
+export async function recordDebt(ctx: ToolCtx, args: Record<string, unknown>): Promise<unknown> {
+  const { supabase, bookId, userId, baseCurrency } = ctx
+
+  const direction = String(args.direction ?? '')
+  if (direction !== 'receivable' && direction !== 'payable') {
+    return { error: 'direction must be receivable or payable' }
+  }
+
+  const currency = String(args.currency ?? baseCurrency).toUpperCase().trim()
+  if (!/^[A-Z]{3,8}$/.test(currency)) return { error: 'invalid currency code' }
+
+  const major = Number(args.amount)
+  if (!Number.isFinite(major) || major <= 0) return { error: 'amount must be > 0' }
+  const minor = Math.round(major * 10 ** decimalsOf(currency))
+  if (minor <= 0 || minor > 1e15) return { error: 'amount out of range' }
+
+  const dueDate = String(args.due_date ?? '').trim()
+  if (dueDate && !isDate(dueDate)) return { error: 'due_date must be YYYY-MM-DD' }
+
+  // A customer owes us; someone we owe is a supplier. Wrong-way rows merge into
+  // 'both' rather than duplicating the person.
+  const contact = await resolveContact(
+    ctx,
+    String(args.contact_name ?? ''),
+    direction === 'receivable' ? 'customer' : 'supplier',
+  )
+  if ('error' in contact) return contact
+
+  const { data, error } = await supabase
+    .from('debts')
+    .insert({
+      user_id: userId,
+      book_id: bookId,
+      contact_id: contact.id,
+      direction,
+      amount: minor,
+      paid: 0,
+      currency,
+      due_date: dueDate || null,
+      note: String(args.note ?? '').trim().slice(0, 500) || null,
+      status: 'open',
+    })
+    .select('id')
+    .single()
+  if (error) return { error: error.message }
+
+  ctx.onRecorded()
+  return {
+    ok: true,
+    recorded: {
+      debt_id: data.id,
+      person: contact.name,
+      person_created: contact.created,
+      direction,
+      who_owes: direction === 'receivable' ? 'they owe the user' : 'the user owes them',
+      amount: formatMoney(minor, currency),
+      due_date: dueDate || null,
+      note: 'No account balance changed — this is a kasbon record.',
+    },
+  }
+}
+
+/** Settle part or all of a kasbon: append the payment, advance the running total,
+ *  close it when fully paid, and — only when an account was named — also put the
+ *  cash movement in the ledger under a Pelunasan category (mirrors
+ *  useRecordPayment in src/features/debts/api.ts). */
+export async function recordDebtPayment(ctx: ToolCtx, args: Record<string, unknown>): Promise<unknown> {
+  const { supabase, bookId, userId, baseCurrency } = ctx
+
+  const debtId = String(args.debt_id ?? '').trim()
+  if (!debtId) return { error: 'debt_id is required — get it from list_debts' }
+
+  // Re-read the row scoped to this book: never trust an id the model supplies.
+  const { data: debt, error: findErr } = await supabase
+    .from('debts')
+    .select('id, direction, amount, paid, currency, status, contact_id')
+    .eq('book_id', bookId)
+    .eq('id', debtId)
+    .maybeSingle()
+  if (findErr) return { error: findErr.message }
+  if (!debt) return { error: 'no kasbon record with that id in this book' }
+  if (debt.status === 'paid') return { error: 'that kasbon is already settled' }
+
+  const currency = String(debt.currency)
+  const major = Number(args.amount)
+  if (!Number.isFinite(major) || major <= 0) return { error: 'amount must be > 0' }
+  const minor = Math.round(major * 10 ** decimalsOf(currency))
+  const remainingBefore = Math.max(0, Number(debt.amount) - Number(debt.paid))
+  if (minor > remainingBefore) {
+    return {
+      error:
+        `that is more than what is left (${formatMoney(remainingBefore, currency)}) — ` +
+        'ask the user how much they actually paid',
+    }
+  }
+
+  const paidOn = String(args.paid_on ?? '').trim() || todayIso()
+  if (!isDate(paidOn)) return { error: 'paid_on must be YYYY-MM-DD' }
+
+  const note = String(args.note ?? '').trim().slice(0, 500) || null
+  const isReceivable = debt.direction === 'receivable'
+
+  // Optional: the cash actually moved, so it belongs in the ledger too.
+  let account: Row | undefined
+  const accountName = String(args.account_name ?? '').trim()
+  if (accountName) {
+    const accounts = await loadAccounts(ctx)
+    if ('error' in accounts) return accounts
+    account = matchAccount(accounts, accountName)
+    if (!account) {
+      return {
+        error: 'account not resolved — ask the user which one',
+        accounts: accounts.map((a) => ({ name: a.name, currency: a.currency })),
+      }
+    }
+    if (String(account.currency) !== currency) {
+      return { error: `account "${account.name}" uses ${account.currency}, not ${currency}` }
+    }
+  }
+
+  const newPaid = Math.min(Number(debt.amount), Number(debt.paid) + minor)
+  const newStatus = newPaid >= Number(debt.amount) ? 'paid' : 'open'
+
+  const { error: payErr } = await supabase.from('debt_payments').insert({
+    user_id: userId,
+    book_id: bookId,
+    debt_id: debt.id,
+    amount: minor,
+    paid_on: paidOn,
+    note,
+  })
+  if (payErr) return { error: payErr.message }
+
+  const { error: updErr } = await supabase
+    .from('debts')
+    .update({ paid: newPaid, status: newStatus })
+    .eq('id', debt.id)
+  if (updErr) return { error: updErr.message }
+
+  let ledgerNote: string | null = null
+  if (account) {
+    const contactName = debt.contact_id
+      ? (await supabase.from('contacts').select('name').eq('id', debt.contact_id).maybeSingle())
+          .data?.name ?? ''
+      : ''
+    const label = isReceivable ? 'Pelunasan piutang' : 'Pelunasan utang'
+    const categoryName = isReceivable ? 'Pelunasan Piutang' : 'Pelunasan Utang'
+    const kind = isReceivable ? 'income' : 'expense'
+    const categoryId =
+      (await resolveCategoryId(ctx, categoryName, kind)) ??
+      (await createNamedCategory(ctx, categoryName, kind))
+
+    const { error: txErr } = await supabase.from('transactions').insert({
+      user_id: userId,
+      book_id: bookId,
+      account_id: account.id,
+      category_id: categoryId,
+      type: kind,
+      amount: minor,
+      currency,
+      ...baseSnapshot(minor, currency, baseCurrency),
+      occurred_at: `${paidOn}T12:00:00Z`,
+      note: note ? `${label}${contactName ? `: ${contactName}` : ''} - ${note}` : `${label}${contactName ? `: ${contactName}` : ''}`,
+      source: ctx.source ?? 'web',
+    })
+    // The kasbon tally is the record of truth here; a failed ledger row is
+    // reported, not rolled back into a half-settled debt.
+    ledgerNote = txErr
+      ? `the kasbon was updated but the ledger entry failed: ${txErr.message}`
+      : `also recorded as ${kind === 'income' ? 'money in' : 'money out'} on ${account.name}`
+  }
+
+  ctx.onRecorded()
+  return {
+    ok: true,
+    payment: {
+      amount: formatMoney(minor, currency),
+      paid_on: paidOn,
+      remaining: formatMoney(Math.max(0, Number(debt.amount) - newPaid), currency),
+      settled: newStatus === 'paid',
+      ledger: ledgerNote ?? 'no account given, so nothing was added to the ledger',
+    },
+  }
+}
+
+/** Insert a category by exact name and hand back its id (null on failure). Used
+ *  by the flows that file into a fixed, app-defined category. */
+async function createNamedCategory(ctx: ToolCtx, name: string, kind: string): Promise<string | null> {
+  const { data } = await ctx.supabase
+    .from('categories')
+    .insert({ user_id: ctx.userId, book_id: ctx.bookId, name, kind, parent_id: null })
+    .select('id')
+    .single()
+  return data?.id ?? null
+}
+
+// --- buku usaha: products, sales, laba-rugi ----------------------------------
+
+export async function listProducts(ctx: ToolCtx): Promise<unknown> {
+  const refusal = await refuseIfNotBusiness(ctx, 'The product list')
+  if (refusal) return refusal
+
+  const { data, error } = await ctx.supabase
+    .from('products')
+    .select('name, price, cost, unit')
+    .eq('book_id', ctx.bookId)
+    .eq('is_archived', false)
+    .order('sort_order')
+  if (error) return { error: error.message }
+  if (!data?.length) return { rows: [], note: 'no items listed yet' }
+
+  const currency = ctx.baseCurrency
+  return {
+    rows: (data as Row[]).map((p) => ({
+      name: p.name,
+      price: formatMoney(Number(p.price), currency),
+      cost: formatMoney(Number(p.cost), currency),
+      profit_each: formatMoney(Number(p.price) - Number(p.cost), currency),
+      unit: p.unit ?? null,
+    })),
+  }
+}
+
+/** An item sale: one income transaction plus a line per item, each freezing the
+ *  product's price and cost (see src/features/sales/api.ts). Supabase has no
+ *  client-side transaction, so a failed items insert deletes the transaction
+ *  that was just written rather than leaving orphan income behind. */
+export async function recordSale(ctx: ToolCtx, args: Record<string, unknown>): Promise<unknown> {
+  const { supabase, bookId, userId, baseCurrency } = ctx
+
+  const refusal = await refuseIfNotBusiness(ctx, 'Recording an item sale')
+  if (refusal) return refusal
+
+  const raw = Array.isArray(args.items) ? args.items : []
+  if (!raw.length) return { error: 'items is required — at least one product and qty' }
+  if (raw.length > 30) return { error: 'too many lines in one sale (max 30)' }
+
+  const date = String(args.occurred_at ?? '').trim() || todayIso()
+  if (!isDate(date)) return { error: 'occurred_at must be YYYY-MM-DD' }
+  if (Date.parse(date) > Date.now() + 86_400_000) return { error: 'date is in the future' }
+
+  const { data: products, error: prodErr } = await supabase
+    .from('products')
+    .select('id, name, price, cost')
+    .eq('book_id', bookId)
+    .eq('is_archived', false)
+  if (prodErr) return { error: prodErr.message }
+  if (!products?.length) return { error: 'no items listed yet — ask the user to add one first' }
+
+  const currency = baseCurrency
+  const lines: { product: Row; qty: number }[] = []
+  for (const item of raw as Record<string, unknown>[]) {
+    const wanted = String(item?.product_name ?? '').trim().toLowerCase()
+    if (!wanted) return { error: 'each item needs a product_name' }
+    const match =
+      (products as Row[]).find((p) => String(p.name).toLowerCase() === wanted) ??
+      (products as Row[]).find((p) => String(p.name).toLowerCase().includes(wanted))
+    if (!match) {
+      return {
+        error: `no item called "${item?.product_name}" — ask the user which one`,
+        items: (products as Row[]).map((p) => p.name),
+      }
+    }
+    const qty = Number(item?.qty)
+    if (!Number.isFinite(qty) || qty <= 0) return { error: `qty for "${match.name}" must be > 0` }
+    lines.push({ product: match, qty })
+  }
+
+  // Same rounding rule as the till: each line on its own, so the total always
+  // matches the sum of the line subtotals shown in Laba-Rugi.
+  const total = lines.reduce((sum, l) => sum + Math.round(l.qty * Number(l.product.price)), 0)
+  if (total <= 0) return { error: 'the sale total must be greater than zero' }
+
+  const accounts = await loadAccounts(ctx)
+  if ('error' in accounts) return accounts
+  if (!accounts.length) return { error: 'no accounts exist — ask the user to create one first' }
+  const account = matchAccount(accounts, String(args.account_name ?? ''))
+  if (!account) {
+    return {
+      error: 'account not resolved — ask the user which wallet the money went into',
+      accounts: accounts.map((a) => ({ name: a.name, currency: a.currency })),
+    }
+  }
+  if (String(account.currency) !== currency) {
+    return { error: `account "${account.name}" uses ${account.currency}, not ${currency}` }
+  }
+
+  // Sales are filed under the book's "Penjualan" income category, created once.
+  const categoryId =
+    (await resolveCategoryId(ctx, 'Penjualan', 'income')) ??
+    (await createNamedCategory(ctx, 'Penjualan', 'income'))
+
+  const { data: txn, error: txnErr } = await supabase
+    .from('transactions')
+    .insert({
+      user_id: userId,
+      book_id: bookId,
+      account_id: account.id,
+      category_id: categoryId,
+      type: 'income',
+      amount: total,
+      currency,
+      ...baseSnapshot(total, currency, baseCurrency),
+      occurred_at: `${date}T12:00:00Z`,
+      payee: String(args.customer ?? '').trim().slice(0, 120) || null,
+      note: String(args.note ?? '').trim().slice(0, 500) || null,
+      source: ctx.source ?? 'web',
+    })
+    .select('id')
+    .single()
+  if (txnErr) return { error: txnErr.message }
+
+  const { error: itemsErr } = await supabase.from('transaction_items').insert(
+    lines.map((l) => ({
+      user_id: userId,
+      book_id: bookId,
+      transaction_id: txn.id,
+      product_id: l.product.id,
+      name: l.product.name,
+      qty: l.qty,
+      unit_price: l.product.price,
+      unit_cost: l.product.cost,
+    })),
+  )
+  if (itemsErr) {
+    await supabase.from('transactions').delete().eq('id', txn.id)
+    return { error: `sale not saved: ${itemsErr.message}` }
+  }
+
+  const profit = lines.reduce(
+    (sum, l) =>
+      sum + Math.round(l.qty * Number(l.product.price)) - Math.round(l.qty * Number(l.product.cost)),
+    0,
+  )
+
+  ctx.onRecorded()
+  return {
+    ok: true,
+    sale: {
+      total: formatMoney(total, currency),
+      profit: formatMoney(profit, currency),
+      account: account.name,
+      date,
+      lines: lines.map((l) => ({
+        name: l.product.name,
+        qty: l.qty,
+        subtotal: formatMoney(Math.round(l.qty * Number(l.product.price)), currency),
+      })),
+    },
+  }
+}
+
+/** Laba-Rugi over [start, end] inclusive. Mirrors computeProfit: cost of goods
+ *  comes from the sale line items ONLY, never from a separate expense row, so it
+ *  can never be double-counted against running costs. */
+export async function profitSummary(ctx: ToolCtx, args: Record<string, unknown>): Promise<unknown> {
+  const { supabase, bookId, baseCurrency } = ctx
+
+  const refusal = await refuseIfNotBusiness(ctx, 'Laba-rugi')
+  if (refusal) return refusal
+
+  const start = String(args.start ?? '')
+  const end = String(args.end ?? '')
+  if (!isDate(start) || !isDate(end)) return { error: 'start and end must be YYYY-MM-DD' }
+  if (start > end) return { error: 'start must not be after end' }
+  // `end` is inclusive for the caller, so query up to the start of the next day.
+  const endExclusive = new Date(Date.parse(`${end}T00:00:00Z`) + 86_400_000).toISOString()
+
+  const [itemsRes, expRes] = await Promise.all([
+    supabase
+      .from('transaction_items')
+      .select('product_id, name, qty, unit_price, unit_cost, transactions!inner(occurred_at)')
+      .eq('book_id', bookId)
+      .gte('transactions.occurred_at', `${start}T00:00:00Z`)
+      .lt('transactions.occurred_at', endExclusive),
+    supabase
+      .from('transactions')
+      .select('amount, base_amount')
+      .eq('book_id', bookId)
+      .eq('type', 'expense')
+      .gte('occurred_at', `${start}T00:00:00Z`)
+      .lt('occurred_at', endExclusive),
+  ])
+  if (itemsRes.error) return { error: itemsRes.error.message }
+  if (expRes.error) return { error: expRes.error.message }
+
+  let penjualan = 0
+  let cogs = 0
+  const byProduct = new Map<string, { name: string; qty: number; revenue: number; profit: number }>()
+  for (const l of (itemsRes.data as Row[]) ?? []) {
+    const qty = Number(l.qty)
+    const revenue = Math.round(qty * Number(l.unit_price))
+    const cost = Math.round(qty * Number(l.unit_cost))
+    penjualan += revenue
+    cogs += cost
+    const key = l.product_id ? String(l.product_id) : `name:${l.name}`
+    const entry = byProduct.get(key) ?? { name: String(l.name), qty: 0, revenue: 0, profit: 0 }
+    entry.qty += qty
+    entry.revenue += revenue
+    entry.profit += revenue - cost
+    byProduct.set(key, entry)
+  }
+
+  // Running costs are valued in base currency so they line up with item prices.
+  const biaya = ((expRes.data as Row[]) ?? []).reduce(
+    (sum, e) => sum + Number(e.base_amount ?? e.amount),
+    0,
+  )
+  const labaKotor = penjualan - cogs
+  const labaBersih = labaKotor - biaya
+
+  return {
+    period: { start, end },
+    sales: formatMoney(penjualan, baseCurrency),
+    cost_of_goods_sold: formatMoney(cogs, baseCurrency),
+    gross_profit: formatMoney(labaKotor, baseCurrency),
+    running_costs: formatMoney(biaya, baseCurrency),
+    net_profit: formatMoney(labaBersih, baseCurrency),
+    at_a_loss: labaBersih < 0,
+    top_items: [...byProduct.values()]
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 10)
+      .map((p) => ({
+        name: p.name,
+        sold: p.qty,
+        revenue: formatMoney(p.revenue, baseCurrency),
+        profit: formatMoney(p.profit, baseCurrency),
+      })),
+    ...(penjualan === 0 && biaya === 0
+      ? { note: 'no sales and no costs recorded in this period' }
+      : {}),
+  }
+}
+
+// --- cicilan, budgets, goals -------------------------------------------------
+
+/** Instalment plans still running. `remaining` is what is still to be PAID
+ *  (monthly × months left), which is the honest figure for every interest type —
+ *  it is not the outstanding principal. */
+export async function listInstallments(ctx: ToolCtx): Promise<unknown> {
+  const { supabase, bookId, baseCurrency } = ctx
+
+  const { data, error } = await supabase
+    .from('installments')
+    .select('name, total_amount, monthly_amount, tenor_months, paid_months, due_day, start_date, status, note')
+    .eq('book_id', bookId)
+    .order('status')
+    .order('created_at', { ascending: false })
+  if (error) return { error: error.message }
+  if (!data?.length) return { rows: [], note: 'no instalment plans set up yet' }
+
+  const now = new Date()
+  return {
+    rows: (data as Row[]).map((i) => {
+      const tenor = Number(i.tenor_months)
+      const paidMonths = Number(i.paid_months)
+      const monthsLeft = Math.max(0, tenor - paidMonths)
+      const monthly = Number(i.monthly_amount)
+
+      // Next due: this month's due_day, or next month's once it has passed.
+      const day = Math.min(28, Math.max(1, Number(i.due_day)))
+      let next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), day))
+      if (next.getTime() < Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())) {
+        next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, day))
+      }
+
+      return {
+        name: i.name,
+        status: i.status,
+        monthly_payment: formatMoney(monthly, baseCurrency),
+        months_paid: `${paidMonths} of ${tenor}`,
+        months_left: monthsLeft,
+        remaining: formatMoney(monthly * monthsLeft, baseCurrency),
+        total: formatMoney(Number(i.total_amount), baseCurrency),
+        next_due: i.status === 'active' && monthsLeft > 0 ? next.toISOString().slice(0, 10) : null,
+        note: i.note ?? null,
+      }
+    }),
+  }
+}
+
+/** Set (or change) a spending limit. One limit per category per book — a second
+ *  one for the same category updates the first instead of stacking. */
+export async function createBudget(ctx: ToolCtx, args: Record<string, unknown>): Promise<unknown> {
+  const { supabase, bookId, userId, baseCurrency } = ctx
+
+  const currency = String(args.currency ?? baseCurrency).toUpperCase().trim()
+  if (!/^[A-Z]{3,8}$/.test(currency)) return { error: 'invalid currency code' }
+
+  const major = Number(args.amount)
+  if (!Number.isFinite(major) || major <= 0) return { error: 'amount must be > 0' }
+  const minor = Math.round(major * 10 ** decimalsOf(currency))
+  if (minor <= 0 || minor > 1e15) return { error: 'amount out of range' }
+
+  const period = String(args.period ?? 'monthly')
+  if (!['weekly', 'monthly', 'yearly'].includes(period)) {
+    return { error: 'period must be weekly, monthly or yearly' }
+  }
+
+  const categoryName = String(args.category_name ?? '').trim()
+  let categoryId: string | null = null
+  if (categoryName) {
+    categoryId = await resolveCategoryId(ctx, categoryName, 'expense')
+    if (!categoryId) return { error: `no expense category called "${categoryName}"` }
+  }
+
+  let existing = supabase.from('budgets').select('id').eq('book_id', bookId)
+  existing = categoryId ? existing.eq('category_id', categoryId) : existing.is('category_id', null)
+  const { data: clash } = await existing.limit(1)
+
+  const patch = {
+    amount: minor,
+    currency,
+    period,
+    rollover: args.rollover === true,
+  }
+
+  if (clash?.[0]) {
+    const { error } = await supabase.from('budgets').update(patch).eq('id', clash[0].id)
+    if (error) return { error: error.message }
+    ctx.onRecorded()
+    return {
+      ok: true,
+      updated: true,
+      limit: { category: categoryName || 'overall spending', ...patch, amount: formatMoney(minor, currency) },
+    }
+  }
+
+  const { error } = await supabase.from('budgets').insert({
+    user_id: userId,
+    book_id: bookId,
+    category_id: categoryId,
+    ...patch,
+  })
+  if (error) return { error: error.message }
+
+  ctx.onRecorded()
+  return {
+    ok: true,
+    updated: false,
+    limit: { category: categoryName || 'overall spending', ...patch, amount: formatMoney(minor, currency) },
+  }
+}
+
+/** Put money aside toward a goal. Goal money is tracked on its own and does NOT
+ *  move an account balance — goal_progress reads the same rows back. */
+export async function contributeToGoal(ctx: ToolCtx, args: Record<string, unknown>): Promise<unknown> {
+  const { supabase, bookId, userId } = ctx
+
+  const wanted = String(args.goal_name ?? '').trim()
+  if (!wanted) return { error: 'goal_name is required — get it from goal_progress' }
+
+  const { data: goals, error: findErr } = await supabase
+    .from('savings_goals')
+    .select('id, name, target_amount, currency')
+    .eq('book_id', bookId)
+    .eq('is_archived', false)
+    .ilike('name', `%${wanted}%`)
+    .limit(2)
+  if (findErr) return { error: findErr.message }
+  if (!goals?.length) return { error: `no savings goal matching "${wanted}"` }
+  if (goals.length > 1) {
+    return {
+      error: 'more than one goal matches that name — ask the user which',
+      goals: (goals as Row[]).map((g) => g.name),
+    }
+  }
+  const goal = goals[0]
+  const currency = String(goal.currency)
+
+  const major = Number(args.amount)
+  if (!Number.isFinite(major) || major <= 0) return { error: 'amount must be > 0' }
+  const minor = Math.round(major * 10 ** decimalsOf(currency))
+  if (minor <= 0 || minor > 1e15) return { error: 'amount out of range' }
+
+  const date = String(args.occurred_at ?? '').trim() || todayIso()
+  if (!isDate(date)) return { error: 'occurred_at must be YYYY-MM-DD' }
+
+  const { error: insErr } = await supabase.from('goal_contributions').insert({
+    user_id: userId,
+    book_id: bookId,
+    goal_id: goal.id,
+    amount: minor,
+    occurred_at: `${date}T12:00:00Z`,
+    note: String(args.note ?? '').trim().slice(0, 500) || null,
+  })
+  if (insErr) return { error: insErr.message }
+
+  // Re-read the running total so the reply quotes a real number, not an estimate.
+  const { data: all } = await supabase
+    .from('goal_contributions')
+    .select('amount')
+    .eq('book_id', bookId)
+    .eq('goal_id', goal.id)
+  const saved = ((all as Row[]) ?? []).reduce((sum, c) => sum + Number(c.amount), 0)
+  const target = Number(goal.target_amount)
+
+  ctx.onRecorded()
+  return {
+    ok: true,
+    contributed: {
+      goal: goal.name,
+      amount: formatMoney(minor, currency),
+      date,
+      saved_total: formatMoney(saved, currency),
+      remaining: formatMoney(Math.max(0, target - saved), currency),
+      complete: target > 0 && saved >= target,
+      note: 'No account balance changed — goal money is tracked separately.',
+    },
+  }
+}
+
 // --- document extraction (Gemini vision, strict JSON, no tools) -------------
 
 export type DocumentType = 'receipt' | 'transaction_history' | 'unknown'
@@ -2039,6 +3062,26 @@ export function buildSystemPrompt(opts: {
     `records nothing today. If the user also wants today's payment in the ledger, ` +
     `that is a separate record_transaction. Confirm the amount, how often, and the ` +
     `next due date before creating.\n` +
+    `- Kasbon (utang-piutang): money lent or borrowed, tracked per person and ` +
+    `SEPARATE from account balances. list_debts to see who owes what; record_debt ` +
+    `to write a new one (it moves no balance — say so); record_debt_payment when ` +
+    `some of it is settled. Find the record with list_debts first and use only a ` +
+    `debt_id it returned. Pass account_name to record_debt_payment only when the ` +
+    `cash really moved, so it also lands in the ledger. "Budi utang 50rb" is a ` +
+    `receivable, not an expense.\n` +
+    `- Business books: list_products, record_sale and profit_summary work only in ` +
+    `a Buku Usaha. record_sale is for selling listed items — check list_products ` +
+    `first and use the real names; it writes the income AND the per-item profit, ` +
+    `so never record a sale twice with record_transaction as well. Income that is ` +
+    `not an item sale stays record_transaction. profit_summary answers "untung ` +
+    `berapa" — quote its numbers, never recompute them from sales minus expenses.\n` +
+    `- Instalments: list_installments is read-only. Its "remaining" is what is ` +
+    `still to be paid, not the outstanding principal — say it that way.\n` +
+    `- Limits and goals: create_budget sets one spending limit per category ` +
+    `(a second one for the same category replaces the first) — check ` +
+    `budget_status first and confirm the amount and period. contribute_to_goal ` +
+    `puts money aside toward a goal from goal_progress; it moves no account ` +
+    `balance, so say that when you confirm.\n` +
     `- When you receive a [RECEIPT_SCAN] or [DOCUMENT_SCAN] block: it is ` +
     `machine-extracted data from a photo the user sent. Lay it out as a table ` +
     `(merchant, date, total, notable items), point out anything the scanner ` +
