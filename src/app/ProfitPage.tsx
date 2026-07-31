@@ -72,30 +72,35 @@ export function ProfitPage() {
         <>
           {/* P&L card */}
           <Card className="divide-y divide-border p-0">
-            <PLRow label="Penjualan" hint="Sales / omzet" value={summary.penjualan} currency={base} />
             <PLRow
-              label="Modal terjual"
-              hint="Cost of goods sold"
+              label={t('profit.rowSales')}
+              hint={t('profit.rowSalesHint')}
+              value={summary.penjualan}
+              currency={base}
+            />
+            <PLRow
+              label={t('profit.rowCogs')}
+              hint={t('profit.rowCogsHint')}
               value={-summary.cogs}
               currency={base}
             />
             <PLRow
-              label="Laba kotor"
-              hint="Gross profit"
+              label={t('profit.rowGross')}
+              hint={t('profit.rowGrossHint')}
               value={summary.labaKotor}
               currency={base}
               strong
               tone={summary.labaKotor >= 0 ? 'positive' : 'danger'}
             />
             <PLRow
-              label="Biaya operasional"
-              hint="Rent, wages, electricity…"
+              label={t('profit.rowOpex')}
+              hint={t('profit.rowOpexHint')}
               value={-summary.biaya}
               currency={base}
             />
             <PLRow
-              label="Laba bersih"
-              hint="Net profit — what you keep"
+              label={t('profit.rowNet')}
+              hint={t('profit.rowNetHint')}
               value={summary.labaBersih}
               currency={base}
               strong
@@ -106,14 +111,14 @@ export function ProfitPage() {
           {/* Top products */}
           {summary.topProducts.length > 0 && (
             <div className="space-y-3">
-              <h2 className="section-head px-1 text-[17px] text-foreground">Top produk</h2>
+              <h2 className="section-head px-1 text-[17px] text-foreground">{t('profit.topProducts')}</h2>
               <Card className="divide-y divide-border p-0">
                 {summary.topProducts.slice(0, 10).map((p) => (
                   <div key={p.key} className="flex items-center gap-3 px-4 py-3">
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-bold text-foreground">{p.name}</p>
                       <p className="text-xs font-semibold text-muted-foreground">
-                        {p.qty} sold · profit{' '}
+                        {t('profit.sold', { n: p.qty })} · {t('profit.profitPrefix')}{' '}
                         <span className={p.profit >= 0 ? 'text-positive' : 'text-danger'}>
                           {formatMoney(p.profit, base, { signDisplay: 'never' })}
                         </span>

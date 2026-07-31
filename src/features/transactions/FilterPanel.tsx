@@ -50,24 +50,31 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
   )
 
   const accountDropdown = useMemo<DropdownOption<string>[]>(
-    () => [{ value: '', label: 'All accounts' }, ...accounts.map((a) => ({ value: a.id, label: a.name }))],
-    [accounts],
+    () => [{ value: '', label: t('flt.allAccounts') }, ...accounts.map((a) => ({ value: a.id, label: a.name }))],
+    [accounts, t],
   )
   const categoryDropdown = useMemo<DropdownOption<string>[]>(
     () => [
-      { value: '', label: 'All categories' },
+      { value: '', label: t('flt.allCategories') },
       ...categoryOptions.map(({ category, depth }) => ({
         value: category.id,
         label: (depth ? '— ' : '') + category.name,
       })),
     ],
-    [categoryOptions],
+    [categoryOptions, t],
   )
+  // Also used for the "type" chip below, so the chip and the dropdown can never
+  // disagree about what an expense is called.
+  const typeLabel: Record<Exclude<TxFilter['type'], ''>, string> = {
+    expense: t('common.expense'),
+    income: t('common.income'),
+    transfer: t('common.transfer'),
+  }
   const typeDropdown: DropdownOption<TxFilter['type']>[] = [
-    { value: '', label: 'All types' },
-    { value: 'expense', label: 'Expense' },
-    { value: 'income', label: 'Income' },
-    { value: 'transfer', label: 'Transfer' },
+    { value: '', label: t('flt.allTypes') },
+    { value: 'expense', label: typeLabel.expense },
+    { value: 'income', label: typeLabel.income },
+    { value: 'transfer', label: typeLabel.transfer },
   ]
   const presetDropdown = useMemo<DropdownOption<TxFilter['datePreset']>[]>(
     () => DATE_PRESETS.map((p) => ({ value: p.value, label: t(p.labelKey) })),
@@ -78,11 +85,11 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
     [t],
   )
   const sourceDropdown: DropdownOption<TxFilter['source']>[] = [
-    { value: '', label: 'Any source' },
+    { value: '', label: t('flt.anySource') },
     ...SOURCE_OPTIONS.map((s) => ({ value: s.value, label: t(s.labelKey) })),
   ]
   const statusDropdown: DropdownOption<TxFilter['status']>[] = [
-    { value: '', label: 'Any status' },
+    { value: '', label: t('flt.anyStatus') },
     ...STATUS_OPTIONS.map((s) => ({ value: s.value, label: t(s.labelKey) })),
   ]
 
@@ -94,7 +101,7 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
   }
 
   function handleSaveView() {
-    const name = window.prompt('Name this view')?.trim()
+    const name = window.prompt(t('flt.namePrompt'))?.trim()
     if (name) save(name, filter)
   }
 
@@ -105,31 +112,31 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
   if (filter.datePreset !== 'all')
     chips.push({
       key: 'date',
-      label: presetDropdown.find((p) => p.value === filter.datePreset)?.label ?? 'Date',
+      label: presetDropdown.find((p) => p.value === filter.datePreset)?.label ?? t('common.date'),
       onRemove: () => onChange({ ...filter, datePreset: 'all', customFrom: '', customTo: '' }),
     })
   if (filter.accountId)
     chips.push({
       key: 'account',
-      label: accountMap[filter.accountId]?.name ?? 'Account',
+      label: accountMap[filter.accountId]?.name ?? t('common.account'),
       onRemove: () => set('accountId', ''),
     })
   if (filter.type)
     chips.push({
       key: 'type',
-      label: filter.type[0].toUpperCase() + filter.type.slice(1),
+      label: typeLabel[filter.type],
       onRemove: () => set('type', ''),
     })
   if (filter.categoryId)
     chips.push({
       key: 'category',
-      label: categoryMap[filter.categoryId]?.name ?? 'Category',
+      label: categoryMap[filter.categoryId]?.name ?? t('common.category'),
       onRemove: () => set('categoryId', ''),
     })
   for (const id of filter.tagIds)
     chips.push({
       key: `tag-${id}`,
-      label: `#${tagMap[id]?.name ?? 'tag'}`,
+      label: `#${tagMap[id]?.name ?? t('flt.tagChip')}`,
       onRemove: () => toggleTag(id),
     })
   if (filter.amountMin || filter.amountMax)
@@ -147,13 +154,13 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
   if (filter.source)
     chips.push({
       key: 'source',
-      label: sourceDropdown.find((s) => s.value === filter.source)?.label ?? 'Source',
+      label: sourceDropdown.find((s) => s.value === filter.source)?.label ?? t('flt.sourceAria'),
       onRemove: () => set('source', ''),
     })
   if (filter.status)
     chips.push({
       key: 'status',
-      label: statusDropdown.find((s) => s.value === filter.status)?.label ?? 'Status',
+      label: statusDropdown.find((s) => s.value === filter.status)?.label ?? t('flt.statusChip'),
       onRemove: () => set('status', ''),
     })
 
@@ -165,7 +172,7 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
         <input
           value={filter.search}
           onChange={(e) => set('search', e.target.value)}
-          placeholder="Search notes, payees, categories, accounts, tags…"
+          placeholder={t('flt.searchPh')}
           className="h-11 w-full rounded-xl border border-border bg-surface pl-10 pr-4 text-sm text-foreground shadow-sm transition-all placeholder:text-muted-foreground focus-visible:border-primary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
         />
       </div>
@@ -196,7 +203,7 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
           aria-expanded={open}
         >
           <SlidersHorizontal className="h-4 w-4" />
-          Filters
+          {t('flt.filters')}
           {count > 0 && (
             <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-bold text-primary-foreground">
               {count}
@@ -211,7 +218,7 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
           {filter.datePreset === 'custom' && (
             <div className="grid grid-cols-2 gap-3">
               <label className="space-y-1">
-                <span className="text-xs font-medium text-muted-foreground">From</span>
+                <span className="text-xs font-medium text-muted-foreground">{t('flt.from')}</span>
                 <input
                   type="date"
                   value={filter.customFrom}
@@ -220,7 +227,7 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
                 />
               </label>
               <label className="space-y-1">
-                <span className="text-xs font-medium text-muted-foreground">To</span>
+                <span className="text-xs font-medium text-muted-foreground">{t('flt.to')}</span>
                 <input
                   type="date"
                   value={filter.customTo}
@@ -236,31 +243,31 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
               value={filter.accountId}
               onChange={(v) => set('accountId', v)}
               options={accountDropdown}
-              aria-label="Account"
+              aria-label={t('common.account')}
             />
             <Dropdown
               value={filter.type}
               onChange={(v) => set('type', v)}
               options={typeDropdown}
-              aria-label="Type"
+              aria-label={t('common.type')}
             />
             <Dropdown
               value={filter.categoryId}
               onChange={(v) => set('categoryId', v)}
               options={categoryDropdown}
-              aria-label="Category"
+              aria-label={t('common.category')}
             />
             <Dropdown
               value={filter.source}
               onChange={(v) => set('source', v)}
               options={sourceDropdown}
-              aria-label="Source"
+              aria-label={t('flt.sourceAria')}
             />
             <Dropdown
               value={filter.status}
               onChange={(v) => set('status', v)}
               options={statusDropdown}
-              aria-label="Reconciliation status"
+              aria-label={t('flt.statusAria')}
             />
           </div>
 
@@ -271,7 +278,7 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
               inputMode="decimal"
               value={filter.amountMin}
               onChange={(e) => set('amountMin', e.target.value)}
-              placeholder="Min amount"
+              placeholder={t('flt.minAmount')}
               className="h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-foreground shadow-sm focus-visible:border-primary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
             />
             <input
@@ -279,7 +286,7 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
               inputMode="decimal"
               value={filter.amountMax}
               onChange={(e) => set('amountMax', e.target.value)}
-              placeholder="Max amount"
+              placeholder={t('flt.maxAmount')}
               className="h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-foreground shadow-sm focus-visible:border-primary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
             />
           </div>
@@ -290,7 +297,7 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
               list="payee-filter-suggestions"
               value={filter.payee}
               onChange={(e) => set('payee', e.target.value)}
-              placeholder="Payee / merchant"
+              placeholder={t('flt.payeePh')}
               autoComplete="off"
               className="h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-foreground shadow-sm focus-visible:border-primary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
             />
@@ -305,7 +312,7 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
           {tags.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground">Tags</span>
+                <span className="text-xs font-medium text-muted-foreground">{t('flt.tags')}</span>
                 {filter.tagIds.length > 1 && (
                   <div className="inline-flex overflow-hidden rounded-lg border border-border text-xs font-semibold">
                     {(['any', 'all'] as const).map((m) => (
@@ -320,7 +327,7 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
                             : 'bg-surface text-muted-foreground hover:text-foreground',
                         )}
                       >
-                        {m === 'any' ? 'Match any' : 'Match all'}
+                        {m === 'any' ? t('flt.matchAny') : t('flt.matchAll')}
                       </button>
                     ))}
                   </div>
@@ -380,7 +387,7 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
                   type="button"
                   onClick={() => remove(v.id)}
                   className="rounded-full p-0.5 text-muted-foreground hover:text-danger"
-                  aria-label={`Delete view ${v.name}`}
+                  aria-label={t('flt.deleteView', { name: v.name })}
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -394,7 +401,7 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
               className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-3 py-1 text-xs font-semibold text-muted-foreground transition hover:border-primary/60 hover:text-primary"
             >
               <Bookmark className="h-3 w-3" />
-              Save view
+              {t('flt.saveView')}
             </button>
           )}
         </div>
@@ -413,7 +420,7 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
                 type="button"
                 onClick={c.onRemove}
                 className="rounded-full p-0.5 text-muted-foreground hover:text-danger"
-                aria-label={`Remove ${c.label} filter`}
+                aria-label={t('flt.removeChip', { label: c.label })}
               >
                 <X className="h-3 w-3" />
               </button>
@@ -425,7 +432,7 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
               onClick={() => onChange(defaultFilter)}
               className="text-xs font-semibold text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
             >
-              Clear all
+              {t('flt.clearAll')}
             </button>
           )}
         </div>
