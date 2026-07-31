@@ -42,3 +42,6 @@ client_secret*.json
 
 # Feature roadmaps & internal docs
 INSTALLMENT_FEATURES.md
+
+# Bahan lomba Veternity: catatan kerja, bukan bahan penilaian repo
+docs/veternity/
