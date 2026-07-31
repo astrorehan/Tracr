@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { format } from 'date-fns'
 import {
@@ -10,6 +10,9 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Users,
+  MoreVertical,
+  Pencil,
+  CheckCheck,
 } from 'lucide-react'
 import { BizHeaderAction } from '@/components/BizLayout'
 import { Button } from '@/components/ui/Button'
@@ -23,6 +26,7 @@ import { cn } from '@/lib/utils'
 import { useDebts, useDeleteDebt, type DebtWithContact } from '@/features/debts/api'
 import { DebtForm } from '@/features/debts/DebtForm'
 import { PaymentForm } from '@/features/debts/PaymentForm'
+import { SettleAllForm } from '@/features/debts/SettleAllForm'
 import { avatarColor, waNumber } from '@/features/debts/wa'
 import type { DebtDirection } from '@/types/db'
 
@@ -101,6 +105,8 @@ export function DebtsPage() {
 
   const [creating, setCreating] = useState(false)
   const [paying, setPaying] = useState<DebtWithContact | null>(null)
+  const [editing, setEditing] = useState<DebtWithContact | null>(null)
+  const [settling, setSettling] = useState<PersonGroup | null>(null)
   const [dir, setDir] = useState<DebtDirection>('receivable')
 
   const rcv = useMemo(() => buildGroups(debts, 'receivable'), [debts])
@@ -236,7 +242,14 @@ export function DebtsPage() {
           ) : (
             <div className="space-y-3">
               {active.groups.map((g) => (
-                <PersonCard key={g.key} group={g} base={base} onPay={setPaying} />
+                <PersonCard
+                  key={g.key}
+                  group={g}
+                  base={base}
+                  onPay={setPaying}
+                  onEdit={setEditing}
+                  onSettleAll={setSettling}
+                />
               ))}
             </div>
           )}
@@ -249,7 +262,7 @@ export function DebtsPage() {
               </h2>
               <div className="space-y-2.5">
                 {settledInDir.map((d) => (
-                  <SettledRow key={d.id} debt={d} base={base} />
+                  <SettledRow key={d.id} debt={d} base={base} onEdit={setEditing} />
                 ))}
               </div>
             </div>
@@ -258,8 +271,85 @@ export function DebtsPage() {
       )}
 
       <DebtForm open={creating} onClose={() => setCreating(false)} initialDirection={dir} />
+      <DebtForm open={Boolean(editing)} onClose={() => setEditing(null)} debt={editing} />
       <PaymentForm open={Boolean(paying)} onClose={() => setPaying(null)} debt={paying} />
+      <SettleAllForm
+        open={Boolean(settling)}
+        onClose={() => setSettling(null)}
+        debts={settling?.debts ?? []}
+        name={settling?.name ?? ''}
+      />
     </>
+  )
+}
+
+/** Compact overflow menu for a single note: correct it, or throw it away. */
+function RowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
+  const { t } = useT()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    document.addEventListener('mousedown', onDoc)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDoc)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={t('debt.moreActions')}
+        className={cn(
+          'flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground',
+          open && 'bg-surface-muted text-foreground',
+        )}
+      >
+        <MoreVertical className="h-4 w-4" />
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="card-surface absolute right-0 top-9 z-30 w-40 overflow-hidden rounded-xl border border-border bg-surface p-1.5 shadow-lg animate-fade-in"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false)
+              onEdit()
+            }}
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] font-semibold text-foreground transition-colors hover:bg-surface-muted"
+          >
+            <Pencil className="h-4 w-4 text-muted-foreground" />
+            {t('common.edit')}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false)
+              onDelete()
+            }}
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] font-semibold text-danger transition-colors hover:bg-danger/10"
+          >
+            <Trash2 className="h-4 w-4" />
+            {t('common.delete')}
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -316,10 +406,14 @@ function PersonCard({
   group,
   base,
   onPay,
+  onEdit,
+  onSettleAll,
 }: {
   group: PersonGroup
   base: string
   onPay: (d: DebtWithContact) => void
+  onEdit: (d: DebtWithContact) => void
+  onSettleAll: (g: PersonGroup) => void
 }) {
   const { t } = useT()
   const del = useDeleteDebt()
@@ -440,18 +534,29 @@ function PersonCard({
                   >
                     {isRcv ? t('debt.payShort') : t('debt.payBack')}
                   </button>
-                  <button
-                    onClick={() => removeDebt(d)}
-                    disabled={del.isPending}
-                    className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-danger/10 hover:text-danger"
-                    aria-label={t('common.delete')}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  <RowMenu onEdit={() => onEdit(d)} onDelete={() => void removeDebt(d)} />
                 </div>
               )
             })}
           </div>
+
+          {/* Several tabs from one person usually get paid off in one go. */}
+          {group.debts.length > 1 && (
+            <div className="px-4 pt-3">
+              <button
+                onClick={() => onSettleAll(group)}
+                className={cn(
+                  'pressable btn-sheen flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-[13.5px] font-extrabold text-white',
+                  isRcv ? 'bg-positive' : 'bg-danger',
+                )}
+              >
+                <CheckCheck className="h-[18px] w-[18px]" />
+                {t('debt.settleAll', {
+                  amount: formatMoney(group.total, base, { signDisplay: 'never' }),
+                })}
+              </button>
+            </div>
+          )}
 
           {reminderHref && (
             <div className="px-4 pt-2.5">
@@ -473,7 +578,15 @@ function PersonCard({
   )
 }
 
-function SettledRow({ debt, base }: { debt: DebtWithContact; base: string }) {
+function SettledRow({
+  debt,
+  base,
+  onEdit,
+}: {
+  debt: DebtWithContact
+  base: string
+  onEdit: (d: DebtWithContact) => void
+}) {
   const { t } = useT()
   const del = useDeleteDebt()
   const confirm = useConfirm()
@@ -511,14 +624,7 @@ function SettledRow({ debt, base }: { debt: DebtWithContact; base: string }) {
       <span className="shrink-0 font-numeric text-[13px] font-bold text-muted-foreground">
         {formatMoney(debt.amount, base, { signDisplay: 'never' })}
       </span>
-      <button
-        onClick={remove}
-        disabled={del.isPending}
-        className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-danger/10 hover:text-danger"
-        aria-label={t('common.delete')}
-      >
-        <Trash2 className="h-4 w-4" />
-      </button>
+      <RowMenu onEdit={() => onEdit(debt)} onDelete={() => void remove()} />
     </div>
   )
 }
