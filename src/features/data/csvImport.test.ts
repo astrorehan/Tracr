@@ -13,6 +13,7 @@ function account(id: string, name: string, currency = 'USD'): Account {
   return {
     id,
     user_id: 'u1',
+    book_id: 'b1',
     name,
     type: 'cash',
     currency,
@@ -32,6 +33,7 @@ function category(id: string, name: string): Category {
   return {
     id,
     user_id: 'u1',
+    book_id: 'b1',
     name,
     kind: 'expense',
     parent_id: null,
