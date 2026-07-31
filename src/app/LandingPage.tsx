@@ -45,7 +45,9 @@ export function LandingPage() {
         <div className="landing-drift landing-drift-delay pointer-events-none absolute -right-16 top-2/3 h-80 w-80 rounded-full bg-cyan-400/20 blur-3xl" />
 
         {/* Navigation */}
-        <nav className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
+        {/* pt carries the notch inset: this nav is the top of the page in a
+            standalone/PWA window, where the status bar overlays the viewport. */}
+        <nav className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-6 pb-5 pt-[calc(1.25rem+env(safe-area-inset-top))]">
           <div className="flex items-center gap-2.5">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-md">
               <img src="/logo.svg" alt="Tracr Logo" className="h-6 w-6" />

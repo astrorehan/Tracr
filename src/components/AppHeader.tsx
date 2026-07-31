@@ -70,7 +70,10 @@ export function AppHeader() {
   return (
     <header
       className={cn(
-        'sticky top-0 z-40 border-b transition-colors duration-300 print:hidden',
+        // The bar owns the notch inset: it is the element that reaches the top
+        // of the screen once the page scrolls, so its background has to fill
+        // the status bar strip instead of sliding under it.
+        'sticky top-0 z-40 border-b pt-[env(safe-area-inset-top)] transition-colors duration-300 print:hidden',
         onDark
           ? 'border-transparent bg-transparent'
           : 'border-border bg-background/80 backdrop-blur-xl',

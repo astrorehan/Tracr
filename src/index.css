@@ -288,10 +288,17 @@ h1,
     inset 0 1px 0 0 rgba(255, 255, 255, 0.3);
 }
 
-/* Safe areas for mobile notch devices */
+/* Safe areas for mobile notch devices.
+
+   No top inset here on purpose. #root is not the scroll container — the page
+   scrolls the document — so a padding-top on #root only holds the notch clear
+   while the page sits at scroll 0. As soon as you scroll, a `sticky top-0`
+   header slides straight under the status bar, because sticky offsets are
+   measured from the viewport, not from this padding. The top inset therefore
+   belongs to whatever element actually reaches the top of the screen (the app
+   header, the chat header, the landing nav), which pad themselves. */
 #root {
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
-    env(safe-area-inset-left);
+  padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 /* Hide number inputs spinner */
