@@ -158,7 +158,7 @@ export function FilterPanel({ filter, onChange, accounts, categories, tags }: Pr
     })
 
   return (
-    <div className="sticky top-[80px] z-10 space-y-3 rounded-[20px] border border-border bg-surface p-4 shadow-sm">
+    <div className="sticky top-[calc(80px+env(safe-area-inset-top))] z-10 space-y-3 rounded-[20px] border border-border bg-surface p-4 shadow-sm">
       {/* Search */}
       <div className="relative">
         <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
