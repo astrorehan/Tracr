@@ -302,8 +302,8 @@ function inline(text: string): ReactNode[] {
 export function AiMarkdown({ text, className }: { text: string; className?: string }) {
   const blocks = useMemo(() => parseBlocks(text), [text])
   return (
-    // @container: tables below size themselves against the bubble they sit in.
-    <div className={cn('@container space-y-2 text-sm leading-relaxed text-foreground', className)}>
+    // @container is on TableBlock so tables size against their bubble without shrinking text bubbles to min-content.
+    <div className={cn('space-y-2 text-sm leading-relaxed text-foreground', className)}>
       {blocks.map((b, i) => {
         switch (b.t) {
           case 'h':
@@ -400,7 +400,7 @@ function TableBlock({ block }: { block: Extract<Block, { t: 'table' }> }) {
   if (!head && cols === 2) return <KeyValueCard rows={block.rows} />
 
   return (
-    <div className="my-0.5">
+    <div className="@container w-full my-0.5">
       {/* Roomy bubble: a real table. */}
       <div className="hidden overflow-x-auto rounded-xl border border-border @[300px]:block">
         <table className="w-full border-collapse text-[13px]">
